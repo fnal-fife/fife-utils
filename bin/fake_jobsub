@@ -205,6 +205,13 @@ do_work() {
 # done_startup file before we exit, so we don't get output
 # spewing after we exit.
 # 
+
+if [ $# = 0 -o "$1" = "--help" -o "$1" = "-h" ]
+then
+    jobsub --help
+    exit 0
+fi
+
 export workdir=${TMPDIR:-/tmp}/fake_jobsub_work$$
 mkdir $workdir
 
