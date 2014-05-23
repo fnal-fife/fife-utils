@@ -9,4 +9,5 @@ Action=setup
     SetupEnv()
     SetupRequired(ifdhc)
     SetupRequired(sam_web_client)
+    SetupRequierd(jobsub_tools)
     PathPrepend(PATH, ${UPS_PROD_DIR}/bin)
