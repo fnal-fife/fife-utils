@@ -1,0 +1,12 @@
+FILE=table
+Product=fife_utils
+
+Flavor=ANY
+QUalifiers=
+
+Action=setup
+    ProdDir()
+    SetupEnv()
+    SetupRequired(ifdhc)
+    SetupRequired(sam_web_client)
+    PathPrepend(PATH, ${UPS_PROD_DIR}/bin)

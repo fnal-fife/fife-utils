@@ -1,0 +1,216 @@
+#!/bin/sh
+
+#
+# cleanup our arguments before handing them to jobsub
+# we ignore any --OS= in our arguments because
+# a) we run on this box anyhow
+# b) we use --OS=nosuch to keep from actually running the job
+# Also, since we're looking, scan the args for the proxy to use, and
+# for a --dataset-definition flag that says we want a 
+#
+export using_dag=false
+
+scan_and_clean_arguments() {
+   next_is_proxy=false
+   next_is_os=false
+   res=""
+   for i in "$@"
+   do
+       if $next_is_proxy
+       then
+           proxy="$i"
+           next_is_proxy=false
+       fi
+       if $next_is_os
+       then
+           next_is_os=false
+           continue
+       fi
+       case "x$i" in
+       x--dataset_definition*) using_dag=true;;
+       x--OS=*) continue ;;
+       x--OS) next_is_os=true; continue ;;
+       x--x)   next_is_proxy=true ;; 
+       esac
+       res="$res '$i'"  
+   done
+   echo $res
+}
+
+
+#
+# currently a no-op, but in client-server jobsub we'll need this
+#
+fetch_cmd_file() {
+   :
+}
+fetch_dag_file() {
+   :
+}
+
+#
+# extract fields from a .cmd file...
+#
+extract_field() {
+   for field in $*
+   do
+       value=`grep "^$field" $cmdfile | sed -e 's/[^=]*=.//'`
+       eval "$field='$value'"
+   done
+}
+
+# 
+#
+# run a given JOB line from a dag file
+#
+fake_dagman_slot() {
+    fake_condor_submit `grep -i "JOB $1" $2 | sed -e "s/JOB *$1 *//i"` >> $2.fake_dagman.out
+    echo "fake_dagman: starting $1 as $pid" >> $2.fake_dagman.out
+}
+
+#
+# this assumes the "Parent" lines are "in order", as
+# jobsub currently writes them. 
+# it doesn't do BEGIN or END scripts , or anything fancy
+# just enough to do the ones jobsub actually writes
+# basically you 
+# * grab all the "Parent" lines, 
+# * make a list  of all the words, and
+# * start running the related jobs
+#   (after checking we haven't already run them)
+# * when we hit a "child" word, we wait for 
+#   the jobs we've run so far to exit.
+# * when we hit a "parent" word, we ignore it.
+# this works as long as the "Parent" lines are in
+# order, top of the DAG to bottom, and the DAG
+# is very simple.  It kind-of works even for compliated
+# DAGs, but it may wait for too much stuff to finish
+# before running some nodes.
+# if the Parent lines are not in the right order,
+# it does Not do the Right Thing.
+#
+fake_dagman() {
+    dagfile=$1
+    fetch_dag_file $dagfile
+    for i in `grep -i '^Parent' $dagfile`
+    do
+         case "$i" in
+         [Pp]arent*)  ;; 
+         [Cc]hild)  wait  ;;  # wait for stuff so far to finish before going on
+         *) 
+                 flagvar="ran_`echo $i | sed -e 's/[^A-Za-z0-9]/_/g'`"
+		 if eval [ x\$$flagvar != "xran" ]
+		 then
+		     eval $flagvar=ran
+		     fake_dagman_slot $i $dagfile
+		 fi
+                 ;;
+         esac
+     done
+}
+
+# 
+#
+# fake a job from a .cmd file
+#
+fake_condor_submit() {
+    cmdfile=$1
+    fetch_cmd_file $cmdfile
+
+    extract_field executable arguments output error log environment
+
+    # escape arguements so they don't get eval-ed wrong...
+    # this was tedious to get to work
+    : before arguments $arguments
+    arguments=`echo $arguments | sed -e 's/\\$/\\\\&/g' -e 's/\`/\\\\&/g'`
+    : after arguments $arguments
+
+    i=0
+    while [ $i -lt $n_procs ] 
+    do
+       i=$((i + 1))
+       jobdir=$workdir/$cluster.$i/ 
+       mkdir -p $jobdir
+
+       fakegli=" HOME=$workdir/home X509_USER_PROXY='$proxy' TMPDIR='$jobdir' _CONDOR_SCRATCH_DIR='$jobdir' CONDOR_EXEC='$CONDOR_EXEC' OSG_SQUID_LOCATION='squid.fnal.gov:3128' X509_USER_CERT='$usercert' "
+       
+       use_environment=`echo "$environment" | sed -e "s/\\\$(Cluster)/$cluster/g" -e "s/\\\$(Process)/$i/g" -e "s/=/='/g" -e s"/;/'  /g" -e "s/$/'/"`
+       use_output=`echo "$output" | sed -e "s/\\\$(Cluster)/$cluster/" -e "s/\\\$(Process)/$i/"`
+       use_error=`echo "$error" | sed -e "s/\\\$(Cluster)/$cluster/" -e "s/\\\$(Process)/$i/"`
+       use_log=`echo "$log" | sed -e "s/\\\$(Cluster)/$cluster/" -e "s/\\\$(Process)/$i/"`
+
+       cd $jobdir 
+       eval env -i $use_environment $fakegli /bin/bash -c "'nohup $executable $arguments > $use_output 2> $use_error < /dev/null '" &
+       pid=$!
+       echo "Fake $cluster.$i is pid $pid"
+       echo "Fake_Jobsub running $cluster.$i as $pid" >> $use_log
+       
+    done
+}
+
+# 
+#
+#
+#
+do_work() {
+    # actually use scan_and_clean_arguments...
+    eval set : `scan_and_clean_arguments "$@"`
+    shift
+
+    mkdir -p $workdir/home
+    
+    trap "rm -rf $workdir" EXIT RETURN INT QUIT
+
+    jobsub --OS=nosuch "$@"  > $workdir/jobsub.out 2>&1
+
+    cmdfile=`grep '\.cmd$' $workdir/jobsub.out `
+    dagfile=`grep '\.dag$' $workdir/jobsub.out`
+    cluster=`grep submitted $workdir/jobsub.out | sed -e 's/.*cluster //' -e s'/\.$//'`
+    n_procs=`grep submitted $workdir/jobsub.out | sed -e 's/ .*//'`
+
+    # if they didn't specify a proxy file, grab the
+    # default one from gpsn01
+    if [ -z "$proxy" ]
+    then
+	proxy=$workdir/proxy
+	scp gpsn01:/scratch/$USER/grid/$USER.$GROUP.proxy $proxy
+	chmod 600 $proxy
+    fi
+
+    condor_rm $cluster
+
+    : using_dag $using_dag
+
+    if $using_dag
+    then
+	echo Faking DAG submission...
+	fake_dagman $dagfile &
+	pid=$!
+	echo Fake dagman $Cluster.0 is pid $pid
+	echo Fake dagman $Cluster.0 is pid $pid >> $dagfile.fake_dagman.log
+    else
+	fake_condor_submit $cmdfile
+    fi
+    touch $workdir/done_startup
+
+    # wait until the jobs all finish before cleaning up so we
+    # don't clean up under them
+    wait
+    # the trap will clean up (?)
+}
+
+# mainline:
+#
+# we run do_work in background, but wait for it to touch a 
+# done_startup file before we exit, so we don't get output
+# spewing after we exit.
+# 
+export workdir=${TMPDIR:-/tmp}/fake_jobsub_work$$
+mkdir $workdir
+
+do_work "$@" &
+
+while [ -d $workdir -a ! -r $workdir/done_startup ] 
+do
+   sleep 1
+done
