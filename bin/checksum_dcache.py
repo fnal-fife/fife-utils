@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 from samweb_client.utility import fileEnstoreChecksum
 import os
 import sys

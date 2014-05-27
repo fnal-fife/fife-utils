@@ -10,10 +10,8 @@
 #
 export using_dag=false
 
-scan_and_clean_arguments() {
+scan_arguments() {
    next_is_proxy=false
-   next_is_os=false
-   res=""
    for i in "$@"
    do
        if $next_is_proxy
@@ -21,16 +19,26 @@ scan_and_clean_arguments() {
            proxy="$i"
            next_is_proxy=false
        fi
+       case "x$i" in
+       x--dataset_definition*) using_dag=true;;
+       x--x)   next_is_proxy=true ;; 
+       esac
+   done
+}
+
+clean_arguments() {
+   next_is_os=false
+   res=""
+   for i in "$@"
+   do
        if $next_is_os
        then
            next_is_os=false
            continue
        fi
        case "x$i" in
-       x--dataset_definition*) using_dag=true;;
        x--OS=*) continue ;;
        x--OS) next_is_os=true; continue ;;
-       x--x)   next_is_proxy=true ;; 
        esac
        res="$res '$i'"  
    done
@@ -153,15 +161,22 @@ fake_condor_submit() {
 #
 #
 do_work() {
+    scan_arguments "$@"
     # actually use scan_and_clean_arguments...
-    eval set : `scan_and_clean_arguments "$@"`
+    eval set : `clean_arguments "$@"`
     shift
 
     mkdir -p $workdir/home
     
     trap "rm -rf $workdir" EXIT RETURN INT QUIT
 
-    jobsub --OS=nosuch "$@"  > $workdir/jobsub.out 2>&1
+    if jobsub --OS=nosuch "$@"  > $workdir/jobsub.out 2>&1
+    then
+        :
+    else
+        cat jobsub.out
+        exit 1
+    fi
 
     cmdfile=`grep '\.cmd$' $workdir/jobsub.out `
     dagfile=`grep '\.dag$' $workdir/jobsub.out`
@@ -199,19 +214,19 @@ do_work() {
     # the trap will clean up (?)
 }
 
+
+if [ $# = 0 -o "$1" = "--help" -o "$1" = "-h" -o "$1" = "-?" ]
+then
+    jobsub --help
+    exit 0
+fi
+
 # mainline:
 #
 # we run do_work in background, but wait for it to touch a 
 # done_startup file before we exit, so we don't get output
 # spewing after we exit.
 # 
-
-if [ $# = 0 -o "$1" = "--help" -o "$1" = "-h" ]
-then
-    jobsub --help
-    exit 0
-fi
-
 export workdir=${TMPDIR:-/tmp}/fake_jobsub_work$$
 mkdir $workdir
 
