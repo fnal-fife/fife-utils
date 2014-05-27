@@ -1,0 +1,123 @@
+#!/bin/sh
+
+usage() {
+cat >&2 <<EOF
+   usage: 
+      
+      $0 [-e experiment] [-n numberoffiles]  filename1 filename2 ...
+          find files in SAM and ifdh cp them here
+      $0 [-e experiment] [-n numberoffiles] --dims "dimension-string"
+          find files in SAM by dimension string and ifdh cp them here
+      $0 --help
+          print this message to stderr
+EOF
+}
+
+do_cp=false
+TMPDIR=${TMPDIR:-/tmp}
+
+case `df . | tail -1` in
+*/app) size=`echo "$@" | wc -w`
+         if [ $size -gt 10 ]
+         then
+             echo "Sorry, this utility won't copy large datasets to the /experiment/app areas" >& 2
+             exit 1
+         else
+             echo "Notice: copying data to /experiment/app areas is not recommended." >&2
+             echo "...but since it's only a few files, copying via $TMPDIR"
+         fi
+         dest="$TMPDIR"'/$f'
+         do_cp=true
+         ;;
+*)       dest='./$f'
+         do_cp=false
+esac
+
+nfiles=1000000
+
+while :
+do
+case x$1 in 
+
+x-n)
+    nfiles=$2
+    shift
+    shift
+    ;;
+
+x--dims)
+    dims="$2"
+    shift
+    shift
+    set : "$@" `ifdh translateConstraints "$dims"`
+    shift
+    continue
+    ;;
+
+x--help)
+    usage
+    exit 0
+    ;;
+x-e)
+    export EXPERIMENT=$2
+    shift
+    shift
+    ;;
+x)  usage
+    exit 1
+    ;;
+*)  break
+    ;;
+esac
+done
+
+case x$EXPERIMENT in
+x) echo "Need EXPERIMENT set in the environment" >&2
+   exit 1
+   ;;
+*) ;;
+esac
+
+sep=""
+cpfiles=""
+
+for f in "$@"
+do
+  
+   flocs=`ifdh locateFile $f gsiftp`
+   eflocs=`echo "$flocs" | grep fndca1 | head -1`
+   bflocs=`echo "$flocs" | grep bestman | head -1`
+   if [ x$eflocs != x ]
+   then
+       echo "found file on enstore, using dcache gridftp"
+       src="$eflocs"
+   elif [ x$bflocs != x ]
+   then
+       echo "found file on bluearc, using bestman gridftp"
+       src="$bflocs"
+   else
+       echo "found file somewhere else"
+       src=`echo "$flocs" | head -1`
+   fi
+   eval args="\"$args $sep $src $dest \""
+   eval cpfiles="\"$cpfiles $TMPDIR/$f\""
+   sep=";"
+   nfiles=$((nfiles - 1))
+   if [ $nfiles = 0 ]
+   then
+       echo "Reached file count limit" >& 2
+       break
+   fi
+done
+
+cmd="ifdh cp $args"
+echo "doing:"  $cmd
+$cmd
+
+if $do_cp
+then
+    echo "doing: cp $cpfiles ."
+    cp $cpfiles .
+    echo "cleaning up $TMPDIR..."
+    (cd $TMPDIR; rm -f "$@")
+fi
