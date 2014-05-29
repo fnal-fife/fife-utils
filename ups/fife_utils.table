@@ -11,3 +11,4 @@ Action=setup
     SetupRequired(sam_web_client)
     SetupRequired(jobsub_tools)
     PathPrepend(PATH, ${UPS_PROD_DIR}/bin)
+    PathPrepend(PYTHONPATH, ${UPS_PROD_DIR}/bin)
