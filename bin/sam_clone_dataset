@@ -1,9 +1,12 @@
 #!/usr/bin/env python
 
-from fife_sam_utils import dataset
+from fife_sam_utils import *
 import hashlib 
 import sys
 import os
+from samweb_client import *
+import socket
+
 
 def zerodeep(f):
     return '/'
@@ -16,35 +19,44 @@ def twodeep(f):
     h = hashlib.md5(f).hexdigest()
     return "/%s/%s/" % (h[0:4], h[4:8])
 
-def parent(dir):
-    l = parent.rfind('/', len(parent)-1 )
+notmade = {}
+def dodir(ih, dir):
+    
+    if dir.startswith("/pnfs/") or dir.startswith("/%s/"%os.environ.get('EXPERIMENT','')):
+        return
 
+    for d in (dirname(dir), dir):
+        if notmade.get(d,True):
+           notmade[d] = False
+           try:
+               print "doing mkdir " , d
+               ih.mkdir(d, '')
+           except:
+               pass
 
-
-def clone( d, dest, subdirf ):
+def clone( d, dest, subdirf, just_say=False ):
     # make gridftp tool add directories
     os.environ['IFDH_GRIDFTP_EXTRA'] = '-cd'
+    cpargs = []
     for f in d.file_iterator():
-        l = d.ifdh_handle.locateFile(f, "gridftp")
+        l = d.ifdh_handle.locateFile(f, "gsiftp")
         if len(l) > 0:
             cpargs.append(l[0])
 	    cpargs.append(dest + subdirf(f) + f)
             cpargs.append(';')
-            dodir(dest+subdirf(f))
+            dodir(d.ifdh_handle, dest+subdirf(f))
         else:
             print "Notice: skipping file %s, no locations" % f
-
-    for f in d.file_iterator():
-        samweb.addlocation(f, dest + subdirf(f))
 
     if just_say:
         print "I would ifdh cp " , cpargs
 	for f in d.file_iterator():
             print "I would declare location for %s of %s" % (f, dest+subdirf(f))
     else: 
+        samweb = SAMWebClient()
 	d.ifdh_handle.cp(cpargs)
 	for f in d.file_iterator():
-	    samweb.addlocation(f, dest + subdirf(f))
+	    samweb.addFileLocation(f, samprefix(dest) + dest + subdirf(f))
 
 def usage(argv):
     print argv[0], ": usage: ",

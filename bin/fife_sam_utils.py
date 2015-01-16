@@ -55,6 +55,20 @@ class dataset:
         locmap = dict(self.ifdh_handle.locateFiles(self.get_flist()))
         return self._loc_iterator(locmap)
 
+def samprefix(dir):
+    if (dir.startswith('/pnfs')) :
+       return 'enstore:'
+    elif (dir.startswith('/grid/') or dir.startswith('/%s/'%os.environ.get('EXPERIMENT',None))):
+       return os.environ.get('EXPERIMENT') + 'data:'
+    else:
+       return socket.gethostname()
+
+def basename(path):
+    return path[path.rfind('/')+1:]
+
+def dirname(dir):
+    l = dir.rfind('/', 0,len(dir)-2 )
+    return dir[0:l]
 
 if __name__ == '__main__':
     os.environ['EXPERIMENT'] = 'nova'
