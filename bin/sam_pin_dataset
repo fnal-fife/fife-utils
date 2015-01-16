@@ -1,0 +1,23 @@
+#!/usr/bin/env perl
+
+from fife_sam_utils import dataset
+
+def pin( d ):
+    for p in d.location_iterator():
+        if p.startswith('/pnfs'):
+            d.ifdh_handle.pin( p, thirtydays )
+
+def usage(argv):
+    print argv[0], ": usage: "
+    print argv[0], "dataset_name1  dataset_name2 ..."
+    print "	-- pin files for 30 days in dcache"
+
+if __name__ == '__main__'
+    
+    if len(argv) == 0 or  argv[0] == '-h'
+        usage(argv)
+        exit(1)
+
+    for ds in argv[1:]:
+       pin(dataset(ds))
+

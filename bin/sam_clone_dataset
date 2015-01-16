@@ -1,0 +1,61 @@
+#!/usr/bin/env perl
+
+from fife_sam_utils import dataset
+import hashlib 
+
+def zerodeep(f):
+    return '/'
+
+def onedeep(f):
+    h = hashlib.md5(f).hexdgest()
+    return "/%s/" % h[0:4]
+
+def twodeep(f):
+    h = hashlib.md5(f).hexdgest()
+    return "/%s/%s/" % (h[0:4], h[4,8])
+
+def clone( d, dest, subdirf ):
+    # make gridftp tool add directories
+    os.environ['IFDH_GRIDFTP_EXTRA'] = '-cd'
+    for f in d.file_iterator():
+        l = d.ifdh_handle.locateFile(f, "gridftp")
+        cpargs.append(l[0])
+	cpargs.append(dest + subdirf(f) + f)
+	cpargs.append(';')
+    d.ifdh_handle.cp(cpargs)
+    for f in d.file_iterator():
+        samweb.addlocation(f, dest + subdirf(f))
+
+def usage(argv):
+    print argv[0], ": usage: "
+    print argv[0], '[opts] dataset_name1  destination'
+    print " options: "
+    print "  -0 : make 0 levels of hash directories"
+    print "  -1 : make 1 levels of hash directories"
+    print "  -2 : make 2 levels of hash directories (default)"
+    print "	-- copy files in dataset to destination"
+
+if __name__ == '__main__':
+    
+    dirfunc = twodeep
+
+    if sys.argv[1] == "-0":
+        dirfunc = zerodeep
+        sys.argv = sys.argv[1:]
+
+    if sys.argv[1] == "-1":
+        dirfunc = twodeep
+        sys.argv = sys.argv[1:]
+
+    if sys.argv[1] == "-2":
+        dirfunc = twodeep
+        sys.argv = sys.argv[1:]
+
+    if len(argv) < 3 or  argv[0] == '-h':
+        usage(argv)
+        exit(1)
+
+    src = argv[1]
+    dst = argv[2]
+
+    clone(dataset(argv[1]), argv[2], dirfunc)
