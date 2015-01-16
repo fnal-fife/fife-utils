@@ -1,61 +1,91 @@
-#!/usr/bin/env perl
+#!/usr/bin/env python
 
 from fife_sam_utils import dataset
 import hashlib 
+import sys
+import os
 
 def zerodeep(f):
     return '/'
 
 def onedeep(f):
-    h = hashlib.md5(f).hexdgest()
+    h = hashlib.md5(f).hexdigest()
     return "/%s/" % h[0:4]
 
 def twodeep(f):
-    h = hashlib.md5(f).hexdgest()
-    return "/%s/%s/" % (h[0:4], h[4,8])
+    h = hashlib.md5(f).hexdigest()
+    return "/%s/%s/" % (h[0:4], h[4:8])
+
+def parent(dir):
+    l = parent.rfind('/', len(parent)-1 )
+
+
 
 def clone( d, dest, subdirf ):
     # make gridftp tool add directories
     os.environ['IFDH_GRIDFTP_EXTRA'] = '-cd'
     for f in d.file_iterator():
         l = d.ifdh_handle.locateFile(f, "gridftp")
-        cpargs.append(l[0])
-	cpargs.append(dest + subdirf(f) + f)
-	cpargs.append(';')
-    d.ifdh_handle.cp(cpargs)
+        if len(l) > 0:
+            cpargs.append(l[0])
+	    cpargs.append(dest + subdirf(f) + f)
+            cpargs.append(';')
+            dodir(dest+subdirf(f))
+        else:
+            print "Notice: skipping file %s, no locations" % f
+
     for f in d.file_iterator():
         samweb.addlocation(f, dest + subdirf(f))
 
+    if just_say:
+        print "I would ifdh cp " , cpargs
+	for f in d.file_iterator():
+            print "I would declare location for %s of %s" % (f, dest+subdirf(f))
+    else: 
+	d.ifdh_handle.cp(cpargs)
+	for f in d.file_iterator():
+	    samweb.addlocation(f, dest + subdirf(f))
+
 def usage(argv):
-    print argv[0], ": usage: "
+    print argv[0], ": usage: ",
     print argv[0], '[opts] dataset_name1  destination'
+    print "	-- copy files in dataset to destination"
     print " options: "
     print "  -0 : make 0 levels of hash directories"
     print "  -1 : make 1 levels of hash directories"
     print "  -2 : make 2 levels of hash directories (default)"
-    print "	-- copy files in dataset to destination"
 
 if __name__ == '__main__':
     
     dirfunc = twodeep
+    just_say = False
+    cmd = sys.argv[0]
 
-    if sys.argv[1] == "-0":
+    if len(sys.argv) > 1 and sys.argv[1] == "-0":
         dirfunc = zerodeep
         sys.argv = sys.argv[1:]
+        sys.argv[0] = cmd
 
-    if sys.argv[1] == "-1":
+    if len(sys.argv) > 1 and sys.argv[1] == "-1":
         dirfunc = twodeep
         sys.argv = sys.argv[1:]
+        sys.argv[0] = cmd
 
-    if sys.argv[1] == "-2":
+    if len(sys.argv) > 1 and sys.argv[1] == "-2":
         dirfunc = twodeep
         sys.argv = sys.argv[1:]
+        sys.argv[0] = cmd
 
-    if len(argv) < 3 or  argv[0] == '-h':
-        usage(argv)
+    if len(sys.argv) > 1 and sys.argv[1] == "-n":
+        just_say = True
+        sys.argv = sys.argv[1:]
+        sys.argv[0] = cmd
+
+    if  len(sys.argv) < 3 or len(sys.argv) > 1 and  sys.argv[0] == '-h':
+        usage(sys.argv)
         exit(1)
 
-    src = argv[1]
-    dst = argv[2]
+    src = sys.argv[1]
+    dst = sys.argv[2]
 
-    clone(dataset(argv[1]), argv[2], dirfunc)
+    clone(dataset(src), dst, dirfunc, just_say)

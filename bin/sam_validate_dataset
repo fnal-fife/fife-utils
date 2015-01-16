@@ -4,14 +4,10 @@ from fife_sam_utils import dataset
 import sys
 import os
 
-def pin( ds , just_say = False):
-    thirtydays = 30 * 24 * 60 * 60
+def validate( ds ):
     for p in ds.fullpath_iterator():
-        if p.startswith('/pnfs'):
-            if just_say:
-                print "I would ifdh pin ", p, " for ", thirtydays
-            else:
-                ds.ifdh_handle.pin( p, thirtydays )
+        if len(d.ifdh_handle.ls(p,0,'')) == 0:
+            print "file path %s not accessible", p
 
 def usage(argv):
     print argv[0], ": usage: "
@@ -32,5 +28,5 @@ if __name__ == '__main__':
         exit(1)
 
     for ds in sys.argv[1:]:
-       pin(dataset(ds), just_say)
+        validate(dataset(ds), just_say)
 
