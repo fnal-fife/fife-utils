@@ -2,6 +2,7 @@
 import ifdh
 import os
 import re
+import socket
 
 class dataset:
     def __init__( self, name ):
@@ -20,34 +21,37 @@ class dataset:
         
     class _loc_iterator:
         def __init__(self, locmap):
-            print "in _loc_iterator.__init__, locmap is:", locmap
+            #print "in _loc_iterator.__init__, locmap is:", locmap
             self.locmap = locmap
             self.key_iter = locmap.keys().__iter__()
             self.next_key()
 
         def next_key(self):
-            print "in _loc_iterator.next_key..."
+            #print "in _loc_iterator.next_key..."
             self.curfile = self.key_iter.next()
  
-            print "curfile is: ",  self.curfile
+            #print "curfile is: ",  self.curfile
             self.loc_iter = self.locmap[self.curfile].__iter__()
 
         def __iter__(self):
             return self
  
         def next(self):
-            print "in _loc_iterator.next..."
+            #print "in _loc_iterator.next..."
             res = None
             while res == None:
                 try:
                     res = self.loc_iter.next()
                 except StopIteration:
-                    print "in _loc_iterator.next, trying next key.."
+                    #print "in _loc_iterator.next, trying next key.."
                     # if *this* rasies StopIter, we bail...
                     self.next_key()
 
-            res = re.sub('^(enstore|[a-z]data):','',res)
+            #pre = res
+            res = re.sub('^(enstore|[a-z]*data):','',res)
             res = re.sub('\(.*?\)$','',res)
+
+            #print "converted\n\t%s\nto\n\t%s" % ( pre, res)
 
             return res + '/' + self.curfile
 

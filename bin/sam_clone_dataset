@@ -73,27 +73,43 @@ if __name__ == '__main__':
     just_say = False
     cmd = sys.argv[0]
 
-    if len(sys.argv) > 1 and sys.argv[1] == "-0":
-        dirfunc = zerodeep
-        sys.argv = sys.argv[1:]
-        sys.argv[0] = cmd
+    while len(sys.argv) > 1 and sys.argv[1][0] == "-":
 
-    if len(sys.argv) > 1 and sys.argv[1] == "-1":
-        dirfunc = twodeep
-        sys.argv = sys.argv[1:]
-        sys.argv[0] = cmd
+      if  sys.argv[1] == "-h":
+        usage(sys.argv)
+        exit(0)
 
-    if len(sys.argv) > 1 and sys.argv[1] == "-2":
-        dirfunc = twodeep
-        sys.argv = sys.argv[1:]
-        sys.argv[0] = cmd
-
-    if len(sys.argv) > 1 and sys.argv[1] == "-n":
+      if  sys.argv[1] == "-n":
         just_say = True
         sys.argv = sys.argv[1:]
         sys.argv[0] = cmd
+        continue
 
-    if  len(sys.argv) < 3 or len(sys.argv) > 1 and  sys.argv[0] == '-h':
+
+      if sys.argv[1] == "-0":
+        dirfunc = zerodeep
+        sys.argv = sys.argv[1:]
+        sys.argv[0] = cmd
+        continue
+
+      if sys.argv[1] == "-1":
+        dirfunc = twodeep
+        sys.argv = sys.argv[1:]
+        sys.argv[0] = cmd
+        continue
+
+      if sys.argv[1] == "-2":
+        dirfunc = twodeep
+        sys.argv = sys.argv[1:]
+        sys.argv[0] = cmd
+        continue
+
+      print "unknown option %s" % sys.argv[1]
+      usage(sys.argv)
+      exit(1)
+      
+
+    if len(sys.argv) < 3 
         usage(sys.argv)
         exit(1)
 

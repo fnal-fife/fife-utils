@@ -1,37 +1,83 @@
 #!/usr/bin/env python
 
 from fife_sam_utils import *
+from samweb_client import *
 import hashlib 
 import sys
 import os
+import re
 
-def retire( d ):
+def retire( d, just_say = False, keep_files = False, delete_match = '.*' ):
     samweb = SAMWebClient()
 
     for full in d.fullpath_iterator():
         file = basename(full)
-        d.ifdh_handle.rm(full, '')
-        samweb.removeLocation(file, samprefix(full) + dirname(full))
+        if re.match(delete_match, full): 
+	    if just_say:
+		if not keep_files:
+		   print "I would 'ifdh rm %s'" % full
+		print "I would remove location %s for %s" % ( file, samprefix(full)+dirname(full) )
+	    else:
+		if not keep_files:
+		    d.ifdh_handle.rm(full, '')
+		samweb.removeLocation(file, samprefix(full) + dirname(full))
 
     for f in d.file_iterator():
-        samweb.retireFile(file)
+        if just_say:
+            print "I would retire file: %s" %  file
+        else:
+            samweb.retireFile(file)
 
 def usage(argv):
     print argv[0], ": usage: "
-    print argv[0], "dataset_name1  dataset_name2 ..."
+    print argv[0], " [options] dataset_name1  dataset_name2 ..."
     print "	-- retire files in dataset"
+    print " options: "
+    print "   -k     # keep files, do not delete them"
+    print "   -m re  # delete files matching regular expression re"
+    print "   -n     # don't actually do anything, say what would happen"
+    print "   -h     # print help message" 
 
 if __name__ == '__main__':
     
-    cmd = sys.argv[0]
     just_say = False
+    keep_files = False
+    delete_match = ".*"
 
-    # XXX args for whether to delete files?
+    cmd = sys.argv[0]
 
-    if len(sys.argv) == 1 or  sys.argv[1] == '-h':
+    while len(sys.argv) > 1 and sys.argv[1][0] == "-":
+
+      if sys.argv[1] == "-k":
+        keep_files = True
+        sys.argv = sys.argv[1:]
+        sys.argv[0] = cmd
+        continue
+
+      if sys.argv[1] == "-m":
+        delete_match = sys.argv[2]
+        sys.argv = sys.argv[2:]
+        sys.argv[0] = cmd
+        continue
+
+      if sys.argv[1] == "-n":
+        just_say = True
+        sys.argv = sys.argv[1:]
+        sys.argv[0] = cmd
+        continue
+
+      if sys.argv[1] == '-h':
+        usage(sys.argv)
+        exit(0)
+
+      print "unknown option %s" % sys.argv[1]
+      usage(sys.argv)
+      exit(1)
+
+    if len(sys.argv) == 1:
         usage(sys.argv)
         exit(1)
 
     for ds in sys.argv[1:]:
-       retire(dataset(ds))
+       retire(dataset(ds), just_say = just_say, keep_files = keep_files, delete_match = delete_match)
 
