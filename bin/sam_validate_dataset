@@ -5,30 +5,43 @@ from fife_sam_utils import *
 import sys
 import os
 
-def validate( ds, just_say = False, prune = False ):
+def validate( ds, just_say = False, prune = False, verbose = False ):
     samweb = SAMWebClient()
+    res=0
 
     for p in ds.fullpath_iterator():
         if just_say and not prune:
             print "I would: ifdh ls %s 0" % p
         else:
             if len(ds.ifdh_handle.ls(p,0,'')) == 0:
+                print "missing: %s" % p
+                res = 1
                 if prune:
                     if just_say:
                        print "I would remove location: %s for %s " % (samprefix(p)+dirname(p), basename(p))
                     else:
-                        samweb.removeLocation(basename(p),  samprefix(p) + dirname(p))
-                else:
-                    print "file path %s not accessible" % p
+                        samweb.removeFileLocation(basename(p),  samprefix(p) + dirname(p))
+                        print "-- location removed"
+            else:
+                if verbose: print "located: %s" % p
+
+    return res
           
 
 def usage(argv):
     print argv[0], ": usage: "
-    print argv[0], "dataset_name1  dataset_name2 ..."
+    print argv[0], "[options] dataset_name1  dataset_name2 ..."
     print "	-- check that all file locations declared for dataset(s) exist"
+    print " options:"
+    print "   -v  # verbose -- list all locations an present or not"
+    print "   -p  # prune -- prune locations not visible"
+    print "   -n  # not -- say what it would do, but do not do it"
+    print "   -h  # help -- print this message"
 
 if __name__ == '__main__':
     
+    res = 0
+    verbose = False
     cmd = sys.argv[0]
     just_say = False
     prune = False
@@ -41,6 +54,12 @@ if __name__ == '__main__':
 
       if  sys.argv[1] == "-n":
         just_say = True
+        sys.argv = sys.argv[1:]
+        sys.argv[0] = cmd
+        continue
+
+      if  sys.argv[1] == "-v":
+        verbose = True
         sys.argv = sys.argv[1:]
         sys.argv[0] = cmd
         continue
@@ -60,4 +79,6 @@ if __name__ == '__main__':
         exit(1)
 
     for ds in sys.argv[1:]:
-        validate(dataset(ds), just_say = just_say, prune = prune)
+        res = res or validate(dataset(ds), just_say = just_say, prune = prune, verbose = verbose)
+
+    sys.exit(res)
