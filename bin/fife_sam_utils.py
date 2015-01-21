@@ -22,9 +22,13 @@ class dataset:
     class _loc_iterator:
         def __init__(self, locmap):
             #print "in _loc_iterator.__init__, locmap is:", locmap
+            self.loc_iter = [].__iter__()
             self.locmap = locmap
             self.key_iter = locmap.keys().__iter__()
-            self.next_key()
+            try:
+                self.next_key()
+            except StopIteration:
+                pass
 
         def next_key(self):
             #print "in _loc_iterator.next_key..."

@@ -26,16 +26,20 @@ def retire( d, just_say = False, keep_files = False, delete_match = '.*' ):
 		    pass
 	    samweb.removeFileLocation(file, samprefix(full) + dirname(full))
 
-    for f in d.file_iterator():
+    for file in d.file_iterator():
         if just_say:
             print "I would retire file: %s" %  file
         else:
-            samweb.retireFile(file)
+            try:
+                samweb.retireFile(file)
+            except:
+                print "Ouch! retriring %s" % file
+                pass
     
     if just_say:
          print "I would deleteDefinition( %s ) " % ds.name
     else:
-         samweb.deleteDefinition(ds.name)
+         samweb.deleteDefinition(d.name)
 
 
 def usage(argv):

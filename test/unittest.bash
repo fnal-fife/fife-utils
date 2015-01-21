@@ -1,5 +1,7 @@
 
+
 testsuite() {
+    exec 3>&1  # so tests can put ouput to &3
     local suitename
     suitename=$1
     shift
