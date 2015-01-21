@@ -25,6 +25,12 @@ def validate( ds, just_say = False, prune = False, verbose = False ):
             else:
                 if verbose: print "located: %s" % p
 
+    for f in ds.file_iterator():
+        l = ds.ifdh_handle.locateFile(f)
+        if len(l) == 0:
+           print "file %s has 0 locations"
+           res = 1
+
     return res
           
 
