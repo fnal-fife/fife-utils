@@ -108,7 +108,7 @@ test_unclone() {
     echo "after:"
     sam_validate_dataset -v $dataset
     locs2=`sam_validate_dataset -v $dataset | wc -l`
-    sam_unclone_dataset $dataset /pnfs/nova/scratch/users/$USER/fife_util_test
+    sam_unclone_dataset $dataset /pnfs/nova/scratch/users/$USER/fife_util_test/
     echo "after unclone:"
     sam_validate_dataset -v $dataset
     locs3=`sam_validate_dataset -v $dataset | wc -l`
@@ -133,4 +133,4 @@ testsuite test_utils \
         test_pin \
         test_retire
 
-test_utils
+test_utils "$@"

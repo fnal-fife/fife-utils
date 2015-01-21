@@ -33,21 +33,29 @@ testsuite() {
 	    for _t in \$${suitename}_test_list
 	    do
                n_tests=\$(( \$n_tests + 1 ))
-	       if [ x\$verbose = "x-v" ]
+	       if [ x\$verbose = "x-v" -o x\$verbose = "x-vv" ]
                then
 	           printf '%s \t...' \$_t
                fi
 	       \$${suitename}_test_setup > /dev/null 2>&1
 	       if \$_t > ${TMPDIR:-/tmp}/test_case_out_\$\$ 2>&1
                then
-                   if [ x\$verbose = "x-v" ]
+                   if [ x\$verbose = "x-v" -o x\$verbose = "x-vv" ]
                    then
                        echo ok
                    else
                        printf .
                    fi
+                   if [  x\$verbose = "x-vv" ]
+                   then
+		       echo ============================== >> ${TMPDIR:-/tmp}/test_out_$$
+		       echo PASS: \$_t >>  ${TMPDIR:-/tmp}/test_out_$$
+		       echo ---------------- >> ${TMPDIR:-/tmp}/test_out_$$
+		       cat  ${TMPDIR:-/tmp}/test_case_out_\$\$ >> ${TMPDIR:-/tmp}/test_out_$$
+		       echo ---------------- >> ${TMPDIR:-/tmp}/test_out_$$
+                   fi
                else
-                   if [ x\$verbose = "x-v" ]
+                   if [ x\$verbose = "x-v" -o x\$verbose = "x-vv" ]
                    then
                        echo FAIL
                    else
