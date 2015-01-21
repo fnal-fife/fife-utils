@@ -18,6 +18,9 @@ def unclone( d, just_say = False, delete_match = '.*' ):
 	        print "I would remove location %s for %s" % ( file, samprefix(full)+dirname(full) )
 	else:
 	    if re.match(delete_match, full): 
+                if len(d.ifdh_handle.locateFile(file)) == 1:
+                    print "NOT removing %s, it is the only location!"
+                    continue
 		try:
                     d.ifdh_handle.rm(full, '')
 		except:
