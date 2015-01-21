@@ -31,6 +31,12 @@ def retire( d, just_say = False, keep_files = False, delete_match = '.*' ):
             print "I would retire file: %s" %  file
         else:
             samweb.retireFile(file)
+    
+    if just_say:
+         print "I would deleteDefinition( %s ) " % ds.name
+    else:
+         samweb.deleteDefinition(ds.name)
+
 
 def usage(argv):
     print argv[0], ": usage: "
