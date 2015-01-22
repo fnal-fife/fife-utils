@@ -6,6 +6,7 @@ import sys
 import os
 from samweb_client import *
 import socket
+import optparse
 
 
 def zerodeep(f):
@@ -79,13 +80,15 @@ def copy_and_declare(d, cpargs, locargs, dest, subdirf, samweb, just_say, verbos
                     res = 1
     return res
 
-def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 20, verbose = False ):
+def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 20, verbose = False, experiment = None ):
     # make gridftp tool add directories
     os.environ['IFDH_GRIDFTP_EXTRA'] = '-cd -sync'
     cpargs = []
     locargs = []
     count = 0
     samweb = SAMWebClient()
+    if experiment:
+        samweb.experiment = experiment
     for f in d.file_iterator():
 
         loclist = samweb.getFileAccessUrls(f, schema = "gsiftp")
@@ -126,65 +129,22 @@ def usage(argv):
 
 if __name__ == '__main__':
     
-    dirfunc = twodeep
-    just_say = False
-    cmd = sys.argv[0]
-    batch_size = 20
-    verbose = False
 
-    while len(sys.argv) > 1 and sys.argv[1][0] == "-":
+    parser = optparse.OptionParser(usage="usage: %prog [options] dataset dest_url")
+    parser.set_defaults(dirfunc = twodeep)
+    parser.add_option('-b','--batch_size',default = 20, type='int')
+    parser.add_option('-n','--just_say',  action='store_false')
+    parser.add_option('-v','--verbose',   action='count')
+    parser.add_option('-e','--experiment')
+    parser.add_option('-0','--zerodeep',  dest='dirfunc', action='store_const', const=zerodeep)
+    parser.add_option('-1','--onedeep',   dest='dirfunc', action='store_const', const=onedeep)
+    parser.add_option('-2','--twodeep',   dest='dirfunc', action='store_const', const=twodeep)
 
-      if  sys.argv[1] == "-h":
-        usage(sys.argv)
-        exit(0)
+    (o,a) = parser.parse_args()
 
-      if  sys.argv[1] == "-b":
-        batch_size = int(sys.argv[2])
-        sys.argv = sys.argv[2:]
-        sys.argv[0] = cmd
-        continue
-
-      if  sys.argv[1] == "-v":
-        verbose = True
-        sys.argv = sys.argv[1:]
-        sys.argv[0] = cmd
-        continue
-
-      if  sys.argv[1] == "-n":
-        just_say = True
-        sys.argv = sys.argv[1:]
-        sys.argv[0] = cmd
-        continue
+    if o.experiment:
+        os.environ['EXPERIMENT']= o.experiment
+        os.environ['IFDH_BASE_URI'] = "http://samweb.fnal.gov:8480/sam/%s/api" % o.experiment
 
 
-      if sys.argv[1] == "-0":
-        dirfunc = zerodeep
-        sys.argv = sys.argv[1:]
-        sys.argv[0] = cmd
-        continue
-
-      if sys.argv[1] == "-1":
-        dirfunc = twodeep
-        sys.argv = sys.argv[1:]
-        sys.argv[0] = cmd
-        continue
-
-      if sys.argv[1] == "-2":
-        dirfunc = twodeep
-        sys.argv = sys.argv[1:]
-        sys.argv[0] = cmd
-        continue
-
-      print "unknown option %s" % sys.argv[1]
-      usage(sys.argv)
-      exit(1)
-      
-
-    if len(sys.argv) < 3:
-        usage(sys.argv)
-        exit(1)
-
-    src = sys.argv[1]
-    dst = sys.argv[2]
-
-    clone(dataset(src), dst, dirfunc, just_say = just_say, batch_size = batch_size, verbose = verbose)
+    clone(dataset(a[0]), a[1], o.dirfunc, just_say = o.just_say, batch_size = o.batch_size, verbose = o.verbose, experiment=o.experiment)
