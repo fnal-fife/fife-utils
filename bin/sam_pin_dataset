@@ -3,45 +3,38 @@
 from fife_sam_utils import dataset
 import sys
 import os
+import optparse
 
-def pin( ds , just_say = False):
+def pin( ds , just_say = False, verbose = False ):
     thirtydays = 30 * 24 * 60 * 60
     for p in ds.fullpath_iterator():
         if p.startswith('/pnfs'):
             if just_say:
                 print "I would ifdh pin ", p, " for ", thirtydays
             else:
+                if verbose: print "pinning: ", p, " for ", thirtydays
                 ds.ifdh_handle.pin( p, thirtydays )
-
-def usage(argv):
-    print argv[0], ": usage: "
-    print argv[0], "dataset_name1  dataset_name2 ..."
-    print "	-- pin files for 30 days in dcache"
 
 if __name__ == '__main__':
     
     cmd = sys.argv[0]
     just_say = False
 
-    while len(sys.argv) > 1 and sys.argv[1][0] == "-":
-      if sys.argv[1] == '-h':
-        usage(sys.argv)
-        exit(0)
+    parser = optparse.OptionParser(usage="usage: %prog [options] dataset dest_url \n pin in dataset in dcache for 30 days")
+    parser.add_option('-v','--verbose',   action='count')
+    parser.add_option('-n','--just_say',  action='store_false', help="do not actually copy, just say what you would do")
+    parser.add_option('-e','--experiment')
 
-      if sys.argv[1] == '-n':
-        just_say = True
-        sys.argv = sys.argv[1:]
-        sys.argv[0] = cmd
-        continue
+    (o,a) = parser.parse_args()
 
-      print "unknown option %s" % sys.argv[1]
-      usage(sys.argv)
-      exit(1)
+    if o.experiment:
+        os.environ['EXPERIMENT']= o.experiment
+        os.environ['IFDH_BASE_URI'] = "http://samweb.fnal.gov:8480/sam/%s/api" % o.experiment
 
-    if len(sys.argv) == 1:
-        usage(sys.argv)
+    if len(a) == 0:
+        parser.error("expected at least one dataset parameter")
         exit(1)
 
-    for ds in sys.argv[1:]:
-       pin(dataset(ds), just_say)
+    for ds in a:
+       pin(dataset(ds), o.just_say, o.verbose)
 

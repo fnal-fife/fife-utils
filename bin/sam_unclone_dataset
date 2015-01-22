@@ -6,8 +6,9 @@ import hashlib
 import sys
 import os
 import re
+import optparse
 
-def unclone( d, just_say = False, delete_match = '.*' ):
+def unclone( d, just_say = False, delete_match = '.*', verbose = False ):
     samweb = SAMWebClient()
 
     for full in d.fullpath_iterator():
@@ -22,53 +23,29 @@ def unclone( d, just_say = False, delete_match = '.*' ):
                     print "NOT removing %s, it is the only location!"
                     continue
 		try:
+                    if verbose: print "removing: " , full
                     d.ifdh_handle.rm(full, '')
 		except:
 		    pass
+	        if verbose: print "removing location: " , full
 	        samweb.removeFileLocation(file, samprefix(full) + dirname(full))
-
-def usage(argv):
-    print argv[0], ": usage: "
-    print argv[0], " [options] dataset location-regexp"
-    print "	-- remove and undeclare locations matching regexp in dataset(s)"
-    print " options: "
-    print "   -n     # don't actually do anything, say what would happen"
-    print "   -h     # print help message" 
 
 if __name__ == '__main__':
     
-    just_say = False
-    keep_files = False
-    delete_match = ".*"
+    parser = optparse.OptionParser(usage="usage: %prog [options] dataset dest_url \n remove copies of files in dataset under destination")
+    parser.add_option('-v','--verbose',   action='count')
+    parser.add_option('-n','--just_say',  action='store_false', help="do not actually copy, just say what you would do")
+    parser.add_option('-e','--experiment')
 
-    cmd = sys.argv[0]
+    (o,a) = parser.parse_args()
 
-    while len(sys.argv) > 1 and sys.argv[1][0] == "-":
+    if o.experiment:
+        os.environ['EXPERIMENT']= o.experiment
+        os.environ['IFDH_BASE_URI'] = "http://samweb.fnal.gov:8480/sam/%s/api" % o.experiment
 
-      if sys.argv[1] == "-k":
-        keep_files = True
-        sys.argv = sys.argv[1:]
-        sys.argv[0] = cmd
-        continue
-
-      if sys.argv[1] == "-n":
-        just_say = True
-        sys.argv = sys.argv[1:]
-        sys.argv[0] = cmd
-        continue
-
-      if sys.argv[1] == '-h':
-        usage(sys.argv)
-        exit(0)
-
-      print "unknown option %s" % sys.argv[1]
-      usage(sys.argv)
-      exit(1)
-
-    if len(sys.argv) < 3:
-        usage(sys.argv)
+    if len(a) != 2:
+        parser.error("expected source dataset and destination url pattern")
         exit(1)
 
-    delete_match = sys.argv[2]
-    unclone(dataset(sys.argv[1]), just_say = just_say, delete_match = delete_match)
+    unclone(dataset(a[0]), just_say = o.just_say, delete_match = a[1], verbose = o.verbose)
 

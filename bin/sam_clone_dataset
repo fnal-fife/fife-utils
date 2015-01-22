@@ -116,29 +116,17 @@ def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 20, verbose 
     copy_and_declare(d, cpargs, locargs, dest, subdirf, samweb, just_say, verbose)
 
 
-def usage(argv):
-    print argv[0], ": usage: ",
-    print argv[0], '[opts] dataset_name1  destination'
-    print "	-- copy files in dataset to destination"
-    print " options: "
-    print "  -b n # batches of n files copied/declared (default 20)"
-    print "  -v   # verbose "
-    print "  -0   # make 0 levels of hash directories"
-    print "  -1   # make 1 levels of hash directories"
-    print "  -2   # make 2 levels of hash directories (default)"
-
 if __name__ == '__main__':
-    
 
-    parser = optparse.OptionParser(usage="usage: %prog [options] dataset dest_url")
-    parser.set_defaults(dirfunc = twodeep)
-    parser.add_option('-b','--batch_size',default = 20, type='int')
-    parser.add_option('-n','--just_say',  action='store_false')
+    parser = optparse.OptionParser(usage="usage: %prog [options] dataset dest_url \n copy files in dataset to destination and declare")
     parser.add_option('-v','--verbose',   action='count')
+    parser.add_option('-n','--just_say',  action='store_false', help="do not actually copy, just say what you would do")
     parser.add_option('-e','--experiment')
-    parser.add_option('-0','--zerodeep',  dest='dirfunc', action='store_const', const=zerodeep)
-    parser.add_option('-1','--onedeep',   dest='dirfunc', action='store_const', const=onedeep)
-    parser.add_option('-2','--twodeep',   dest='dirfunc', action='store_const', const=twodeep)
+    parser.add_option('-b','--batch_size',default = 20, type='int', help="copy then declare in batches of this size")
+    parser.set_defaults(dirfunc = twodeep)
+    parser.add_option('-0','--zerodeep',  dest='dirfunc', action='store_const', const=zerodeep, help="make no subdirectories in destination")
+    parser.add_option('-1','--onedeep',   dest='dirfunc', action='store_const', const=onedeep, help = "make subdirectories one deep in destination")
+    parser.add_option('-2','--twodeep',   dest='dirfunc', action='store_const', const=twodeep, help = "make subdirectories two deep in destination")
 
     (o,a) = parser.parse_args()
 
@@ -146,5 +134,8 @@ if __name__ == '__main__':
         os.environ['EXPERIMENT']= o.experiment
         os.environ['IFDH_BASE_URI'] = "http://samweb.fnal.gov:8480/sam/%s/api" % o.experiment
 
+    if len(a) != 2:
+        parser.error("expected source dataset and destination url")
+        exit(1)
 
     clone(dataset(a[0]), a[1], o.dirfunc, just_say = o.just_say, batch_size = o.batch_size, verbose = o.verbose, experiment=o.experiment)

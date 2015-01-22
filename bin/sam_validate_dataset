@@ -4,6 +4,7 @@ from samweb_client import *
 from fife_sam_utils import *
 import sys
 import os
+import optparse
 
 def validate( ds, just_say = False, prune = False, verbose = False ):
     samweb = SAMWebClient()
@@ -32,59 +33,28 @@ def validate( ds, just_say = False, prune = False, verbose = False ):
            res = 1
 
     return res
-          
 
-def usage(argv):
-    print argv[0], ": usage: "
-    print argv[0], "[options] dataset_name1  dataset_name2 ..."
-    print "	-- check that all file locations declared for dataset(s) exist"
-    print " options:"
-    print "   -v  # verbose -- list all locations an present or not"
-    print "   -p  # prune -- prune locations not visible"
-    print "   -n  # not -- say what it would do, but do not do it"
-    print "   -h  # help -- print this message"
 
 if __name__ == '__main__':
     
-    res = 0
-    verbose = False
-    cmd = sys.argv[0]
-    just_say = False
-    prune = False
+    parser = optparse.OptionParser(usage="usage: %prog [options] dataset [dataset ...] \n make sure files in dataset actually exist")
+    parser.add_option('-v','--verbose',   action='count')
+    parser.add_option('-n','--just_say',  action='store_false', help="do not actually copy, just say what you would do")
+    parser.add_option('-p','--prune',  action='store_false', help="prune locations we cannot reach")
+    parser.add_option('-e','--experiment')
 
-    while len(sys.argv) > 1 and sys.argv[1][0] == "-":
+    (o,a) = parser.parse_args()
 
-      if  sys.argv[1] == "-h":
-        usage(sys.argv)
-        exit(0)
+    if o.experiment:
+        os.environ['EXPERIMENT']= o.experiment
+        os.environ['IFDH_BASE_URI'] = "http://samweb.fnal.gov:8480/sam/%s/api" % o.experiment
 
-      if  sys.argv[1] == "-n":
-        just_say = True
-        sys.argv = sys.argv[1:]
-        sys.argv[0] = cmd
-        continue
-
-      if  sys.argv[1] == "-v":
-        verbose = True
-        sys.argv = sys.argv[1:]
-        sys.argv[0] = cmd
-        continue
-
-      if  sys.argv[1] == "-p":
-        prune = True
-        sys.argv = sys.argv[1:]
-        sys.argv[0] = cmd
-        continue
-
-      print "unknown option %s" % sys.argv[1]
-      usage(sys.argv)
-      exit(1)
-
-    if len(sys.argv) == 1:
-        usage(sys.argv)
+    if len(a) == 0:
+        parser.error("expected at least one dataset")
         exit(1)
 
-    for ds in sys.argv[1:]:
-        res = res or validate(dataset(ds), just_say = just_say, prune = prune, verbose = verbose)
+    res = 0 
+    for ds in a:
+        res = res or validate(dataset(ds), just_say = o.just_say, prune = o.prune, verbose = o.verbose)
 
     sys.exit(res)
