@@ -24,10 +24,48 @@ setup_tests() {
    export IFDH_NO_PROXY=1
 }
 
+test_add_dataset() {
+   for i in 1 2 3 
+   do
+       fname="${dataset}_f${i}.txt"
+       echo "file $i" > $fname
+       checksum=`ifdh checksum $fname 2>/dev/null | 
+			grep '"crc_value"' | 
+			sed -e 's/",.*//' -e 's/.*"//'`
+       size=`cat $fname | wc -c`
+       echo $fname > file_list
+       cat > $fname.json <<EOF
+{
+ "file_name": "$fname", 
+ "file_type": "test", 
+ "file_format": "data", 
+ "file_size": $size, 
+ "checksum": [
+  "enstore:$checksum"
+ ], 
+ "content_status": "good", 
+ "group": "samdev", 
+ "data_tier": "log", 
+ "application": {
+  "family": "test", 
+  "name": "test", 
+  "version": "1"
+ } 
+}
+EOF
+   done
+
+   sam_add_dataset file_list *_f*.txt.json
+
+   echo "dataset $dataset contains:" 
+   ifdh translateConstraints "defname: $dataset" 
+}
+
 #
 # XXX later this should use the end-user command, we're just
 # doing an approximation here...
 #
+
 add_dataset() {
    for i in 1 2 3 
    do
@@ -92,7 +130,7 @@ test_clone() {
     sam_validate_dataset -v $dataset
     locs1=`sam_validate_dataset -v $dataset | wc -l`
     ifdh mkdir /pnfs/nova/scratch/users/$USER/fife_util_test || true
-    sam_clone_dataset $dataset /pnfs/nova/scratch/users/$USER/fife_util_test
+    sam_clone_dataset -v -b 2 $dataset /pnfs/nova/scratch/users/$USER/fife_util_test
     echo "after:"
     sam_validate_dataset -v $dataset
     locs2=`sam_validate_dataset -v $dataset | wc -l`
@@ -104,7 +142,7 @@ test_unclone() {
     sam_validate_dataset -v $dataset
     locs1=`sam_validate_dataset -v $dataset | wc -l`
     ifdh mkdir /pnfs/nova/scratch/users/$USER/fife_util_test2 || true
-    sam_clone_dataset $dataset /pnfs/nova/scratch/users/$USER/fife_util_test2
+    sam_clone_dataset -v $dataset /pnfs/nova/scratch/users/$USER/fife_util_test2
     echo "after:"
     sam_validate_dataset -v $dataset
     locs2=`sam_validate_dataset -v $dataset | wc -l`

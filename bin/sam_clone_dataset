@@ -23,6 +23,7 @@ notmade = {}
 def dodir(ih, dir):
     
     if dir.startswith("/pnfs/") or dir.startswith("/%s/"%os.environ.get('EXPERIMENT','')):
+        # we think globus-url-copy with -cd will make these, so we're done
         return
 
     for d in (dirname(dir), dir):
@@ -34,53 +35,120 @@ def dodir(ih, dir):
            except:
                pass
 
-def clone( d, dest, subdirf, just_say=False ):
+def already_there( f, loclist, dest ):
+    res = False
+    dest = dest + '/'
+    for p in loclist:
+	if p.find(dest) != -1:
+	    print "Notice: file %s already has a copy at %s, skipping" % ( f, p)
+	    res = True
+            break
+    return res
+
+def copy_and_declare(d, cpargs, locargs, dest, subdirf, samweb, just_say, verbose):
+    res = 0
+
+    if len(cpargs) == 0:
+        # nothing to do!
+        return res
+
+    # trailing ; confuses ifdh cp
+    if cpargs[-1] == ';':
+        cpargs = cpargs[:-1]
+
+    if just_say:
+	print "I would 'ifdh cp %s'" % cpargs
+	for f in locargs:
+	    print "I would declare location for %s of %s" % (f, dest+subdirf(f))
+    else: 
+        if verbose: print "doing ifdh cp %s" % cpargs
+	res = d.ifdh_handle.cp(cpargs)
+        if verbose: print "ifdh cp returns %d" % res
+        # XXX note this is arguably incorrect, we only declare locations if
+        #     *all* the copies in the batch succeed; but if *some* of them
+        #     do we don't...
+	if res == 0:
+	    if verbose: print "doing locargs: ", locargs
+	    for f in locargs:
+                try:
+                    loc =  samprefix(dest) + dest + subdirf(f)
+                    if verbose: print "addFileLocation(%s, %s)" % (f, loc)
+		    samweb.addFileLocation(f, loc )
+                except:
+                    raise
+                    res = 1
+    return res
+
+def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 20, verbose = False ):
     # make gridftp tool add directories
-    os.environ['IFDH_GRIDFTP_EXTRA'] = '-cd'
+    os.environ['IFDH_GRIDFTP_EXTRA'] = '-cd -sync'
     cpargs = []
+    locargs = []
+    count = 0
+    samweb = SAMWebClient()
     for f in d.file_iterator():
-        l = d.ifdh_handle.locateFile(f, "gsiftp")
-        if len(l) > 0:
-            cpargs.append(l[0])
+
+        loclist = samweb.getFileAccessUrls(f, schema = "gsiftp")
+
+        if already_there(f, loclist, dest):
+            continue
+                
+        if len(loclist) > 0:
+            locargs.append(f)
+            cpargs.append(loclist[0])
 	    cpargs.append(dest + subdirf(f) + f)
             cpargs.append(';')
             dodir(d.ifdh_handle, dest+subdirf(f))
         else:
             print "Notice: skipping file %s, no locations" % f
 
-    # above loop leaves a trailng ';', which confuses things.
-    cpargs = cpargs[:-1]
+        count = count + 1
+        if count % batch_size == 0:
 
-    if just_say:
-        print "I would 'ifdh cp %s'" % cpargs
-	for f in d.file_iterator():
-            print "I would declare location for %s of %s" % (f, dest+subdirf(f))
-    else: 
-        samweb = SAMWebClient()
-	d.ifdh_handle.cp(cpargs)
-	for f in d.file_iterator():
-	    samweb.addFileLocation(f, samprefix(dest) + dest + subdirf(f))
+	    # above loop leaves a trailng ';', which confuses things.
+            copy_and_declare(d, cpargs, locargs, dest, subdirf, samweb, just_say, verbose)
+            cpargs = []
+            locargs = []
+
+    copy_and_declare(d, cpargs, locargs, dest, subdirf, samweb, just_say, verbose)
+
 
 def usage(argv):
     print argv[0], ": usage: ",
     print argv[0], '[opts] dataset_name1  destination'
     print "	-- copy files in dataset to destination"
     print " options: "
-    print "  -0 : make 0 levels of hash directories"
-    print "  -1 : make 1 levels of hash directories"
-    print "  -2 : make 2 levels of hash directories (default)"
+    print "  -b n # batches of n files copied/declared (default 20)"
+    print "  -v   # verbose "
+    print "  -0   # make 0 levels of hash directories"
+    print "  -1   # make 1 levels of hash directories"
+    print "  -2   # make 2 levels of hash directories (default)"
 
 if __name__ == '__main__':
     
     dirfunc = twodeep
     just_say = False
     cmd = sys.argv[0]
+    batch_size = 20
+    verbose = False
 
     while len(sys.argv) > 1 and sys.argv[1][0] == "-":
 
       if  sys.argv[1] == "-h":
         usage(sys.argv)
         exit(0)
+
+      if  sys.argv[1] == "-b":
+        batch_size = int(sys.argv[2])
+        sys.argv = sys.argv[2:]
+        sys.argv[0] = cmd
+        continue
+
+      if  sys.argv[1] == "-v":
+        verbose = True
+        sys.argv = sys.argv[1:]
+        sys.argv[0] = cmd
+        continue
 
       if  sys.argv[1] == "-n":
         just_say = True
@@ -119,4 +187,4 @@ if __name__ == '__main__':
     src = sys.argv[1]
     dst = sys.argv[2]
 
-    clone(dataset(src), dst, dirfunc, just_say)
+    clone(dataset(src), dst, dirfunc, just_say = just_say, batch_size = batch_size, verbose = verbose)
