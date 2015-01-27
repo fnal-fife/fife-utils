@@ -9,6 +9,18 @@ import socket
 import optparse
 
 
+def check_destination(samweb,dest):
+    # /pnfs is officially okay
+    if dest.find('/pnfs/') == 0:
+        return 1
+    # or any known data disk..
+    for d in samweb.listDataDisks():
+        p = re.sub('^\w+:','', d["mount_point"])
+        if dest.find(p) == 0:
+            return 1
+    # otherwise, nope.
+    return 0
+
 def zerodeep(f):
     return '/'
 
@@ -87,8 +99,15 @@ def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 20, verbose 
     locargs = []
     count = 0
     samweb = SAMWebClient()
+
+    if not check_destination(samweb,dest):
+        print "Destination: %s is not known to SAM" % dest;
+        print "...maybe you wanted ifdh_fetch?"
+        return 0
+
     if experiment:
         samweb.experiment = experiment
+
     for f in d.file_iterator():
 
         loclist = samweb.getFileAccessUrls(f, schema = "gsiftp")

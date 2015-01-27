@@ -65,9 +65,12 @@ class dataset:
 
 def samprefix(dir):
     if (dir.startswith('/pnfs')) :
+       # XXX need to deal with /scratch/ separately here?
        return 'enstore:'
+
     elif (dir.startswith('/grid/') or dir.startswith('/%s/'%os.environ.get('EXPERIMENT',None))):
        return os.environ.get('EXPERIMENT') + 'data:'
+
     else:
        return socket.gethostname()
 

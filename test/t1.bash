@@ -24,25 +24,18 @@ setup_tests() {
    export IFDH_NO_PROXY=1
 }
 
-test_add_dataset() {
+test_add_dataset_flist() {
    for i in 1 2 3 
    do
        fname="${dataset}_f${i}.txt"
        echo "file $i" > $fname
-       checksum=`ifdh checksum $fname 2>/dev/null | 
-			grep '"crc_value"' | 
-			sed -e 's/",.*//' -e 's/.*"//'`
-       size=`cat $fname | wc -c`
        echo $fname > file_list
-       cat > $fname.json <<EOF
+   done
+
+   cat > meta.json <<EOF
 {
- "file_name": "$fname", 
  "file_type": "test", 
  "file_format": "data", 
- "file_size": $size, 
- "checksum": [
-  "enstore:$checksum"
- ], 
  "content_status": "good", 
  "group": "samdev", 
  "data_tier": "log", 
@@ -53,9 +46,37 @@ test_add_dataset() {
  } 
 }
 EOF
+
+   sam_add_dataset `pwd` meta.json
+
+   echo "dataset $dataset contains:" 
+   ifdh translateConstraints "defname: $dataset" 
+}
+
+test_add_dataset_directory() {
+   for i in 1 2 3 
+   do
+       fname="${dataset}_f${i}.txt"
+       echo "file $i" > $fname
+       size=`cat $fname | wc -c`
    done
 
-   sam_add_dataset file_list *_f*.txt.json
+   cat > meta.json <<EOF
+{
+ "file_type": "test", 
+ "file_format": "data", 
+ "content_status": "good", 
+ "group": "samdev", 
+ "data_tier": "log", 
+ "application": {
+  "family": "test", 
+  "name": "test", 
+  "version": "1"
+ } 
+}
+EOF
+
+   sam_add_dataset file_list meta.json
 
    echo "dataset $dataset contains:" 
    ifdh translateConstraints "defname: $dataset" 
