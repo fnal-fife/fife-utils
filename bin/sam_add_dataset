@@ -226,11 +226,12 @@ def statBuildMetaData(file):  #this function creates the json object that will b
 
 
 
-
+from fife_sam_utils import samprefix
 
 def declareFileLocation(samweb, fileName, location):
     
-  location = '/pnfs/minerva/scratch/users/illingwo/fts_test'       #NEED TO FAKE THE LOCATION TO ONE THAT SAM KNOWS ABOUT FOR NOW   #IF THE SYSTEM DOES NOT KNOW THE LOCATION IT SHOULD ABORT
+  # location = '/pnfs/minerva/scratch/users/illingwo/fts_test'       #NEED TO FAKE THE LOCATION TO ONE THAT SAM KNOWS ABOUT FOR NOW   #IF THE SYSTEM DOES NOT KNOW THE LOCATION IT SHOULD ABORT
+  location = samprefix(location) + location
 
   try:
     samweb.addFileLocation(fileName, location)

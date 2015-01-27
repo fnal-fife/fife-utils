@@ -25,11 +25,13 @@ setup_tests() {
 }
 
 test_add_dataset_flist() {
+   mkdir data
+   : > file_list
    for i in 1 2 3 
    do
-       fname="${dataset}_f${i}.txt"
-       echo "file $i" > $fname
-       echo $fname > file_list
+       fname="f${i}.txt"
+       echo "file $i" > data/$fname
+       echo `pwd`/data/$fname >> file_list
    done
 
    cat > meta.json <<EOF
@@ -47,18 +49,18 @@ test_add_dataset_flist() {
 }
 EOF
 
-   sam_add_dataset `pwd` meta.json
+   sam_add_dataset --cert=/tmp/x509up_u`id -u` -e $EXPERIMENT `pwd`/data meta.json ${dataset}
 
    echo "dataset $dataset contains:" 
    ifdh translateConstraints "defname: $dataset" 
 }
 
 test_add_dataset_directory() {
+   mkdir data
    for i in 1 2 3 
    do
-       fname="${dataset}_f${i}.txt"
-       echo "file $i" > $fname
-       size=`cat $fname | wc -c`
+       fname="f${i}.txt"
+       echo "file $i" > data/$fname
    done
 
    cat > meta.json <<EOF
@@ -76,7 +78,7 @@ test_add_dataset_directory() {
 }
 EOF
 
-   sam_add_dataset file_list meta.json
+   sam_add_dataset --cert=/tmp/x509up_u`id -u` -e $EXPERIMENT file_list meta.json ${dataset}
 
    echo "dataset $dataset contains:" 
    ifdh translateConstraints "defname: $dataset" 
@@ -190,6 +192,12 @@ testsuite test_utils \
 	test_clone  \
         test_unclone \
         test_pin \
-        test_retire
+        test_retire \
+        test_add_dataset_flist \
+	test_validate_1 \
+        test_retire \
+        test_add_dataset_directory \
+	test_validate_1 \
+        test_retire 
 
 test_utils "$@"
