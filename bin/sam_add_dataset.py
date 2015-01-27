@@ -1,0 +1,478 @@
+#!/usr/bin/env python
+
+#  export PYTHONPATH=$PYTHONPATH:/Users/mgheith/Desktop/CLI/sam-web-client/python    #needed so the import samweb_client will work in this script  #it is that simple
+
+#  python addfiles5.py /Users/mgheith/Desktop/CLI/SAMForUsers/random-files/file-list.txt customMeta.json mydatasetname -e samdev -c /Users/mgheith/x509up_u48737
+
+
+
+#  python addfiles5.py /Users/mgheith/Desktop/CLI/SAMForUsers/random-files/KKKKKKKKK customMeta.json mydatasetname -e samdev -c /Users/mgheith/x509up_u48737          USE THIS FOR DIRECTORIES
+
+
+#I accidentally added files to the nova production database!!!!  Please retire them.
+#ana212.txt
+#ana323.txt
+#ana333.txt
+#ana444.txt
+#ana777.txt
+
+
+
+
+
+
+
+#  ADMIN -->   mac-123267:SAMForUsers mgheith$ samweb -e samdev add-parameter Dataset.Tag string --cert /Users/mgheith/x509up_u48737
+#then to add values --->  the values actually go in the files metadata    {Dataset.Tag: asdf}     there is no samweb method for this
+
+
+
+#Please remember that there is a difference between the dataset tag value and the dataset name.
+
+
+#https://cdcvs.fnal.gov/redmine/projects/sam-web-client/wiki
+
+
+
+'''
+Run kx509. By default samweb looks for the cert into /tmp/x509up_u<your user id>, which is where kx509 puts it.
+'''
+
+
+
+
+
+#########SAMWEB COMMANDS TO CHECK THINGS##############
+'''
+samweb -e samdev list-definitions                          was the definition created by the name?
+
+samweb -e samdev list-definition-files <mydatasetname>     show the files of the definition
+  samweb -e samdev count-definition-files mydatasetname    how many files are in this definition?
+  
+samweb -e samdev get-metadata fb684206-3d31-4a27-a166-570ece6c97fc-fermi.txt          show me the metadata of the file
+
+samweb -e samdev locate-file fb684206-3d31-4a27-a166-570ece6c97fc-fermi.txt         locate the file for me  -should be   enstore:/pnfs/minerva/scratch/users/illingwo/fts_test
+'''
+#########SAMWEB COMMANDS TO CHECK THINGS##############
+
+
+
+
+
+#probably wouldn't be a bad idea to have a rollback option just in case something goes awry
+
+
+
+import optparse
+import json
+import getpass
+import os
+import sys
+import uuid
+import pprint
+import samweb_client
+import datetime
+
+
+
+
+
+
+'''
+def rename(list):
+  samweb = samweb_client.SAMWebClient(experiment='samdev')
+  pprint.pprint(list(samweb.listFiles("data_tier raw")))
+  return 'asdf'
+'''
+
+
+
+
+
+
+
+
+
+def getJSONMetadata(jsonFile, tag):  #user specified metadata      passed in as an argument to the script
+    
+  metadata = None
+  
+  try:
+    with open(jsonFile) as f:
+      metadata = json.loads(f.read())
+  except Exception, e:
+    print 'oops: %s' % e
+
+  if metadata == None:
+    p.error("was unable to extract json metadata file %s" % jsonFile)
+
+
+  #just updating the metadata object that the user specified with the -t option or the default      this is just really for convenience/understanding of the application
+  metadata.update(  {"Dataset.Tag": tag }  )
+
+  return metadata
+
+
+
+
+
+def getFileList(txtFile):  #user specified text file     passed in as an argument to the script
+
+  fileList = []  #store the file names in here
+  
+  try:
+    with open(txtFile) as f:
+      for line in f:
+        fileList.append(line.strip('\n'))
+  except Exception, e:
+    print 'oops: %s' % e
+    
+  return fileList
+
+
+
+
+
+
+def getFileListFromDir(directory, recurse):   #verified :)
+    
+  fileList = []
+    
+  for root, dirs, files in os.walk(directory):
+    print 'root is ', root
+    print 'dirs is ', dirs
+    print 'files is ', files
+        
+    for fileName in files:
+            
+      filePath = os.path.join(root, fileName)
+      fileList.append(filePath)
+    
+    if recurse == False:
+        break
+
+
+  return fileList
+
+
+
+
+
+
+def declareFile(samweb, metadata):
+    
+  #metadata= {"file_name": "ana279", "file_type": "unknown", "file_size": 777}
+            
+  try:
+    samweb.declareFile( metadata )
+  except Exception, e:
+    print 'oops: %s' % e
+    sys.exit("Unable to declare file so exiting.")
+
+
+
+
+
+
+def renameFile(file):  #it is possible that the USER specified an absolute path or a relative path     #file is the full file name that THE USER SPECIFIED
+                       #input can be    ana232.txt    or    /Users/mgheith/Desktop/CLI/SAMForUsers/random-files/ana232.txt
+                       #we need to be able to handle the rename with either of these inputs
+                       
+  uniquifier = str(uuid.uuid4()) + '-'
+        
+  fileName = os.path.basename(file)
+  print '--fn-->', fileName
+  dirName = os.path.dirname(file)
+  print '--dn-->', dirName
+  
+  
+  if dirName == '':     #if the user didn't specify the exact full path
+    newFileName = uniquifier + fileName
+  else:
+      newFileName = dirName + '/' + uniquifier + fileName  #we are keeping the full path for the os.rename
+  
+
+  print '--nfn-->', newFileName
+                                            
+                                            
+  try:
+    os.rename(file, newFileName)
+  except Exception, e:
+    print 'oops: %s' % e
+
+  return {"file_name": os.path.basename(newFileName), "location": dirName}   #we are adding location here but it will be deleted     to be used when we declare the file location in main
+                                                           #file name SHOULD NOT include the dir that is why we are using the basename
+
+
+
+
+
+
+
+
+
+
+def statBuildMetaData(file):  #this function creates the json object that will be used to declare one file to sam
+
+  #filename = os.path.basename(file)
+  statinfo = os.stat(file)
+  size = statinfo.st_size
+        
+  metadata = {"file_name": file, "file_type": "unknown", "file_size": size}
+  return metadata  #returns a json object that can be declared to sam
+
+
+
+
+
+
+
+
+def declareFileLocation(samweb, fileName, location):
+    
+  location = '/pnfs/minerva/scratch/users/illingwo/fts_test'       #NEED TO FAKE THE LOCATION TO ONE THAT SAM KNOWS ABOUT FOR NOW   #IF THE SYSTEM DOES NOT KNOW THE LOCATION IT SHOULD ABORT
+
+  try:
+    samweb.addFileLocation(fileName, location)
+  except Exception, e:
+    print 'oops: %s' % e
+
+
+
+
+
+
+
+
+def generateTag(user):
+    return user + "-" + str(datetime.datetime.now().strftime("%Y-%m-%d-%H_%M_%S"))
+
+
+
+
+
+
+
+
+
+
+def createDefinition(samweb, definitionName, dimensions):
+
+  try:
+    samweb.createDefinition(definitionName, dimensions)
+  except Exception, e:
+    print 'oops: %s' % e
+
+
+
+
+
+
+
+def countDefinitionFiles(samweb, definitionName):
+
+  numberOfFiles = 0   ##########JUST TRYING TO DEBUG   DELETE THIS LINE
+        
+  try:
+    numberOfFiles = samweb.countDefinitionFiles(definitionName)
+  except Exception, e:
+      print 'oops: %s' % e                      #oops: 'SAMWebClient' object has no attribute 'countDefinitionFiles'   WHY AM I GETTING THIS ERROR
+
+  return numberOfFiles
+
+
+
+
+
+
+
+
+
+
+
+def main():
+    #### TO DO: CLEAN UP BY DECLARING A SAMWEB OBJECT HERE IN MAIN AND EVERY TIME I CALL ANY OF THE ABOVE FUNCTIONS BE SURE TO INCLUDE THE SAMWEB OBJECT AS A PARAMETER
+    
+  user = getpass.getuser()
+  
+  
+  """Runs program and handles command line options"""
+
+  p = optparse.OptionParser(description='Add a group of files to SAM and create a dataset out of it.',
+                            prog='addfiles',
+                            version='addfiles 0.1',
+                            usage='%prog <file list | directory> <json file> <datasetname> [options]')
+
+
+  p.add_option('-e', '--experiment', help='use this experiment server')
+  p.add_option('-u', '--user', help='the user that will be added to the dataset name default is %s' % user)
+  p.add_option('-t', '--tag', help='the value for Dataset.Tag which will be used to distinguish this new dataset default format is user+date')
+  #p.add_option('-n', '--name', help='the dataset name default is user+date+pid')  this is a required argument now
+  p.add_option('-r', '--recurse', action ='store_true', default=False, help='walk down all levels of directory')
+  p.add_option('-c', '--cert', help='x509 certificate for authentication. If not specified, use $X509_USER_PROXY, $X509_USER_CERT/$X509_USER_KEY or standard grid proxy location')
+  p.add_option('-v', '--verbose', action ='store_true', help='returns verbose output')
+  
+  
+  options, arguments = p.parse_args()
+  
+  
+  #requiring the experiment name
+  if options.experiment:
+    experiment = options.experiment
+  else:
+    p.error("you must specify an experiment as an option")
+
+
+  #it is required to have a certificate to use samweb to declare files so we bail out if user does not specify one
+  cert = None
+  if options.cert:
+    cert = options.cert
+    samweb = samweb_client.SAMWebClient(experiment=experiment, cert=cert)    #'/Users/mgheith/x509up_u48737'
+  else:
+    p.error("you must specify a certificate as an option")
+
+
+
+
+
+  print 'the options are ', options
+  print 'the arguments are ', arguments
+  if options.user:
+    user = options.user
+  print 'the user is ', user
+  print 'the experiment is ', experiment
+  
+
+
+  if options.tag:
+    tag = options.tag
+  else:
+    tag = generateTag(user)
+  print 'the tag is ', tag
+
+
+
+    
+
+  if len(arguments) == 3:  #we supposedly will have *file|directory* *json* and *dataset name*
+
+    #assigning all the arguments to variables
+    txtFileOrDirectory = arguments[0]  #assume for now we are just getting file list and not directory
+    jsonFile = arguments[1]
+    datasetName = arguments[2]
+    
+    
+    
+    
+
+    #get the universal metadata to be used for all the files
+    universalMD = getJSONMetadata(jsonFile, tag)  #we are passing tag because it will be merged to the users metadata --->   "Dataset.Tag": tag
+
+
+    #get the file list
+    print '---------------->', options.recurse
+    if os.path.isdir(txtFileOrDirectory):
+      fileList = getFileListFromDir(txtFileOrDirectory, options.recurse)
+    else:
+      fileList = getFileList(txtFileOrDirectory)
+    
+    
+    
+    #keep track of how many files the user wants in the dataset    we will use this later to validate that everything worked
+    numberOfFiles = len(fileList)
+    
+
+
+    #now that we have the file list we need to loop through it and do several things:
+    for file in fileList:
+      fileMD = statBuildMetaData(file)
+      renamedFile = renameFile(file)     #rename the file on disk and get the new name
+      fileLocation = renamedFile.pop("location")
+      
+      fileMD.update(renamedFile)
+      fileMD.update(universalMD)
+    
+      print 'the file ' + file + ' should have been renamed'
+      
+      declareFile(samweb, fileMD)
+      print 'the metadata below this line should have been declared to sam'
+      print fileMD
+    
+    
+      declareFileLocation(samweb, fileMD["file_name"], fileLocation)
+      print 'the file location should have been declared to sam ', fileLocation
+    
+    
+    print 'done with looping through and doing the logic'
+    
+    
+    
+    
+    '''
+       --stat the file and store its metadata
+       --merge this new file metadata with the universal json object
+       --rename the file on the disk
+       --declare the file to sam using the metadata object
+       --add file location to sam
+    '''
+
+
+
+
+
+
+
+
+
+    #after we are done with the loop it is now time to create the definition
+    dimension = "Dataset.Tag " + tag     #i assigned tag above as a global
+
+    createDefinition(samweb, datasetName, dimension)
+    print 'the definition called ' + datasetName + ' should have been created'
+
+
+
+
+
+
+
+    #now do a check to make sure the dataset is 100% since that is the purpose of creating this app
+    '''
+    numberOfFilesSAM = countDefinitionFiles(samweb, datasetName)
+    
+    if numberOfFilesSAM == numberOfFiles:
+      print "THE DATASET WAS CREATED SUCCESSFULLY!"
+    else:
+      print "*****"
+      print "ERROR- THERE WAS A MISMATCH"
+      print "YOU HAD " + str(numberOfFiles) + " IN YOUR LIST"
+      print "SAM ONLY KNOWS ABOUT " + str(numberOfFilesSAM) + " OF THEM."
+      print "*****"
+    '''
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  else:
+    #p.print_help()
+    p.error("incorrect number of arguments")
+
+
+
+
+if __name__ == '__main__':
+  main()
+
+
