@@ -49,6 +49,7 @@ test_add_dataset_flist() {
 }
 EOF
 
+   #sam_add_dataset --cert=/tmp/x509up_u`id -u` -e $EXPERIMENT --directory `pwd`/data --metadata meta.json --name ${dataset}
    sam_add_dataset --cert=/tmp/x509up_u`id -u` -e $EXPERIMENT `pwd`/data meta.json ${dataset}
 
    echo "dataset $dataset contains:" 
@@ -78,7 +79,8 @@ test_add_dataset_directory() {
 }
 EOF
 
-   sam_add_dataset --cert=/tmp/x509up_u`id -u` -e $EXPERIMENT file_list meta.json ${dataset}
+   #sam_add_dataset --cert=/tmp/x509up_u`id -u` -e $EXPERIMENT -f file_list --metadata meta.json --name ${dataset}
+   sam_add_dataset --cert=/tmp/x509up_u`id -u` -e $EXPERIMENT  file_list meta.json ${dataset}
 
    echo "dataset $dataset contains:" 
    ifdh translateConstraints "defname: $dataset" 
@@ -133,12 +135,12 @@ EOF
 }
 
 test_validate_1() {
-    sam_validate_dataset $dataset
+    sam_validate_dataset --name $dataset
 }
 
 test_validate_2() {
     mv ${dataset}_f2 ${dataset}_f2_hide
-    if sam_validate_dataset $dataset
+    if sam_validate_dataset --name $dataset
     then
         res=1
     else
@@ -150,38 +152,38 @@ test_validate_2() {
 
 test_clone() {
     echo "before:"
-    sam_validate_dataset -v $dataset
-    locs1=`sam_validate_dataset -v $dataset | wc -l`
+    sam_validate_dataset -v --name $dataset
+    locs1=`sam_validate_dataset -v --name  $dataset | wc -l`
     ifdh mkdir /pnfs/nova/scratch/users/$USER/fife_util_test || true
-    sam_clone_dataset -v -b 2 $dataset /pnfs/nova/scratch/users/$USER/fife_util_test
+    sam_clone_dataset -v -b 2 --name $dataset --dest /pnfs/nova/scratch/users/$USER/fife_util_test
     echo "after:"
-    sam_validate_dataset -v $dataset
-    locs2=`sam_validate_dataset -v $dataset | wc -l`
+    sam_validate_dataset -v --name $dataset
+    locs2=`sam_validate_dataset -v --name $dataset | wc -l`
     [ "$locs2" -gt "$locs1" ]
 }
 
 test_unclone() {
     echo "before:"
-    sam_validate_dataset -v $dataset
-    locs1=`sam_validate_dataset -v $dataset | wc -l`
+    sam_validate_dataset -v --name $dataset
+    locs1=`sam_validate_dataset -v --name $dataset | wc -l`
     ifdh mkdir /pnfs/nova/scratch/users/$USER/fife_util_test2 || true
-    sam_clone_dataset -v $dataset /pnfs/nova/scratch/users/$USER/fife_util_test2
+    sam_clone_dataset -v --name $dataset --dest /pnfs/nova/scratch/users/$USER/fife_util_test2
     echo "after:"
-    sam_validate_dataset -v $dataset
-    locs2=`sam_validate_dataset -v $dataset | wc -l`
-    sam_unclone_dataset $dataset /pnfs/nova/scratch/users/$USER/fife_util_test/
+    sam_validate_dataset -v --name $dataset
+    locs2=`sam_validate_dataset -v --name $dataset | wc -l`
+    sam_unclone_dataset --name $dataset --dest /pnfs/nova/scratch/users/$USER/fife_util_test/
     echo "after unclone:"
-    sam_validate_dataset -v $dataset
-    locs3=`sam_validate_dataset -v $dataset | wc -l`
+    sam_validate_dataset -v --name $dataset
+    locs3=`sam_validate_dataset -v --name $dataset | wc -l`
     [ "$locs2" -gt "$locs1" -a "$locs3" -lt "$locs2" ]
 }
 
 test_pin() {
-    sam_pin_dataset $dataset
+    sam_pin_dataset --name $dataset
 }
 
 test_retire() {
-    sam_retire_dataset $dataset
+    sam_retire_dataset --name $dataset
 }
 
 testsuite test_utils \
