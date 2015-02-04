@@ -316,6 +316,8 @@ def main():
   
   options, arguments = p.parse_args()
 
+  check_options(p, options)
+
   
   if options.verbose:
     logging.basicConfig(level=logging.DEBUG)
