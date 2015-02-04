@@ -151,7 +151,11 @@ def renameFile(file):
 def statBuildMetaData(file):
   logging.info('trying to stat %s for its size' % file)
   
-  statinfo = os.stat(file)
+  try:
+    statinfo = os.stat(file)
+  except Exception, e:
+    sys.exit('oops: %s' % e)
+
   size = statinfo.st_size
         
   metadata = {"file_name": file, "file_type": "unknown", "file_size": size}
