@@ -292,8 +292,8 @@ def main():
   """runs program and handles command line options"""
 
   p = optparse.OptionParser(description='Add a group of files to SAM and create a dataset out of it.',
-                            prog='addfiles',
-                            version='addfiles 0.1',
+                            prog='sam_add_dataset',
+                            version='sam_add_dataset 0.1',
                             usage='%prog <-f file | -d directory> <-m json file> <-n datasetname> [options]')
 
 
