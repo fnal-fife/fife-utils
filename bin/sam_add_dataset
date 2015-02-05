@@ -282,7 +282,7 @@ def check_options(p, options):
   if options.metadata == None:
     p.error("you must specify metadata json file")
 
-  if options.subprocess != 'sam_metadata_dumper':
+  if options.subprocess and options.subprocess != 'sam_metadata_dumper':
     p.error("only sam_metadata_dumper is currently supported")
 
   logging.info('options good')
