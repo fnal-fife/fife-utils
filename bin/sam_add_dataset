@@ -316,14 +316,14 @@ def main():
   
   options, arguments = p.parse_args()
 
-  check_options(p, options)
-
   
   if options.verbose:
     logging.basicConfig(level=logging.DEBUG)
   else:
     logging.disable(logging.CRITICAL)
-  
+
+
+  check_options(p, options)
   
   experiment = get_experiment(options)
 
