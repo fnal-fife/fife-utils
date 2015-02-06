@@ -331,6 +331,7 @@ def main():
 
   if len(sys.argv) == 1:
     p.print_help()
+    return
 
 
   check_options(p, options)
