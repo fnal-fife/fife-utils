@@ -323,6 +323,10 @@ def main():
     logging.disable(logging.CRITICAL)
 
 
+  if len(sys.argv) == 1:
+    p.print_help()
+
+
   check_options(p, options)
   
   experiment = get_experiment(options)
