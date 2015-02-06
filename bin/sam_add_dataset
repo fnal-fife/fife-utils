@@ -270,27 +270,33 @@ class Sam_Metadata_Dumper_Parser:
 def check_options(p, options):
   logging.info('checking options')
 
+  errors = "\n"
+  supported_subprocesses = ["sam_metadata_dumper"]
+
   if options.name == None:
-    p.error("you must specify dataset name")
+    errors += "you must specify dataset name\n"
 
   if options.file and options.directory:
-    p.error("you must specify either a text file or a directory not both")
+    errors += "you must specify either a text file or a directory not both\n"
 
   if options.file == None and options.directory == None:
-    p.error("you must specify either a text file or a directory")
+    errors += "you must specify either a text file or a directory\n"
 
   if options.metadata == None:
-    p.error("you must specify metadata json file")
+    errors += "you must specify metadata json file\n"
 
-  if options.subprocess and options.subprocess != 'sam_metadata_dumper':
-    p.error("only sam_metadata_dumper is currently supported")
+  if options.subprocess and options.subprocess not in supported_subprocesses:
+    errors += "only the following subprocesses are supported: " + ', '.join(supported_subprocesses)
+
+  if errors != "\n":
+    p.error(errors)
 
   logging.info('options good')
 
 
 
 def main():
-    
+
   user = getpass.getuser()
   
   """runs program and handles command line options"""
