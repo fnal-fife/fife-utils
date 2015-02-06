@@ -34,6 +34,26 @@ def get_standard_certificate_path(options):
       proxypath = '/tmp/x509up_u%d' % os.getuid()
       if os.path.exists(proxypath):
         cert = proxypath
+      else:
+        logging.info('trying to create cert for you as none were found')
+        if os.environ.get('EXPERIMENT') and os.environ.get('ROLE'):
+          EXPERIMENT = os.environ.get('EXPERIMENT')
+          ROLE = os.environ.get('ROLE')
+
+          a = os.system("kx509")
+          b = os.system("voms-proxy-init \
+                        -rfc \
+                        -noregen \
+                        -voms fermilab:/fermilab/"+EXPERIMENT+"/Role="+ROLE+" \
+                        -out /some/other/place")
+          if a != 0 and b != 0:
+            sys.exit('there was a problem running kx509 and or voms-proxy-init')
+          else:
+            get_standard_certificate_path(options)
+              
+        else:
+          sys.exit("please make sure the environment variables EXPERIMENT and ROLE are set")
+    
     logging.info('cert is %s' % cert)
     return cert
 
