@@ -194,7 +194,10 @@ def declareFileLocation(samweb, fileName, location):
   try:
     samweb.addFileLocation(fileName, location)
   except Exception, e:
-    sys.exit('oops: %s' % e)
+    if "Location" and "not found" in str(e):
+      sys.exit('oops: this is not a valid sam path')
+    else:
+      sys.exit('oops: %s' % e)
   logging.info('file location was declared to sam')
 
 
