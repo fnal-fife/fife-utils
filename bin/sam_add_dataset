@@ -101,7 +101,7 @@ def getFileList(txtFile):
   try:
     with open(txtFile) as f:
       for line in f:
-        fileList.append(line.strip('\n'))
+        fileList.append( os.path.abspath(line.strip('\n')) )
   except Exception, e:
     sys.exit('oops: %s' % e)
 
@@ -120,7 +120,7 @@ def getFileListFromDir(directory, recurse):
     for fileName in files:
             
       filePath = os.path.join(root, fileName)
-      fileList.append(filePath)
+      fileList.append( os.path.abspath(filePath) )
     
     if recurse == False:
         break
