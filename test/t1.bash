@@ -178,6 +178,17 @@ test_unclone() {
     [ "$locs2" -gt "$locs1" -a "$locs3" -lt "$locs2" ]
 }
 
+test_modify() {
+    cat >> foo.json <<EOF
+  {
+    "Quality.overall": "questionable"
+  }
+EOF
+    sam_modify_dataset_metadata --name $dataset --metadata foo.json
+    f=`ifdh translateConstraints "defname:$dataset" | head -1`
+    ifdh getMetadata $f | grep Quality.overall
+}
+
 test_pin() {
     sam_pin_dataset --name $dataset
 }
@@ -191,6 +202,7 @@ testsuite test_utils \
         add_dataset \
 	test_validate_1 \
 	test_validate_2 \
+        test_modify \
 	test_clone  \
         test_unclone \
         test_pin \
