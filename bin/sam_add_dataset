@@ -11,17 +11,16 @@ import samweb_client
 import datetime
 import logging
 import subprocess
+import re
 from fife_sam_utils import samprefix
 
 
 
 def get_standard_certificate_path(options):
   logging.info('looking for cert')
-    
+
   if options.cert:
     cert = options.cert
-    logging.info('cert is %s' % cert)
-    return cert
 
   else:
     cert = os.environ.get('X509_USER_PROXY')
@@ -34,6 +33,28 @@ def get_standard_certificate_path(options):
       proxypath = '/tmp/x509up_u%d' % os.getuid()
       if os.path.exists(proxypath):
         cert = proxypath
+    if not cert:
+      logging.info('trying to create cert for you as none were found')
+      if os.environ.get('EXPERIMENT') and os.environ.get('ROLE'):
+        EXPERIMENT = os.environ.get('EXPERIMENT')
+        ROLE = os.environ.get('ROLE')
+
+        a = os.system("kx509")
+        b = os.system("voms-proxy-init \
+                      -rfc \
+                      -noregen \
+                      -voms fermilab:/fermilab/"+EXPERIMENT+"/Role="+ROLE)
+
+        if a != 0 and b != 0:
+          sys.exit('there was a problem running kx509 and or voms-proxy-init')
+        else:
+          proxypath = '/tmp/x509up_u%d' % os.getuid()
+          if os.path.exists(proxypath):
+            os.environ['X509_USER_PROXY'] = proxypath
+            cert = proxypath
+      else:
+        sys.exit("please make sure the environment variables EXPERIMENT and ROLE are set")
+
     logging.info('cert is %s' % cert)
     return cert
 
@@ -81,7 +102,7 @@ def getFileList(txtFile):
   try:
     with open(txtFile) as f:
       for line in f:
-        fileList.append(line.strip('\n'))
+        fileList.append( os.path.abspath(line.strip('\n')) )
   except Exception, e:
     sys.exit('oops: %s' % e)
 
@@ -100,10 +121,25 @@ def getFileListFromDir(directory, recurse):
     for fileName in files:
             
       filePath = os.path.join(root, fileName)
-      fileList.append(filePath)
+      fileList.append( os.path.abspath(filePath) )
     
     if recurse == False:
         break
+
+  logging.info('the python list is %s' % fileList)
+  return fileList
+
+
+
+def getFileListFromPipe():
+  logging.info('trying to create a python list of files from a pipe')
+  fileList = []
+
+  try:
+    for line in sys.stdin:
+      fileList.append( os.path.abspath(line.strip('\n')) )
+  except Exception, e:
+    sys.exit('oops: %s' % e)
 
   logging.info('the python list is %s' % fileList)
   return fileList
@@ -122,28 +158,42 @@ def declareFile(samweb, metadata):
 
 
 
+#this should go in utils
+def has_uuid_prefix(s):
+  return bool(re.match(r'[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}',s))
+
+
+
 def renameFile(file):
-                       
-  logging.info('trying to rename %s on disk with a uuid' % file)
-                       
-  uniquifier = str(uuid.uuid4()) + '-'
-        
+
   fileName = os.path.basename(file)
   dirName = os.path.dirname(file)
-  
-  if dirName == '':
-    newFileName = uniquifier + fileName
-  else:
-      newFileName = dirName + '/' + uniquifier + fileName
-  
-  try:
-    os.rename(file, newFileName)
-  except Exception, e:
-    sys.exit('oops: %s' % e)
 
-  logging.info('file was renamed on disk as %s' % os.path.basename(newFileName))
-  logging.info('its location is %s' % dirName)
-  
+  if not has_uuid_prefix(fileName):
+    logging.info('trying to rename %s on disk with a uuid' % file)
+
+    uniquifier = str(uuid.uuid4()) + '-'
+
+    if dirName == '':
+      newFileName = uniquifier + fileName
+    else:
+      newFileName = dirName + '/' + uniquifier + fileName
+
+    try:
+      os.rename(file, newFileName)
+    except Exception, e:
+      sys.exit('oops: %s' % e)
+
+    logging.info('file was renamed on disk as %s' % os.path.basename(newFileName))
+    logging.info('its location is %s' % dirName)
+
+  else:
+    logging.info('uuid detected for %s therefore not renaming' % file)
+    if dirName == '':
+      newFileName = fileName
+    else:
+      newFileName = dirName + '/' + fileName
+
   return {"file_name": os.path.basename(newFileName), "location": dirName}
 
 
@@ -151,7 +201,11 @@ def renameFile(file):
 def statBuildMetaData(file):
   logging.info('trying to stat %s for its size' % file)
   
-  statinfo = os.stat(file)
+  try:
+    statinfo = os.stat(file)
+  except Exception, e:
+    sys.exit('oops: %s' % e)
+
   size = statinfo.st_size
         
   metadata = {"file_name": file, "file_type": "unknown", "file_size": size}
@@ -170,12 +224,15 @@ def declareFileLocation(samweb, fileName, location):
   try:
     samweb.addFileLocation(fileName, location)
   except Exception, e:
-    sys.exit('oops: %s' % e)
+    if "Location" and "not found" in str(e):
+      sys.exit('oops: this is not a valid sam path')
+    else:
+      sys.exit('oops: %s' % e)
   logging.info('file location was declared to sam')
 
 
 
-def get_tag(options, user):
+def get_tag(options, datasetName):
   logging.info('trying to resolve a tag')
   
   if options.tag:
@@ -183,9 +240,21 @@ def get_tag(options, user):
     logging.info('the tag is %s' % tag)
     return tag
   else:
-    tag =  user + "-" + str(datetime.datetime.now().strftime("%Y-%m-%d-%H_%M_%S"))
+    tag = datasetName
     logging.info('the tag is %s' % tag)
     return tag
+
+
+
+def get_dataset_name(options, user):
+  logging.info('trying to resolve a dataset name')
+
+  if options.name:
+    datasetName = options.name
+  else:
+    datasetName = "userdataset_" + user + "_" + str(datetime.datetime.now().strftime("%Y-%m-%d-%H_%M_%S"))
+  logging.info('the dataset name is %s' % datasetName)
+  return datasetName
 
 
 
@@ -266,41 +335,41 @@ class Sam_Metadata_Dumper_Parser:
 def check_options(p, options):
   logging.info('checking options')
 
-  if options.name == None:
-    p.error("you must specify dataset name")
+  errors = "\n"
+  supported_subprocesses = ["sam_metadata_dumper"]
 
   if options.file and options.directory:
-    p.error("you must specify either a text file or a directory not both")
+    errors += "you must specify either a text file or a directory not both\n"
 
   if options.file == None and options.directory == None:
-    p.error("you must specify either a text file or a directory")
+    errors += "you must specify either a text file or a directory\n"
 
-  if options.metadata == None:
-    p.error("you must specify metadata json file")
+  if options.subprocess and options.subprocess not in supported_subprocesses:
+    errors += "only the following subprocesses are supported: " + ', '.join(supported_subprocesses)
 
-  if options.subprocess != 'sam_metadata_dumper':
-    p.error("only sam_metadata_dumper is currently supported")
+  if errors != "\n":
+    p.error(errors)
 
   logging.info('options good')
 
 
 
 def main():
-    
+
   user = getpass.getuser()
   
   """runs program and handles command line options"""
 
   p = optparse.OptionParser(description='Add a group of files to SAM and create a dataset out of it.',
-                            prog='addfiles',
-                            version='addfiles 0.1',
-                            usage='%prog <-f file | -d directory> <-m json file> <-n datasetname> [options]')
+                            prog='sam_add_dataset',
+                            version='sam_add_dataset 0.2',
+                            usage='%prog <-f file | -d directory> [options]')
 
 
   p.add_option('-e', '--experiment', help='use this experiment server defaults to $SAM_EXPERIMENT if not set')
   p.add_option('-u', '--user', help='default is %s' % user)
   p.add_option('-t', '--tag', help='the value for Dataset.Tag which will be used to distinguish this new dataset default format is user+date')
-  p.add_option('-n', '--name', help='the dataset name')
+  p.add_option('-n', '--name', help='the dataset name default is userdataset+user+date')
   p.add_option('-d', '--directory', help='directory of files to create dataset with')
   p.add_option('-r', '--recurse', action ='store_true', default=False, help='walk down all levels of directory')
   p.add_option('-f', '--file', help='file of file paths to create dataset with')
@@ -317,7 +386,14 @@ def main():
     logging.basicConfig(level=logging.DEBUG)
   else:
     logging.disable(logging.CRITICAL)
-  
+
+
+  if len(sys.argv) == 1:
+    p.print_help()
+    return
+
+
+  check_options(p, options)
   
   experiment = get_experiment(options)
 
@@ -328,12 +404,12 @@ def main():
 
   samweb = samweb_client.SAMWebClient(experiment=experiment, cert=cert)
 
-  tag = get_tag(options, user)
  
   jsonFile = options.metadata
   
-  datasetName = options.name
+  datasetName = get_dataset_name(options, user)
 
+  tag = get_tag(options, datasetName)
 
   logging.info('the options are %s' % options)
   logging.info('the arguments are %s' % arguments)
@@ -342,14 +418,19 @@ def main():
 
   if 5 > 3:  #still need to figure out this condition
 
-    universalMD = getJSONMetadata(options.metadata, tag)
+    if jsonFile:
+      universalMD = getJSONMetadata(options.metadata, tag)
+    else:
+      universalMD = {"Dataset.Tag": tag}
 
     if options.directory:
       if os.path.isdir(options.directory):
         fileList = getFileListFromDir(options.directory, options.recurse)
+    elif options.file == '-':
+      fileList = getFileListFromPipe()
     else:
       fileList = getFileList(options.file)
-    
+
 
     logging.info('entering for loop to process all the files to create the dataset')
     for file in fileList:
@@ -377,7 +458,7 @@ def main():
     
     
     dimension = "Dataset.Tag " + tag
-    createDefinition(samweb, options.name, dimension)
+    createDefinition(samweb, datasetName, dimension)
 
 
     logging.info('PROGRAM SUCCESS')
