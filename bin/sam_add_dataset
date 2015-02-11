@@ -158,7 +158,6 @@ def declareFile(samweb, metadata):
 
 
 def renameFile(file):
-                       
   logging.info('trying to rename %s on disk with a uuid' % file)
                        
   uniquifier = str(uuid.uuid4()) + '-'
@@ -228,6 +227,18 @@ def get_tag(options, user):
     tag =  user + "-" + str(datetime.datetime.now().strftime("%Y-%m-%d-%H_%M_%S"))
     logging.info('the tag is %s' % tag)
     return tag
+
+
+
+def get_dataset_name(options, user):
+  logging.info('trying to resolve a dataset name')
+
+  if options.name:
+    datasetName = options.name
+  else:
+    datasetName = "userdataset_" + user + "_" + str(datetime.datetime.now().strftime("%Y-%m-%d-%H_%M_%S"))
+  logging.info('the dataset name is %s' % datasetName)
+  return datasetName
 
 
 
@@ -311,9 +322,6 @@ def check_options(p, options):
   errors = "\n"
   supported_subprocesses = ["sam_metadata_dumper"]
 
-  if options.name == None:
-    errors += "you must specify dataset name\n"
-
   if options.file and options.directory:
     errors += "you must specify either a text file or a directory not both\n"
 
@@ -384,7 +392,7 @@ def main():
  
   jsonFile = options.metadata
   
-  datasetName = options.name
+  datasetName = get_dataset_name(options, user)
 
 
   logging.info('the options are %s' % options)
@@ -434,7 +442,7 @@ def main():
     
     
     dimension = "Dataset.Tag " + tag
-    createDefinition(samweb, options.name, dimension)
+    createDefinition(samweb, datasetName, dimension)
 
 
     logging.info('PROGRAM SUCCESS')
