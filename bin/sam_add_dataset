@@ -216,7 +216,7 @@ def declareFileLocation(samweb, fileName, location):
 
 
 
-def get_tag(options, user):
+def get_tag(options, datasetName):
   logging.info('trying to resolve a tag')
   
   if options.tag:
@@ -224,7 +224,7 @@ def get_tag(options, user):
     logging.info('the tag is %s' % tag)
     return tag
   else:
-    tag =  user + "-" + str(datetime.datetime.now().strftime("%Y-%m-%d-%H_%M_%S"))
+    tag = datasetName
     logging.info('the tag is %s' % tag)
     return tag
 
@@ -388,12 +388,12 @@ def main():
 
   samweb = samweb_client.SAMWebClient(experiment=experiment, cert=cert)
 
-  tag = get_tag(options, user)
  
   jsonFile = options.metadata
   
   datasetName = get_dataset_name(options, user)
 
+  tag = get_tag(options, datasetName)
 
   logging.info('the options are %s' % options)
   logging.info('the arguments are %s' % arguments)
