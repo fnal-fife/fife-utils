@@ -11,6 +11,7 @@ import samweb_client
 import datetime
 import logging
 import subprocess
+import re
 from fife_sam_utils import samprefix
 
 
@@ -157,27 +158,42 @@ def declareFile(samweb, metadata):
 
 
 
+#this should go in utils
+def has_uuid_prefix(s):
+  return bool(re.match(r'[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}',s))
+
+
+
 def renameFile(file):
-  logging.info('trying to rename %s on disk with a uuid' % file)
-                       
-  uniquifier = str(uuid.uuid4()) + '-'
-        
+
   fileName = os.path.basename(file)
   dirName = os.path.dirname(file)
-  
-  if dirName == '':
-    newFileName = uniquifier + fileName
-  else:
-      newFileName = dirName + '/' + uniquifier + fileName
-  
-  try:
-    os.rename(file, newFileName)
-  except Exception, e:
-    sys.exit('oops: %s' % e)
 
-  logging.info('file was renamed on disk as %s' % os.path.basename(newFileName))
-  logging.info('its location is %s' % dirName)
-  
+  if not has_uuid_prefix(fileName):
+    logging.info('trying to rename %s on disk with a uuid' % file)
+
+    uniquifier = str(uuid.uuid4()) + '-'
+
+    if dirName == '':
+      newFileName = uniquifier + fileName
+    else:
+      newFileName = dirName + '/' + uniquifier + fileName
+
+    try:
+      os.rename(file, newFileName)
+    except Exception, e:
+      sys.exit('oops: %s' % e)
+
+    logging.info('file was renamed on disk as %s' % os.path.basename(newFileName))
+    logging.info('its location is %s' % dirName)
+
+  else:
+    logging.info('uuid detected for %s therefore not renaming' % file)
+    if dirName == '':
+      newFileName = fileName
+    else:
+      newFileName = dirName + '/' + fileName
+
   return {"file_name": os.path.basename(newFileName), "location": dirName}
 
 
