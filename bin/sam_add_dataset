@@ -346,14 +346,14 @@ def main():
 
   p = optparse.OptionParser(description='Add a group of files to SAM and create a dataset out of it.',
                             prog='sam_add_dataset',
-                            version='sam_add_dataset 0.1',
-                            usage='%prog <-f file | -d directory> <-n datasetname> [options]')
+                            version='sam_add_dataset 0.2',
+                            usage='%prog <-f file | -d directory> [options]')
 
 
   p.add_option('-e', '--experiment', help='use this experiment server defaults to $SAM_EXPERIMENT if not set')
   p.add_option('-u', '--user', help='default is %s' % user)
   p.add_option('-t', '--tag', help='the value for Dataset.Tag which will be used to distinguish this new dataset default format is user+date')
-  p.add_option('-n', '--name', help='the dataset name')
+  p.add_option('-n', '--name', help='the dataset name default is userdataset+user+date')
   p.add_option('-d', '--directory', help='directory of files to create dataset with')
   p.add_option('-r', '--recurse', action ='store_true', default=False, help='walk down all levels of directory')
   p.add_option('-f', '--file', help='file of file paths to create dataset with')
