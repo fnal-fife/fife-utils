@@ -130,6 +130,21 @@ def getFileListFromDir(directory, recurse):
 
 
 
+def getFileListFromPipe():
+  logging.info('trying to create a python list of files from a pipe')
+  fileList = []
+
+  try:
+    for line in sys.stdin:
+      fileList.append( os.path.abspath(line.strip('\n')) )
+  except Exception, e:
+    sys.exit('oops: %s' % e)
+
+  logging.info('the python list is %s' % fileList)
+  return fileList
+
+
+
 def declareFile(samweb, metadata):
   logging.info('trying to declare the metadata to sam which is %s' % json.dumps(metadata))
    
@@ -387,9 +402,11 @@ def main():
     if options.directory:
       if os.path.isdir(options.directory):
         fileList = getFileListFromDir(options.directory, options.recurse)
+    elif options.file == '-':
+      fileList = getFileListFromPipe()
     else:
       fileList = getFileList(options.file)
-    
+
 
     logging.info('entering for loop to process all the files to create the dataset')
     for file in fileList:
