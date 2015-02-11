@@ -78,7 +78,7 @@ def get_experiment(options):
 def getJSONMetadata(jsonFile, tag):
   logging.info('looking for json metadata from user at %s' % jsonFile)
   metadata = None
-  
+
   try:
     with open(jsonFile) as f:
       metadata = json.loads(f.read())
@@ -86,6 +86,14 @@ def getJSONMetadata(jsonFile, tag):
     sys.exit('oops: %s' % e)
 
   logging.info('extracted user metadata which is %s' % metadata)
+
+
+  if "data_tier" in metadata:
+    if "-user" in metadata["data_tier"]:
+      pass
+    else:
+      metadata["data_tier"] = metadata["data_tier"]+"-user"
+
 
   logging.info('updating the metadata with Dataset.Tag: %s' % tag)
   metadata.update( {"Dataset.Tag": tag } )
