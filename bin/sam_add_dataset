@@ -89,7 +89,7 @@ def getJSONMetadata(jsonFile, tag):
 
 
   if "data_tier" in metadata:
-    if "-user" in metadata["data_tier"]:
+    if metadata["data_tier"].endswith("-user"):
       pass
     else:
       metadata["data_tier"] = metadata["data_tier"]+"-user"
