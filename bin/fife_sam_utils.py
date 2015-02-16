@@ -3,6 +3,8 @@ import ifdh
 import os
 import re
 import socket
+import subprocess
+import datetime
 
 class dataset:
     def __init__( self, name ):
@@ -80,6 +82,27 @@ def basename(path):
 def dirname(dir):
     l = dir.rfind('/', 0,len(dir)-2 )
     return dir[0:l]
+
+def is_cert_valid():
+    try:
+        a = subprocess.Popen(["klist"], stdout=subprocess.PIPE).stdout.read()
+        b = a.split("\n")
+
+        expiry_date_list = b[4].split(" ")[3:5]
+        expiry_date_string = ' '.join(expiry_date_list)
+      
+        expiry_datetime = datetime.datetime.strptime(expiry_date_string, "%m/%d/%y %H:%M:%S")
+        now = datetime.datetime.now()
+    
+        if expiry_datetime > now:
+            return True
+        else:
+            return False
+    except Exception, e:
+        print e
+
+def has_uuid_prefix(s):
+    return bool(re.match(r'[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}',s))
 
 if __name__ == '__main__':
     os.environ['EXPERIMENT'] = 'nova'
