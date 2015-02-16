@@ -228,6 +228,9 @@ def declareFileLocation(samweb, fileName, location):
     samweb.addFileLocation(fileName, location)
   except Exception, e:
     if "Location" and "not found" in str(e):
+      data_disks = samweb.listDataDisks()
+      for item in data_disks:
+        logging.info("valid data disk: " + item['mount_point'])
       sys.exit('oops: this is not a valid sam path')
     else:
       sys.exit('oops: %s' % e)
