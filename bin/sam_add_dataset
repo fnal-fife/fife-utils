@@ -277,7 +277,7 @@ def createDefinition(samweb, definitionName, dimensions):
 
 class Sam_Metadata_Dumper_Parser:
  
-  SAM_JSON_METADATA = None
+  SAM_METADATA = None
  
   def __init__(self, file):
     self.file = file
@@ -293,48 +293,67 @@ class Sam_Metadata_Dumper_Parser:
 
     logging.info('extracted the following metadata to be formated %s', a)        
 
-    self.SAM_JSON_METADATA = a[self.file]
+    self.SAM_METADATA = a[self.file]
 
-    return self.SAM_JSON_METADATA
+    return self.SAM_METADATA
 
 
   def format_json(self):
     logging.info('formatting the extracted metadata')  
   
-    keys = self.SAM_JSON_METADATA.keys()
+    keys = self.SAM_METADATA.keys()
     application = {}
     found = False
 
     if 'applicationFamily' in keys:
       found = True
-      application['family'] = self.SAM_JSON_METADATA['applicationFamily']
-      del self.SAM_JSON_METADATA['applicationFamily']
+      application['family'] = self.SAM_METADATA['applicationFamily']
+      del self.SAM_METADATA['applicationFamily']
     if 'applicationVersion' in keys:
       found = True
-      application['version'] = self.SAM_JSON_METADATA['applicationVersion']
-      del self.SAM_JSON_METADATA['applicationVersion']
+      application['version'] = self.SAM_METADATA['applicationVersion']
+      del self.SAM_METADATA['applicationVersion']
     if 'process_name' in keys:
       found = True
-      application['name'] = self.SAM_JSON_METADATA['process_name']
-      del self.SAM_JSON_METADATA['process_name']
+      application['name'] = self.SAM_METADATA['process_name']
+      del self.SAM_METADATA['process_name']
+
     if found:
-      self.SAM_JSON_METADATA["application"] = application
+      self.SAM_METADATA["application"] = application
                 
     if 'dataTier' in keys:
-      self.SAM_JSON_METADATA['data_tier'] = self.SAM_JSON_METADATA['dataTier']
-      del self.SAM_JSON_METADATA['dataTier']
+      self.SAM_METADATA['data_tier'] = self.SAM_METADATA['dataTier']
+      del self.SAM_METADATA['dataTier']
     if 'fileType' in keys:
-      self.SAM_JSON_METADATA['file_type'] = self.SAM_JSON_METADATA['fileType']
-      del self.SAM_JSON_METADATA['fileType']
+      self.SAM_METADATA['file_type'] = self.SAM_METADATA['fileType']
+      del self.SAM_METADATA['fileType']
     if 'streamName' in keys:
-      self.SAM_JSON_METADATA['data_stream'] = self.SAM_JSON_METADATA['streamName']
-      del self.SAM_JSON_METADATA['streamName']
+      self.SAM_METADATA['data_stream'] = self.SAM_METADATA['streamName']
+      del self.SAM_METADATA['streamName']
 
-    for key, value in self.SAM_JSON_METADATA.iteritems():
+    if 'first_event' in keys:
+      if isinstance(self.SAM_METADATA['first_event'], list):
+        self.SAM_METADATA['first_event'] = self.SAM_METADATA['first_event'][-1]
+    if 'last_event' in keys:
+      if isinstance(self.SAM_METADATA['last_event'], list):
+        self.SAM_METADATA['last_event'] = self.SAM_METADATA['last_event'][-1]
+
+    try:
+      self.samweb.validateFileMetadata(md=self.SAM_METADATA)
+    except Exception, e:
+      lines = str(e.msg).split('\n')
+      for line in lines:
+        if 'Unknown' in line:
+          unknown_md_item =  line.split("'")[-2]
+          if unknown_md_item in keys:
+            logging.info('invalid metadata item %s deleting it', unknown_md_item)
+            del self.SAM_METADATA[unknown_md_item]
+
+    for key, value in self.SAM_METADATA.iteritems():
       if isinstance(value, int):
-        self.SAM_JSON_METADATA[key] = str(value)
+        self.SAM_METADATA[key] = str(value)
         
-    return self.SAM_JSON_METADATA
+    return self.SAM_METADATA
 
 
 
