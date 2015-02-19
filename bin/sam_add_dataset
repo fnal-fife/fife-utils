@@ -157,13 +157,13 @@ def getFileListFromPipe():
 
 def declareFile(samweb, metadata):
   logging.info('trying to declare the metadata to sam which is %s' % json.dumps(metadata))
-   
+
   try:
     samweb.declareFile( metadata )
   except Exception, e:
-    sys.exit('oops: %s' % e)
-
-  logging.info('the metadata was declared to sam')
+    logging.info(str(e))
+  else:
+    logging.info('the metadata was declared to sam')
 
 
 
