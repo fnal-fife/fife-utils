@@ -56,8 +56,8 @@ def get_standard_certificate_path(options):
       else:
         sys.exit("please make sure the environment variables EXPERIMENT and ROLE are set")
 
-    logging.info('cert is %s' % cert)
-    return cert
+  logging.info('cert is %s' % cert)
+  return cert
 
 
 
