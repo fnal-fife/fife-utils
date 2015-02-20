@@ -17,7 +17,7 @@ def modify_dataset_metadata( d, mdfilename,  just_say = False, verbose = False, 
         samweb.experiment = experiment
 
 
-    mdfile = mdfilename.open()
+    mdfile = open(mdfilename, "r")
     for f in d.file_iterator():
         if just_say:
              print "I would modify metadata for %s with metadata file %s" % (f, mdfile)
