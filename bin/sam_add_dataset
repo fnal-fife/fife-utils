@@ -282,8 +282,9 @@ class Sam_Metadata_Dumper_Parser:
  
   SAM_METADATA = None
  
-  def __init__(self, file):
+  def __init__(self, file, samweb):
     self.file = file
+    self.samweb = samweb
     
     
   def get_json(self):
@@ -467,7 +468,7 @@ def main():
       fileMD = {}
       
       if options.subprocess:
-        dumperObject = Sam_Metadata_Dumper_Parser(file)
+        dumperObject = Sam_Metadata_Dumper_Parser(file, samweb)
         dumperObject.get_json()
         sam_metadata_dumper_metadata = dumperObject.format_json()
         fileMD.update(sam_metadata_dumper_metadata) 
