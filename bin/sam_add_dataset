@@ -56,6 +56,9 @@ def get_standard_certificate_path(options):
       else:
         sys.exit("please make sure the environment variables EXPERIMENT and ROLE are set")
 
+  if not cert:
+    sys.exit("unable to find cert and unable to make one")
+
   logging.info('cert is %s' % cert)
   return cert
 
