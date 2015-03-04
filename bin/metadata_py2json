@@ -2,8 +2,12 @@
 #AUTHOR:  MICHAEL JOSEPH GHEITH
 #DATE:  04/14/2014
 
+try:
+    import json
+except:
+    import simplejson as json
+
 import datetime
-import json
 import sys
 
 resultString = ""

@@ -2,7 +2,6 @@
 
 from fife_sam_utils import *
 from samweb_client import *
-import hashlib 
 import sys
 import os
 import re

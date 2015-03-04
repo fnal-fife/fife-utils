@@ -1,17 +1,41 @@
 #!/usr/bin/env python
 
 import optparse
-import json
 import getpass
 import os
 import sys
-import uuid
+
 import pprint
 import samweb_client
 import datetime
 import logging
 import subprocess
 import re
+import time
+import socket
+
+#
+# old python compatability hacks
+#
+try:
+    import json
+except:
+    import simplejson as json
+
+try:
+   import uuid
+except:
+   class uuid:
+       def uuid4():
+         return "%s-%s-%s-%s-%s" % (
+              hex(int(time.time()))[2:],
+              hex(os.getpid())[2:],
+              hex(os.getppid())[2:],
+              hex(os.getpid())[2:],
+              ''.join([hex(int(x))[2:] for x in socket.gethostbyname(socket.gethostname()).split('.')])
+            )
+       uuid4 = staticmethod(uuid4)
+          
 from fife_sam_utils import samprefix, is_cert_valid, has_uuid_prefix
 
 
@@ -84,8 +108,9 @@ def getJSONMetadata(jsonFile, tag):
   metadata = None
 
   try:
-    with open(jsonFile) as f:
-      metadata = json.loads(f.read())
+    f = open(jsonFile)
+    metadata = json.loads(f.read())
+    f.close()
   except Exception, e:
     sys.exit('oops: %s' % e)
 
@@ -112,9 +137,10 @@ def getFileList(txtFile):
   fileList = []
   
   try:
-    with open(txtFile) as f:
-      for line in f:
+    f = open(txtFile)
+    for line in f:
         fileList.append( os.path.abspath(line.strip('\n')) )
+    f.close()
   except Exception, e:
     sys.exit('oops: %s' % e)
 
