@@ -78,7 +78,7 @@ def get_standard_certificate_path(options):
             os.environ['X509_USER_PROXY'] = proxypath
             cert = proxypath
       else:
-        sys.exit("please make sure the environment variables EXPERIMENT and ROLE are set")
+        sys.exit("please make sure the environment variables $EXPERIMENT and $ROLE are set\nexamples of $ROLE are Analysis or Production")
 
   if not cert:
     sys.exit("unable to find cert and unable to make one")
