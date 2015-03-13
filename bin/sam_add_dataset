@@ -216,7 +216,7 @@ def renameFile(file):
     except Exception, e:
       sys.exit('oops: %s' % e)
 
-    logging.info('file was renamed on disk as %s' % os.path.basename(newFileName))
+    print 'renamed ' + fileName + ' to ' + os.path.basename(newFileName)
     logging.info('its location is %s' % dirName)
 
   else:
