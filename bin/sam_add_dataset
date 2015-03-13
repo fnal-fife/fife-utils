@@ -139,6 +139,7 @@ def getFileList(txtFile):
   try:
     f = open(txtFile)
     for line in f:
+      if line[0] != '#':
         fileList.append( os.path.abspath(line.strip('\n')) )
     f.close()
   except Exception, e:
