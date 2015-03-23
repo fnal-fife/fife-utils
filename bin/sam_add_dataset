@@ -36,7 +36,8 @@ except:
             )
        uuid4 = staticmethod(uuid4)
           
-from fife_sam_utils import samprefix, is_cert_valid, has_uuid_prefix
+#from fife_sam_utils import samprefix, is_cert_valid, has_uuid_prefix
+from fife_sam_utils import samprefix, has_uuid_prefix
 
 
 
@@ -56,7 +57,8 @@ def get_standard_certificate_path(options):
     if not cert:
       #look in standard place for cert
       proxypath = '/tmp/x509up_u%d' % os.getuid()
-      if os.path.exists(proxypath) and is_cert_valid():
+      #if os.path.exists(proxypath) and is_cert_valid():
+      if os.path.exists(proxypath):
         cert = proxypath
     if not cert:
       logging.info('trying to create cert for you as none were found')
