@@ -20,10 +20,11 @@ if __name__ == '__main__':
     cmd = sys.argv[0]
     just_say = False
 
-    parser = optparse.OptionParser(usage="usage: %prog [options] dataset dest_url \n pin in dataset in dcache for 30 days")
+    parser = optparse.OptionParser(usage="usage: %prog [options] \n pin in dataset in dcache for 30 days")
     parser.add_option('-v','--verbose',   action='count')
-    parser.add_option('-n','--just_say',  action='store_false', help="do not actually copy, just say what you would do")
+    parser.add_option('-j','--just_say',  action='store_false', help="do not actually copy, just say what you would do")
     parser.add_option('-e','--experiment')
+    parser.add_option('-n', '--name',     help="dataset name to copy", )
 
     (o,a) = parser.parse_args()
 
@@ -31,10 +32,9 @@ if __name__ == '__main__':
         os.environ['EXPERIMENT']= o.experiment
         os.environ['IFDH_BASE_URI'] = "http://samweb.fnal.gov:8480/sam/%s/api" % o.experiment
 
-    if len(a) == 0:
-        parser.error("expected at least one dataset parameter")
+    if not o.name:
+        parser.error("expected --name dataset-name")
         exit(1)
 
-    for ds in a:
-       pin(dataset(ds), o.just_say, o.verbose)
+    pin(dataset(o.name), o.just_say, o.verbose)
 

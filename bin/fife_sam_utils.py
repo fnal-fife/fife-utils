@@ -82,7 +82,7 @@ def basename(path):
 def dirname(dir):
     l = dir.rfind('/', 0,len(dir)-2 )
     return dir[0:l]
-
+'''commenting this out for now because i think it may be causing andrew problems
 def is_cert_valid():
     try:
         a = subprocess.Popen(["klist"], stdout=subprocess.PIPE).stdout.read()
@@ -100,7 +100,7 @@ def is_cert_valid():
             return False
     except Exception, e:
         print e
-
+'''
 def has_uuid_prefix(s):
     return bool(re.match(r'[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}',s))
 

@@ -7,15 +7,23 @@ QUalifiers=
 Action=setup_ifdhc_if_not_setup
     EnvSetIfNotSet(SETUP_IFDHC,"")
     If(test -z "$SETUP_IFDHC")
+       EnvUnset(SETUP_IFDHC)
        SourceRequired(`ups setup ifdhc`, NO_UPS_ENV)
-    Endif()
+    EndIf(test -z "$SETUP_IFDHC")
+
+Action=setup_sam_web_client_if_not_setup
+    EnvSetIfNotSet(SETUP_SAM_WEB_CLIENT,"")
+    If(test -z "$SETUP_SAM_WEB_CLIENT")
+       EnvUnset(SETUP_SAM_WEB_CLIENT)
+       SourceRequired(`ups setup sam_web_client -z ${UPS_THIS_DB}`, NO_UPS_ENV)
+    EndIf(test -z "$SETUP_SAM_WEB_CLIENT")
 
 
 Action=setup
     ProdDir()
     SetupEnv()
     ExeActionRequired(setup_ifdhc_if_not_setup)
-    SetupRequired(sam_web_client)
+    ExeActionRequired(setup_sam_web_client_if_not_setup)
     SetupRequired(jobsub_tools)
     PathPrepend(PATH, ${UPS_PROD_DIR}/bin)
     PathPrepend(PYTHONPATH, ${UPS_PROD_DIR}/bin)

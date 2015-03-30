@@ -1,0 +1,195 @@
+#!/usr/bin/env python
+
+
+
+import optparse
+import os
+import sys
+import logging
+import re
+from fife_sam_utils import has_uuid_prefix
+import fnmatch
+
+
+
+def get_file_list(txt_file):
+  logging.info('trying to create a python list of files from file %s' % txt_file)
+  file_list = []
+  
+  try:
+    f = open(txt_file)
+    for line in f:
+      if line[0] != '#':
+        file_list.append( os.path.abspath(line.strip('\n')) )
+    f.close()
+  except Exception, e:
+    sys.exit('oops: %s' % e)
+
+  logging.info('the python list is %s' % file_list)
+  return file_list
+
+
+
+def get_file_list_from_dir(directory, recurse):
+  logging.info('trying to create a python list of files from directory %s with recurse level set to %s' % (directory, recurse))
+    
+  file_list = []
+    
+  for root, dirs, files in os.walk(directory):
+        
+    for file_name in files:
+            
+      file_path = os.path.join(root, file_name)
+      file_list.append( os.path.abspath(file_path) )
+    
+    if recurse == False:
+        break
+
+  logging.info('the python list is %s' % file_list)
+  return file_list
+
+
+
+def get_file_list_from_pipe():
+  logging.info('trying to create a python list of files from a pipe')
+  file_list = []
+
+  try:
+    for line in sys.stdin:
+      file_list.append( os.path.abspath(line.strip('\n')) )
+  except Exception, e:
+    sys.exit('oops: %s' % e)
+
+  logging.info('the python list is %s' % file_list)
+  return file_list
+
+
+
+def rename_file(file, do_nothing):
+
+  file_name = os.path.basename(file)
+  dir_name = os.path.dirname(file)
+
+  if dir_name == '':
+    new_file_name = file_name[37:]
+  else:
+    new_file_name = dir_name + '/' + file_name[37:]
+
+  try:
+    if not do_nothing:  os.rename(file, new_file_name)
+  except Exception, e:
+    sys.exit('oops: %s' % e)
+
+  print 'renamed ' + file_name + ' to ' + os.path.basename(new_file_name)
+
+  return os.path.basename(new_file_name)
+
+
+
+def filter_pattern(file_list, pattern):
+  logging.info('applying filter pattern %s to %s' % (pattern, file_list))
+  return fnmatch.filter(file_list, pattern)
+
+
+
+def check_options(p, options):
+  logging.info('checking options')
+
+  errors = "\n"
+
+  '''
+  if options.file and options.directory:
+    errors += "you must specify either a text file or a directory not both\n"
+  '''
+
+  if errors != "\n":
+    p.error(errors)
+
+  logging.info('options good')
+
+
+
+
+
+def main():
+  
+  """runs program and handles command line options"""
+
+  p = optparse.OptionParser(description='Reverts file names that contain a uuid.',
+                            prog='sam_revert_names',
+                            version='sam_revert_names 0.1',
+                            usage='%prog <-f file | -d directory | glob_pattern> [options]')
+
+
+  p.add_option('-d', '--directory', help='directory of files')
+  p.add_option('-r', '--recurse', action ='store_true', default=False, help='walk down all levels of directory')
+  p.add_option('-f', '--file', help='file containing file paths to revert')
+  p.add_option('-p', '--pattern', help='unix filename pattern like \'*.root\' to filter by used with -d and -f and -f -')
+  p.add_option('-n', '--nothing', action = 'store_true', help='do nothing and print what program would do')
+  p.add_option('-v', '--verbose', action ='store_true', help='returns verbose output')
+  
+
+  DO_NOTHING = False
+
+  options, arguments = p.parse_args()
+
+  
+  if options.verbose:
+    logging.basicConfig(level=logging.DEBUG)
+  else:
+    logging.disable(logging.CRITICAL)
+
+
+  if options.nothing:
+    DO_NOTHING = True
+    #logging.basicConfig(level=logging.DEBUG)
+
+  if len(sys.argv) == 1:
+    p.print_help()
+    return
+
+
+  check_options(p, options)
+
+
+  logging.info('the options are %s' % options)
+  logging.info('the arguments are %s' % arguments)
+
+
+  if options.directory:
+    if os.path.isdir(options.directory):
+      file_list = get_file_list_from_dir(options.directory, options.recurse)
+  elif options.file == '-':
+    file_list = get_file_list_from_pipe()
+  elif options.file and options.file != '-':
+    file_list = get_file_list(options.file)
+  else:
+    file_list = arguments
+
+
+  if options.pattern:
+    file_list = filter_pattern(file_list, options.pattern)
+
+
+  logging.info('entering for loop to rename files without uuid')
+  count = 0
+  for file in file_list:
+    if os.path.isfile(file):
+      file_name = os.path.basename(file)
+      if has_uuid_prefix(file_name):
+        renamed_file = rename_file(file, DO_NOTHING)
+        count += 1
+    else:
+      print 'path/file does not exist: ' + file
+  logging.info('for loop is done')
+    
+
+  print str(count) + ' files renamed.'
+  print 'finished'
+
+
+
+
+
+if __name__ == '__main__':
+  main()
