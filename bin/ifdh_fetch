@@ -95,9 +95,13 @@ do
    then
        echo "found file on bluearc, using bestman gridftp"
        src="$bflocs"
-   else
+   elif [ x$flocs != x ]
+   then
        echo "found file somewhere else"
        src=`echo "$flocs" | head -1`
+   else
+       echo "file not found!"
+       continue
    fi
    eval args="\"$args $sep $src $dest \""
    eval cpfiles="\"$cpfiles $TMPDIR/$f\""
