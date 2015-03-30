@@ -4,10 +4,17 @@ Product=fife_utils
 Flavor=ANY
 QUalifiers=
 
+Action=setup_ifdhc_if_not_setup
+    EnvSetIfNotSet(SETUP_IFDHC,"")
+    If(test -z "$SETUP_IFDHC")
+       SourceRequired(`ups setup ifdhc`, NO_UPS_ENV)
+    Endif()
+
+
 Action=setup
     ProdDir()
     SetupEnv()
-    SetupRequired(ifdhc)
+    ExeActionRequired(setup_ifdhc_if_not_setup)
     SetupRequired(sam_web_client)
     SetupRequired(jobsub_tools)
     PathPrepend(PATH, ${UPS_PROD_DIR}/bin)
