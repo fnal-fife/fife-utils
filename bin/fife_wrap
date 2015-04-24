@@ -1,0 +1,200 @@
+#!/usr/bin/env python
+
+class Wrapper:
+    def __init__(self):
+        self.setupslist = [
+            '/cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups.sh',
+            '/grid/fermiapp/products/common/etc/setups.sh',
+        ]
+    def parse_arguments(self):
+        try:
+            import argparse
+            parser = argparse.ArgumentParser()
+            print "usign argparse"
+        except:
+            import optparse
+            parser = optparse.OptionParser()
+            print "using optparse"
+    
+	# parser.add_option("-h","--help) 
+	parser.add_option("-q","--quals", help="Set qualifiers for ifdh_art setup")
+	parser.add_option("-v","--vers", help="Set version for ifdh_art setup")
+	parser.add_option("-c","--config", help="Specify config file (fcl) for art executable")
+	parser.add_option("-X","--exe", help="Specify executable name for art executable -- default $EXPERIMENT")
+	parser.add_option("-D","--dest", help="Specify destination for copyBackOutput")
+	parser.add_option("-R","--rename", action="append", dest="rename", help="Specify output file rename after Art runs")
+	parser.add_option("--rename2", action="append", dest="rename")
+	parser.add_option("--rename3", action="append", dest="rename")
+	parser.add_option("-g","--getconfig", action="store_true", help="get config files as inputs from SAM (i.e. for MonteCarlo simulation). Conflicts with --config")
+	parser.add_option("--confbase", help="Base fcl file to prepend to fetched ones if running --getconfig")
+	parser.add_option("-M","--multifile", action="store_true", help="Fetch files in wrapper and run executable once per file")
+	parser.add_option("-G","--with_gdb", action="store_true", help="run executable under gdb and print stack trace")
+	parser.add_option("-L","--limit", type="int", help="Set SAM project file delivery limit")
+	parser.add_option("-I","--inputfile", action="append", help="Input file to copy to job area before running the executable")
+	parser.add_option("-T","--inputtar", action="append", help="Input tar file to copy to job area and unpack running the executable")
+	parser.add_option("-O","--addoutput",action="append",  help="glob pattern to match and call addOutputFile on")
+	parser.add_option("--export",action="append",  help="export environment variable before running")
+	parser.add_option("--source",action="append",  help="source setup file before running")
+	parser.add_option("--self-destruct-timer", type="int", help="After this many seconds, suicide the job so we get output back")
+	parser.add_option("--prescript", help="script to run before Art executable")
+	parser.add_option("--postscript", help="script to run after Art executable")
+	parser.add_option("--debug", action="count", help="Turn on debugging")
+	parser.add_option("--ifdh_art", action="store_true", help="executable can run the ifdh_art getNextFile loop ")
+	parser.add_option("--nosetup", action="store_true", help="do not run setup actions (used internally)")
+
+	(self.options, self.args) = parser.parse_args()
+
+    def do_setup(self):
+        #
+        # run export and source stuff in a shell
+        # and slurp the resulting environment back in.
+        #
+        print "options: ", self.options
+
+        if (self.options.nosetup)
+             return
+
+        scriptlist = []
+
+        scriptlist.append("for p in %s ; do if [ -r $p ]; then . $p; break; fi; done" % self.setupslist.join(' ') )
+
+        for e in self.options.export:
+            scriptlist.append("export %s" % e)
+
+        for s in self.options.ource:
+            scriptlist.append("source %s" % s)
+
+        cuthere="--------------cut here-------------"
+        scriptlist.append("""
+echo
+echo "%s"
+cat <<'EOF' | python
+import os
+import re
+for v in os.environ.keys():
+    fix= re.sub( "\'", "\\'", os.environ[v])
+    print "os.environ['"+v+"'] = '" + fix + "'" 
+EOF
+""" % cuthere )
+         p = subprocess.Popen("/bin/sh" , stdin=PIPE, stdout=PIPE)
+         p.stdin.write("\n".join(scriptlist))
+         found = False
+         evallist = []
+         for l in p.stdout.readlines():
+             if found:
+                 evallist.append(l)
+             if l.rstrip() = cuthere:
+                 found = True
+         p.stdin.close()
+         p.stdout.close()
+         exec ''.join(evallist)
+         # just assume the made a different python environment
+         sys.argv.append('--nosetup')
+         os.execvpe( 'python', sys.argv, os.environ)
+
+    def start_client(self):
+        import ifdh
+        import socket
+
+        hostname = socket.getfqdn()
+
+        if os.environ.has_key("CLUSTER"):
+            description = "%s.%s" %(os.environ['CLUSTER'],os.environ('PROCESS'))
+        else:
+            description = "process %d on %s" % (os.getpid(), hostname)
+
+        self.ih = ifdh.ifdh()
+
+        # assume SAM_PROJECT and SAM_STATION are set...
+        self.cpurl = ih.findProject("","")
+
+        self.consumerid = ih.establishProcess( 
+		cpurl, 
+		self.options.cmd,
+		os.environ['ART_VERSION'],
+                hosthame,
+                os.environ.get('GRID_USER',os.environ.get('USER')),
+		"art",  # XXX should be an option, for tracking?
+		description,
+		str(self.options.limit)
+            )
+
+       def file_loop():
+            self.rres = 0
+
+            if self.options.multifile or self.options.getconfig:
+                furi=self.ih.getNextFile(self.cpurl,self.consumerid)
+		while furi:
+                    fname=self.ih.fetchInput(furi)
+                    ih.updateFileStatus(self.cpurl, self.consumerid, fname, 'transferred')
+                    cmdlist = [ self.options.command ]
+                    if self.options.getconfig:
+                        cmdlist.append('-c')
+                        cmdlist.append(fname)
+                        cmdlist.extend(self.arguments)
+                    else:
+                        cmdlist.append('-c')
+                        cmdlist.append(self.options.config)
+                        cmdlist.extend(self.arguments)
+                        cmdlist.append(fname)
+
+		    if self.options.with_gdb:
+			f = open('.gdbcmds')
+			f.write('run\nwhere\nquit\n')
+			cmdlist = ['gdb', '-x', '.gdbcmds', '--args' ] + cmdlist
+
+                    res = os.system(" ".join(cmdlist))
+                    if 0 == res:
+                        i.updateFileStatus(cpurl, consumer_id, fname, 'consumed')
+                    else:
+                        i.updateFileStatus(cpurl, consumer_id, fname, 'skipped')
+                        self.rres = res
+                    furi=self.ih.getNextFile(self.cpurl,self.consumerid)
+
+            elif self.options.ifdh_art:
+                cmdlist = [ self.options.command ]
+                cmdlist.append('-c')
+                cmdlist.append(self.options.config)
+                cmdlist.extend(self.arguments)
+                cmdlist.append("--sam-web-uri=%s" % self.cpurl)
+                cmdlist.append("--sam-process-id=%s" % self.consumerid)
+
+                if self.options.with_gdb:
+                     f = open('.gdbcmds')
+                     f.write('run\nwhere\nquit\n')
+                     cmdlist = ['gdb', '-x', '.gdbcmds', '--args' ] + cmdlist
+
+	        res = os.system(" ".join(cmdlist))
+                self.rres = res
+
+            else:
+                # what to do?
+                pass
+
+        def copy_back():
+
+            if self.options.dest:
+                for g in self.options.addoutput
+                    for f in glob.glob(g):
+                        self.ih.addOutputFile(f)
+ 
+                for r in self.options.renameoutput
+                    self.ih.renameOutput(r)
+ 
+                self.ih.copyBackOutput(self.options.dest)
+  
+        def cleanup():
+            self.ih.setStatus(self.cpurl, self.consumerid, "ok" if 0 == self.rres else "bad")
+	    self.ih.cleanup()
+
+import os
+import sys
+
+if __name__ == '__main__' :
+    w = Wrapper()
+    w.parse_arguments()
+    w.do_setup()
+    w.start_client()
+    w.file_loop()   
+    w.copy_back()
+    w.cleanup()
