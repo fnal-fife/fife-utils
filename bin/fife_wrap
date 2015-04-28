@@ -1,20 +1,59 @@
 #!/usr/bin/env python
 
+import os
+import sys
+import time
+import subprocess
+import signal
+
 class Wrapper:
     def __init__(self):
+        self.experiment = os.environ.get('EXPERIMENT',os.environ.get('SAM_EXPERIMENT',os.environ.get('GROUP','fermilab')))
         self.setupslist = [
-            '/cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups.sh',
-            '/grid/fermiapp/products/common/etc/setups.sh',
+            '/cvmfs/%s.opensciencegrid.org/externals/setups' % self.experiment,
+            '/cvmfs/oasis.opensciencegrid.org/%s/externals/setups' % self.experiment,
+            '/grid/fermiapp/products/%s/externals/setups' % self.experiment,
+            '/cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups',
+            '/grid/fermiapp/products/common/etc/setups',
         ]
+        os.setpgrp()
+        self.ih = None
+        self.consumerid = None
+
+    def start_self_destruct(self):
+        if self.options.self_destruct_timer == 0:
+             return
+        timeout = self.options.self_destruct_timer 
+        watchpid=os.getpid()
+        rate=10
+        sofar = 0
+        start = time.time()
+        res = os.fork()
+        if 0 == res:
+            try:
+               while sofar < timeout:
+                   os.kill(watchpid, 0)
+                   time.sleep(rate)
+                   sofar = time.time() - start
+            except OSError:
+               # should be kill failing as parent exited already
+               exit(0)
+            # we timed out, start shooting things
+            signal.signal(15,signal.SIG_IGN) # ... except us
+            os.killpg(watchpid,15)
+            time.sleep(3)
+            os.killpg(watchpid,9)
+            exit(0)
+        elif res > 0:
+            # we forked a job, make a note
+            self.timeoutproc = res
+        else:
+            print "Unable to fork timeout process, something is probably wrong"
+        return
+
     def parse_arguments(self):
-        try:
-            import argparse
-            parser = argparse.ArgumentParser()
-            print "usign argparse"
-        except:
-            import optparse
-            parser = optparse.OptionParser()
-            print "using optparse"
+        import optparse
+        parser = optparse.OptionParser()
     
 	# parser.add_option("-h","--help) 
 	parser.add_option("-q","--quals", help="Set qualifiers for ifdh_art setup")
@@ -35,7 +74,7 @@ class Wrapper:
 	parser.add_option("-O","--addoutput",action="append",  help="glob pattern to match and call addOutputFile on")
 	parser.add_option("--export",action="append",  help="export environment variable before running")
 	parser.add_option("--source",action="append",  help="source setup file before running")
-	parser.add_option("--self-destruct-timer", type="int", help="After this many seconds, suicide the job so we get output back")
+	parser.add_option("--self_destruct_timer", type="int", help="After this many seconds, suicide the job so we get output back")
 	parser.add_option("--prescript", help="script to run before Art executable")
 	parser.add_option("--postscript", help="script to run after Art executable")
 	parser.add_option("--debug", action="count", help="Turn on debugging")
@@ -43,25 +82,26 @@ class Wrapper:
 	parser.add_option("--nosetup", action="store_true", help="do not run setup actions (used internally)")
 
 	(self.options, self.args) = parser.parse_args()
+        print "Options: ", self.options
+        print "Args: ", self.args
 
     def do_setup(self):
         #
         # run export and source stuff in a shell
         # and slurp the resulting environment back in.
         #
-        print "options: ", self.options
 
-        if (self.options.nosetup)
+        if self.options.nosetup:
              return
 
-        scriptlist = []
+        scriptlist = ['set -x\n']
 
-        scriptlist.append("for p in %s ; do if [ -r $p ]; then . $p; break; fi; done" % self.setupslist.join(' ') )
+        scriptlist.append("for p in %s ; do if [ -r $p ]; then . $p; break; fi; done" % ' '.join(self.setupslist))
 
         for e in self.options.export:
             scriptlist.append("export %s" % e)
 
-        for s in self.options.ource:
+        for s in self.options.source:
             scriptlist.append("source %s" % s)
 
         cuthere="--------------cut here-------------"
@@ -75,22 +115,29 @@ for v in os.environ.keys():
     fix= re.sub( "\'", "\\'", os.environ[v])
     print "os.environ['"+v+"'] = '" + fix + "'" 
 EOF
+exit
 """ % cuthere )
-         p = subprocess.Popen("/bin/sh" , stdin=PIPE, stdout=PIPE)
-         p.stdin.write("\n".join(scriptlist))
-         found = False
-         evallist = []
-         for l in p.stdout.readlines():
+        p = subprocess.Popen("/bin/bash" , stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+        p.stdin.write("\n".join(scriptlist))
+        found = False
+        evallist = []
+        for l in p.stdout.readlines():
+             print "read: " , l
              if found:
+                 print "appending"
                  evallist.append(l)
-             if l.rstrip() = cuthere:
+             if l.rstrip() == cuthere:
+                 print "found cut here"
                  found = True
-         p.stdin.close()
-         p.stdout.close()
-         exec ''.join(evallist)
-         # just assume the made a different python environment
-         sys.argv.append('--nosetup')
-         os.execvpe( 'python', sys.argv, os.environ)
+        p.stdin.close()
+        p.stdout.close()
+        exec ''.join(evallist)
+        # just assume the setup stuff made a different python environment(?)
+        sys.argv = [ 'python' , sys.argv[0] , '--nosetup' ] + sys.argv[1:]
+        print "about to exec, args: ", sys.argv
+        print " -- environ: ", os.environ
+        os.execvpe( 'python', sys.argv, os.environ)
+        raise(Exception("Could not restart under new python"))
 
     def start_client(self):
         import ifdh
@@ -107,94 +154,107 @@ EOF
 
         # assume SAM_PROJECT and SAM_STATION are set...
         self.cpurl = ih.findProject("","")
+        self.consumerid=''
 
-        self.consumerid = ih.establishProcess( 
-		cpurl, 
-		self.options.cmd,
-		os.environ['ART_VERSION'],
-                hosthame,
-                os.environ.get('GRID_USER',os.environ.get('USER')),
-		"art",  # XXX should be an option, for tracking?
-		description,
-		str(self.options.limit)
-            )
+        for i in range(0,10):
+            try:
+                self.consumerid = ih.establishProcess( 
+		   cpurl, 
+		   self.options.cmd,
+		   os.environ['ART_VERSION'],
+                   hosthame,
+                   os.environ.get('GRID_USER',os.environ.get('USER')),
+		   "art",  # XXX should be an option, for tracking?
+		   description,
+		   str(self.options.limit)
+                )
+            except Exception as e:
+                print e
 
-       def file_loop():
-            self.rres = 0
+            if self.consumerid != '':
+                break
 
-            if self.options.multifile or self.options.getconfig:
-                furi=self.ih.getNextFile(self.cpurl,self.consumerid)
-		while furi:
-                    fname=self.ih.fetchInput(furi)
-                    ih.updateFileStatus(self.cpurl, self.consumerid, fname, 'transferred')
-                    cmdlist = [ self.options.command ]
-                    if self.options.getconfig:
-                        cmdlist.append('-c')
-                        cmdlist.append(fname)
-                        cmdlist.extend(self.arguments)
-                    else:
-                        cmdlist.append('-c')
-                        cmdlist.append(self.options.config)
-                        cmdlist.extend(self.arguments)
-                        cmdlist.append(fname)
+    def file_loop():
+        self.rres = 0
 
-		    if self.options.with_gdb:
-			f = open('.gdbcmds')
-			f.write('run\nwhere\nquit\n')
-			cmdlist = ['gdb', '-x', '.gdbcmds', '--args' ] + cmdlist
+        if self.options.multifile or self.options.getconfig:
+            furi=self.ih.getNextFile(self.cpurl,self.consumerid)
+	    while furi:
+                fname=self.ih.fetchInput(furi)
+                ih.updateFileStatus(self.cpurl, self.consumerid, fname, 'transferred')
+	    cmdlist = [ self.options.command ]
+	    if self.options.getconfig:
+		cmdlist.append('-c')
+		cmdlist.append(fname)
+		cmdlist.extend(self.arguments)
+	    else:
+		cmdlist.append('-c')
+		cmdlist.append(self.options.config)
+		cmdlist.extend(self.arguments)
+		cmdlist.append(fname)
 
-                    res = os.system(" ".join(cmdlist))
-                    if 0 == res:
-                        i.updateFileStatus(cpurl, consumer_id, fname, 'consumed')
-                    else:
-                        i.updateFileStatus(cpurl, consumer_id, fname, 'skipped')
-                        self.rres = res
-                    furi=self.ih.getNextFile(self.cpurl,self.consumerid)
+	    if self.options.with_gdb:
+		f = open('.gdbcmds')
+		f.write('run\nwhere\nquit\n')
+		cmdlist = ['gdb', '-x', '.gdbcmds', '--args' ] + cmdlist
 
-            elif self.options.ifdh_art:
-                cmdlist = [ self.options.command ]
-                cmdlist.append('-c')
-                cmdlist.append(self.options.config)
-                cmdlist.extend(self.arguments)
-                cmdlist.append("--sam-web-uri=%s" % self.cpurl)
-                cmdlist.append("--sam-process-id=%s" % self.consumerid)
+	    res = os.system(" ".join(cmdlist))
+	    if 0 == res:
+		i.updateFileStatus(cpurl, consumer_id, fname, 'consumed')
+	    else:
+		i.updateFileStatus(cpurl, consumer_id, fname, 'skipped')
+		self.rres = res
+	    furi=self.ih.getNextFile(self.cpurl,self.consumerid)
 
-                if self.options.with_gdb:
-                     f = open('.gdbcmds')
-                     f.write('run\nwhere\nquit\n')
-                     cmdlist = ['gdb', '-x', '.gdbcmds', '--args' ] + cmdlist
+	elif self.options.ifdh_art:
 
-	        res = os.system(" ".join(cmdlist))
-                self.rres = res
+	    cmdlist = [ self.options.command ]
+	    cmdlist.append('-c')
+	    cmdlist.append(self.options.config)
+	    cmdlist.extend(self.arguments)
+	    cmdlist.append("--sam-web-uri=%s" % self.cpurl)
+	    cmdlist.append("--sam-process-id=%s" % self.consumerid)
 
-            else:
-                # what to do?
-                pass
+	    if self.options.with_gdb:
+		 f = open('.gdbcmds')
+		 f.write('run\nwhere\nquit\n')
+		 cmdlist = ['gdb', '-x', '.gdbcmds', '--args' ] + cmdlist
 
-        def copy_back():
+	    res = os.system(" ".join(cmdlist))
+	    self.rres = res
 
-            if self.options.dest:
-                for g in self.options.addoutput
-                    for f in glob.glob(g):
-                        self.ih.addOutputFile(f)
- 
-                for r in self.options.renameoutput
-                    self.ih.renameOutput(r)
- 
-                self.ih.copyBackOutput(self.options.dest)
+	else:
+	    # what to do?
+	    pass
+
+	    def copy_back():
+
+		if self.options.dest:
+		    for g in self.options.addoutput:
+			for f in glob.glob(g):
+			    self.ih.addOutputFile(f)
+     
+		    for r in self.options.renameoutput:
+			self.ih.renameOutput(r)
+     
+		    self.ih.copyBackOutput(self.options.dest)
   
-        def cleanup():
-            self.ih.setStatus(self.cpurl, self.consumerid, "ok" if 0 == self.rres else "bad")
+    def cleanup(self):
+        if self.ih:
+	    self.ih.setStatus(self.cpurl, self.consumerid, "ok" if 0 == self.rres else "bad")
 	    self.ih.cleanup()
 
-import os
-import sys
+# end Wrapper
 
 if __name__ == '__main__' :
     w = Wrapper()
-    w.parse_arguments()
-    w.do_setup()
-    w.start_client()
-    w.file_loop()   
-    w.copy_back()
+    try:
+	w.parse_arguments()
+	w.do_setup()
+	w.start_self_destruct()
+	w.start_client()
+	res = w.file_loop()   
+	w.copy_back()
+    except:
+        raise
     w.cleanup()
