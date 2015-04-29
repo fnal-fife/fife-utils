@@ -69,7 +69,7 @@ class Wrapper:
 	parser.add_option("--confbase", help="Base fcl file to prepend to fetched ones if running --getconfig")
 	parser.add_option("-M","--multifile", action="store_true", help="Fetch files in wrapper and run executable once per file")
 	parser.add_option("-G","--with_gdb", action="store_true", help="run executable under gdb and print stack trace")
-	parser.add_option("-L","--limit", type="int", help="Set SAM project file delivery limit")
+	parser.add_option("-L","--limit", type="int", help="Set SAM project file delivery limit", default=0)
 	parser.add_option("-I","--inputfile", action="append", help="Input file to copy to job area before running the executable")
 	parser.add_option("-T","--inputtar", action="append", help="Input tar file to copy to job area and unpack running the executable")
 	parser.add_option("-O","--addoutput",action="append",  help="glob pattern to match and call addOutputFile on")
@@ -80,6 +80,10 @@ class Wrapper:
 	parser.add_option("--postscript", help="script to run after Art executable")
 	parser.add_option("--debug", action="count", help="Turn on debugging")
 	parser.add_option("--ifdh_art", action="store_true", help="executable can run the ifdh_art getNextFile loop ")
+         
+        parser.add_option("--appname", help="application name for SAM", default="demo")
+        parser.add_option("--appfamily", help="application family for SAM", default="demo")
+        parser.add_option("--appvers", help="application version for SAM", default=os.environ.get("ART_VERSION","1"))
 	parser.add_option("--nosetup", action="store_true", help="do not run setup actions (used internally)")
 
 	(self.options, self.args) = parser.parse_args()
@@ -140,6 +144,7 @@ exit
         raise(Exception("Could not restart under new python"))
 
     def start_client(self):
+        print "entering start_client"
         import ifdh
         import socket
 
@@ -154,66 +159,80 @@ exit
 
         # assume SAM_PROJECT and SAM_STATION are set...
         self.cpurl = self.ih.findProject(os.environ['SAM_PROJECT'],os.environ.get('SAM_STATION', os.environ.get('EXPERIMENT','')))
-        self.consumerid=''
+        self.consumerid=None
 
-        for i in range(0,10):
+        for i in range(0,1):
             try:
+                print "trying to establish consumer process"
                 self.consumerid = self.ih.establishProcess( 
 		   self.cpurl, 
-		   self.options.exe,
-		   os.environ.get('ART_VERSION','0.0'),
+		   self.options.appname, 
+		   self.options.appvers, 
                    hostname,
                    os.environ.get('GRID_USER',os.environ.get('USER')),
-		   "art",  # XXX should be an option, for tracking?
+		   self.options.appfamily,
 		   description,
-		   str(self.options.limit),
+		   self.options.limit,
+                   ""
                 )
-            except Exception as e:
-                print e
+                print "Got consumerid of: " , self.consumerid
 
-            if self.consumerid != '':
+            except Exception as e:
+                print "Got exception: ", e
+
+            if self.consumerid:
                 break
 
     def file_loop(self):
+        print "Entering file loop:"
         self.rres = 0
 
         if self.options.multifile or self.options.getconfig:
             furi=self.ih.getNextFile(self.cpurl,self.consumerid)
 	    while furi:
                 fname=self.ih.fetchInput(furi)
-                ih.updateFileStatus(self.cpurl, self.consumerid, fname, 'transferred')
-	    cmdlist = [ self.options.exe ]
-	    if self.options.getconfig:
-		cmdlist.append('-c')
-		cmdlist.append(fname)
-		cmdlist.extend(self.arguments)
-	    else:
-		cmdlist.append('-c')
-		cmdlist.append(self.options.config)
-		cmdlist.extend(self.arguments)
-		cmdlist.append(fname)
+                print "Fetching: %s gave: %s" % (furi, fname)
+                self.ih.updateFileStatus(self.cpurl, self.consumerid, fname, 'transferred')
+		cmdlist = [ self.options.exe ]
+		if self.options.getconfig:
+		    cmdlist.append('-c')
+		    cmdlist.append(fname)
+		    cmdlist.extend(self.args)
+		else:
+		    cmdlist.append('-c')
+		    cmdlist.append(self.options.config)
+		    cmdlist.extend(self.args)
+		    cmdlist.append(fname)
 
-	    if self.options.with_gdb:
-		f = open('.gdbcmds')
-		f.write('run\nwhere\nquit\n')
-		cmdlist = ['gdb', '-x', '.gdbcmds', '--args' ] + cmdlist
+		if self.options.with_gdb:
+		    f = open('.gdbcmds')
+		    f.write('run\nwhere\nquit\n')
+		    cmdlist = ['gdb', '-x', '.gdbcmds', '--args' ] + cmdlist
 
-	    res = os.system(" ".join(cmdlist))
-	    if 0 == res:
-		i.updateFileStatus(self.cpurl, consumer_id, fname, 'consumed')
-	    else:
-		i.updateFileStatus(self.cpurl, consumer_id, fname, 'skipped')
-		self.rres = res
-	    furi=self.ih.getNextFile(self.cpurl,self.consumerid)
+                cmd = " ".join(cmdlist)
+                print "Running: ", cmd
+		res = os.system(cmd)
+		if 0 == res:
+                    print "Success, marking consumed"
+		    self.ih.updateFileStatus(self.cpurl, self.consumerid, fname, 'consumed')
+		else:
+                    print "Failed, marking skipped"
+		    self.ih.updateFileStatus(self.cpurl, self.consumerid, fname, 'skipped')
+		    self.rres = res
+		furi=self.ih.getNextFile(self.cpurl,self.consumerid)
 
 	elif self.options.ifdh_art:
+
+            # file loop is actually in the art executable
+	    # so we have to pass options in to it to
+            # invoke the loop
 
 	    cmdlist = [ self.options.exe ]
 	    cmdlist.append('-c')
 	    cmdlist.append(self.options.config)
-	    cmdlist.extend(self.arguments)
 	    cmdlist.append("--sam-web-uri=%s" % self.cpurl)
 	    cmdlist.append("--sam-process-id=%s" % self.consumerid)
+	    cmdlist.extend(self.args)
 
 	    if self.options.with_gdb:
 		 f = open('.gdbcmds')
@@ -227,19 +246,23 @@ exit
 	    # what to do?
 	    pass
 
-	    def copy_back():
+        print "leaving file loop:"
 
-		if self.options.dest:
-		    for g in self.options.addoutput:
-			for f in glob.glob(g):
-			    self.ih.addOutputFile(f)
-     
-		    for r in self.options.renameoutput:
-			self.ih.renameOutput(r)
-     
-		    self.ih.copyBackOutput(self.options.dest)
+    def copy_back(self):
+        print "Entering copy_back:"
+
+	if self.options.dest:
+	    for g in self.options.addoutput:
+		for f in glob.glob(g):
+		    self.ih.addOutputFile(f)
+
+	    for r in self.options.renameoutput:
+		self.ih.renameOutput(r)
+
+	    self.ih.copyBackOutput(self.options.dest)
   
     def cleanup(self):
+        print "Entering cleanup:"
         if self.ih:
 	    self.ih.setStatus(self.cpurl, self.consumerid, "ok" if 0 == self.rres else "bad")
 	    self.ih.cleanup()
@@ -254,8 +277,9 @@ if __name__ == '__main__' :
 	w.do_setup()
 	w.start_self_destruct()
 	w.start_client()
-	res = w.file_loop()   
+	w.file_loop()   
 	w.copy_back()
     except:
         raise
     w.cleanup()
+    exit(w.rres)
