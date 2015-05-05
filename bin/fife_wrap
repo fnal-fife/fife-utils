@@ -88,6 +88,7 @@ class Wrapper:
         parser.add_option("--appname", help="application name for SAM", default="demo")
         parser.add_option("--appfamily", help="application family for SAM", default="demo")
         parser.add_option("--appvers", help="application version for SAM", default=os.environ.get("ART_VERSION","1"))
+        parser.add_option("--userscript", action="append", help="extra user script to run after main executable" )
 	parser.add_option("--nosetup", action="store_true", help="do not run setup actions (used internally)")
 
 	(self.options, self.args) = parser.parse_args()
@@ -276,6 +277,10 @@ exit
             else;
                 os.system("tar xvf %s" % it)
 
+    def userscripts(self):
+        for s in self.options.userscripts:
+            os.system(s)
+
     def copy_back(self):
         print "Entering copy_back:"
 
@@ -317,6 +322,7 @@ if __name__ == '__main__' :
         w.fetch_inputs()
 	w.start_client()
 	w.file_loop()   
+        w.userscripts()
 	w.copy_back()
     except:
         raise
