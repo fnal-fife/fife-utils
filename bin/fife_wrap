@@ -5,10 +5,11 @@ import sys
 import time
 import subprocess
 import signal
+import group
 
 class Wrapper:
     def __init__(self):
-        self.experiment = os.environ.get('EXPERIMENT',os.environ.get('SAM_EXPERIMENT',os.environ.get('GROUP','fermilab')))
+        self.experiment = os.environ.get('EXPERIMENT',os.environ.get('SAM_EXPERIMENT',os.environ.get('GROUP',grp.getgrgid(os.getgid())[0])))
         self.setupslist = [
             '/cvmfs/%s.opensciencegrid.org/externals/setups' % self.experiment,
             '/cvmfs/oasis.opensciencegrid.org/%s/externals/setups' % self.experiment,
@@ -19,6 +20,7 @@ class Wrapper:
         os.setpgrp()
         self.ih = None
         self.consumerid = None
+        self.timeoutproc = None
 
     def start_self_destruct(self):
         if self.options.self_destruct_timer == None:
@@ -42,7 +44,7 @@ class Wrapper:
             # we timed out, start shooting things
             signal.signal(15,signal.SIG_IGN) # ... except us
             os.killpg(watchpid,15)
-            time.sleep(3)
+            time.sleep(10)
             os.killpg(watchpid,9)
             exit(0)
         elif res > 0:
@@ -72,6 +74,8 @@ class Wrapper:
 	parser.add_option("-L","--limit", type="int", help="Set SAM project file delivery limit", default=0)
 	parser.add_option("-I","--inputfile", action="append", help="Input file to copy to job area before running the executable")
 	parser.add_option("-T","--inputtar", action="append", help="Input tar file to copy to job area and unpack running the executable")
+	parser.add_option("-I","--inputlist", action="append", help="ifdh cp -f file to run to fetch inputs")
+	parser.add_option("--outputlist", action="append", help="ifdh cp -f file to run to copy out outputs")
 	parser.add_option("-O","--addoutput",action="append",  help="glob pattern to match and call addOutputFile on")
 	parser.add_option("--export",action="append",  help="export environment variable before running")
 	parser.add_option("--source",action="append",  help="source setup file before running")
@@ -248,6 +252,30 @@ exit
 
         print "leaving file loop:"
 
+    def fetch_inputs(self):
+        # first copy any tarfiles,inputlists, and outputlists here
+        cplist = ['-D']
+        for it in self.options.inputtar + self.options.inputlist + self.options.outputlist:
+            cplist.append(it)
+        cplist.append('.')
+        if len(cplist) > 2:
+           self.ih.cp(cplist)
+
+        # then do the copies in any of the input lists
+        cplist = []
+        for it in self.options.inputlist:
+            cplist.append('-f')
+            cplist.append(it)
+        if len(cplist) > 1:
+           self.ih.cp(cplist)
+
+        # and unpack any tarfiles
+        for it in self.options.inputtar:
+            if it.find('gz') > 0:
+                os.system("tar xzvf %s" % it)
+            else;
+                os.system("tar xvf %s" % it)
+
     def copy_back(self):
         print "Entering copy_back:"
 
@@ -260,12 +288,22 @@ exit
 		self.ih.renameOutput(r)
 
 	    self.ih.copyBackOutput(self.options.dest)
+
+        # handle any ouput file lists
+        cplist = []
+        for it in self.options.outputlist:
+            cplist.append('-f')
+            cplist.append(it)
+        if len(cplist) > 1:
+           self.ih.cp(cplist)
   
     def cleanup(self):
         print "Entering cleanup:"
         if self.ih:
 	    self.ih.setStatus(self.cpurl, self.consumerid, "ok" if 0 == self.rres else "bad")
 	    self.ih.cleanup()
+        if self.timeoutproc:
+            os.kill(self.timeoutproc)
 
 # end Wrapper
 
@@ -276,6 +314,7 @@ if __name__ == '__main__' :
 	w.parse_arguments()
 	w.do_setup()
 	w.start_self_destruct()
+        w.fetch_inputs()
 	w.start_client()
 	w.file_loop()   
 	w.copy_back()

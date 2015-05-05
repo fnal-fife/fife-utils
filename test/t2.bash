@@ -42,6 +42,10 @@ test_fife_wrap_art() {
     [ $count1 = 1 -a $count2 = 1 ]
 }
 
-#test_fife_wrap_getconfig
-#test_fife_wrap_multifile
-test_fife_wrap_art
+
+testsuite test_wrap \
+   test_fife_wrap_getconfig \
+   test_fife_wrap_multifile \
+   test_fife_wrap_art
+
+test_wrap "$@"
