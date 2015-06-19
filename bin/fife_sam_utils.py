@@ -66,7 +66,7 @@ class dataset:
         return self._loc_iterator(locmap)
 
 def samprefix(dir):
-    if (dir.startswith('/pnfs/uboonescratch')):
+    if (dir.startswith('/pnfs/uboone/scratch')):
        return 'fnal-dcache:'
 
     elif (dir.startswith('/pnfs/%s/scratch' % os.environ.get('EXPERIMENT'))):
@@ -122,7 +122,7 @@ if __name__ == '__main__':
     print "-------------"
     for l in d1.fullpath_iterator():
         print "loc:" ,  l
-    for exp in [ 'uboone', 'nova', 'minerva' ]:
+    for exp in [ 'uboone', 'nova', 'minerva', 'hypto' ]:
         os.environ['EXPERIMENT'] = exp
         for d  in [ '/pnfs/%s/raw/' % exp, '/pnfs/%s/scratch' % exp , '/%s/data/' % exp ]:
            print d , "->", samprefix(d)
