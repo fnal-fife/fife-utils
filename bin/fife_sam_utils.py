@@ -66,12 +66,20 @@ class dataset:
         return self._loc_iterator(locmap)
 
 def samprefix(dir):
-    if (dir.startswith('/pnfs')) :
-       # XXX need to deal with /scratch/ separately here?
+    if (dir.startswith('/pnfs/uboonescratch')):
+       return 'fnal-dcache:'
+
+    elif (dir.startswith('/pnfs/%s/scratch' % os.environ.get('EXPERIMENT'))):
+       return 'dcache:'
+
+    elif (dir.startswith('/pnfs')) :
        return 'enstore:'
 
     elif (dir.startswith('/grid/') or dir.startswith('/%s/'%os.environ.get('EXPERIMENT',None))):
-       return os.environ.get('EXPERIMENT') + 'data:'
+       if (os.environ.get('EXPERIMENT') in ['minerva',]):
+           return os.environ.get('EXPERIMENT') + '_bluearc:'
+       else:
+           return os.environ.get('EXPERIMENT') + 'data:'
 
     else:
        return socket.gethostname()
@@ -82,6 +90,7 @@ def basename(path):
 def dirname(dir):
     l = dir.rfind('/', 0,len(dir)-2 )
     return dir[0:l]
+
 '''commenting this out for now because i think it may be causing andrew problems
 def is_cert_valid():
     try:
@@ -101,6 +110,7 @@ def is_cert_valid():
     except Exception, e:
         print e
 '''
+
 def has_uuid_prefix(s):
     return bool(re.match(r'[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}',s))
 
@@ -112,3 +122,7 @@ if __name__ == '__main__':
     print "-------------"
     for l in d1.fullpath_iterator():
         print "loc:" ,  l
+    for exp in [ 'uboone', 'nova', 'minerva' ]:
+        os.environ['EXPERIMENT'] = exp
+        for d  in [ '/pnfs/%s/raw/' % exp, '/pnfs/%s/scratch' % exp , '/%s/data/' % exp ]:
+           print d , "->", samprefix(d)

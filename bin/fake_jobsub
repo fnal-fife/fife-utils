@@ -46,15 +46,6 @@ clean_arguments() {
 }
 
 
-#
-# currently a no-op, but in client-server jobsub we'll need this
-#
-fetch_cmd_file() {
-   :
-}
-fetch_dag_file() {
-   :
-}
 
 #
 # extract fields from a .cmd file...
@@ -99,7 +90,7 @@ fake_dagman_slot() {
 #
 fake_dagman() {
     dagfile=$1
-    fetch_dag_file $dagfile
+
     for i in `grep -i '^Parent' $dagfile`
     do
          case "$i" in
@@ -123,9 +114,13 @@ fake_dagman() {
 #
 fake_condor_submit() {
     cmdfile=$1
-    fetch_cmd_file $cmdfile
 
     extract_field executable arguments output error log environment
+
+    if [ -r `basename $executable` ]
+    then
+        executable=`basenaem $executable`
+    fi
 
     # escape arguements so they don't get eval-ed wrong...
     # this was tedious to get to work
@@ -140,7 +135,7 @@ fake_condor_submit() {
        jobdir=$workdir/$cluster.$i/ 
        mkdir -p $jobdir
 
-       fakegli=" HOME=$workdir/home X509_USER_PROXY='$proxy' TMPDIR='$jobdir' _CONDOR_SCRATCH_DIR='$jobdir' CONDOR_EXEC='$CONDOR_EXEC' OSG_SQUID_LOCATION='squid.fnal.gov:3128' X509_USER_CERT='$usercert' "
+       fakegli=" HOME=$workdir/home X509_USER_PROXY='$proxy' TMPDIR='$jobdir' _CONDOR_SCRATCH_DIR='$jobdir' CONDOR_EXEC='$CONDOR_EXEC' OSG_SQUID_LOCATION='squid.fnal.gov:3128' X509_USER_CERT='$proxy' "
        
        use_environment=`echo "$environment" | sed -e "s/\\\$(Cluster)/$cluster/g" -e "s/\\\$(Process)/$i/g" -e "s/=/='/g" -e s"/;/'  /g" -e "s/$/'/"`
        use_output=`echo "$output" | sed -e "s/\\\$(Cluster)/$cluster/" -e "s/\\\$(Process)/$i/"`
@@ -170,29 +165,33 @@ do_work() {
     
     trap "rm -rf $workdir" EXIT RETURN INT QUIT
 
-    if jobsub --OS=nosuch "$@"  > $workdir/jobsub.out 2>&1
+    if jobsub_submit --OS=nosuch "$@"  > $workdir/jobsub.out 2>&1
     then
         :
     else
         cat jobsub.out
         exit 1
     fi
-
+    jobid=`grep "Use.job.id" $workdir/jobsub.out | sed -e 's/.*id //' -e 's/ .*//'`
     cmdfile=`grep '\.cmd$' $workdir/jobsub.out `
+    cmdfile=`basename $cmdfile`
     dagfile=`grep '\.dag$' $workdir/jobsub.out`
-    cluster=`grep submitted $workdir/jobsub.out | sed -e 's/.*cluster //' -e s'/\.$//'`
-    n_procs=`grep submitted $workdir/jobsub.out | sed -e 's/ .*//'`
+    dagfile=`basename $dagfile`
+    n_procs=`grep submitted.to.cluster $workdir/jobsub.out | sed -e 's/ .*//'`
+
+    cd $workdir 
+    jobsub_fetchlog --jobid=$jobid
+    tar zxvf $jobid.tgz
 
     # if they didn't specify a proxy file, grab the
     # default one from gpsn01
     if [ -z "$proxy" ]
     then
-	proxy=$workdir/proxy
-	scp gpsn01:/scratch/$USER/grid/$USER.$GROUP.proxy $proxy
-	chmod 600 $proxy
+        echo "cannot fetch proxy from fifebatch, please use '--x proxy_file'"
+        exit 1
     fi
 
-    condor_rm $cluster
+    jobsub_rm --jobid=$jobid
 
     : using_dag $using_dag
 

@@ -326,5 +326,6 @@ if __name__ == '__main__' :
 	w.copy_back()
     except:
         raise
-    w.cleanup()
+    finally:
+        w.cleanup()
     exit(w.rres)

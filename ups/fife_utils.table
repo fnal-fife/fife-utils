@@ -24,6 +24,6 @@ Action=setup
     SetupEnv()
     ExeActionRequired(setup_ifdhc_if_not_setup)
     ExeActionRequired(setup_sam_web_client_if_not_setup)
-    SetupOptional(jobsub_tools)
+    SetupOptional(jobsub_client)
     PathPrepend(PATH, ${UPS_PROD_DIR}/bin)
     PathPrepend(PYTHONPATH, ${UPS_PROD_DIR}/bin)
