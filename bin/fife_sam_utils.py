@@ -122,7 +122,7 @@ if __name__ == '__main__':
     print "-------------"
     for l in d1.fullpath_iterator():
         print "loc:" ,  l
-    for exp in [ 'uboone', 'nova', 'minerva', 'hypto' ]:
+    for exp in [ 'uboone', 'nova', 'minerva', 'hypot' ]:
         os.environ['EXPERIMENT'] = exp
         for d  in [ '/pnfs/%s/raw/' % exp, '/pnfs/%s/scratch' % exp , '/%s/data/' % exp ]:
            print d , "->", samprefix(d)
