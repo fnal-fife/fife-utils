@@ -12,16 +12,21 @@ export using_dag=false
 
 scan_arguments() {
    next_is_proxy=false
+   next_is_group=false
    for i in "$@"
    do
-       if $next_is_proxy
+       if $next_is_group
        then
-           proxy="$i"
-           next_is_proxy=false
+           group="$i"
+           next_is_group=false
        fi
        case "x$i" in
-       x--dataset_definition*) using_dag=true;;
-       x--x)   next_is_proxy=true ;; 
+       x--dataset_definition) using_dag=true;;
+       x--dataset_definition=*) using_dag=true;;
+       x--group)   next_is_group=true ;; 
+       x--group=*)   group=`echo $i | sed -e 's/.*=//'`;;
+       x-*) ;;
+       xfile://*) basecmd=`basename $i`;;
        esac
    done
 }
@@ -117,11 +122,6 @@ fake_condor_submit() {
 
     extract_field executable arguments output error log environment
 
-    if [ -r `basename $executable` ]
-    then
-        executable=`basenaem $executable`
-    fi
-
     # escape arguements so they don't get eval-ed wrong...
     # this was tedious to get to work
     : before arguments $arguments
@@ -134,6 +134,8 @@ fake_condor_submit() {
        i=$((i + 1))
        jobdir=$workdir/$cluster.$i/ 
        mkdir -p $jobdir
+
+       cp $workdir/$basecmd $jobdir/$basecmd
 
        fakegli=" HOME=$workdir/home X509_USER_PROXY='$proxy' TMPDIR='$jobdir' _CONDOR_SCRATCH_DIR='$jobdir' CONDOR_EXEC='$CONDOR_EXEC' OSG_SQUID_LOCATION='squid.fnal.gov:3128' X509_USER_CERT='$proxy' "
        
@@ -151,6 +153,10 @@ fake_condor_submit() {
     done
 }
 
+fix_working_dir() {
+    perl -pi.bak -e "s;/fife/local/scratch/.*/;$workdir/;" "$@"
+}
+
 # 
 #
 #
@@ -163,9 +169,11 @@ do_work() {
 
     mkdir -p $workdir/home
     
-    trap "rm -rf $workdir" EXIT RETURN INT QUIT
+    # trap "rm -rf $workdir" EXIT RETURN INT QUIT
 
-    if jobsub_submit --OS=nosuch "$@"  > $workdir/jobsub.out 2>&1
+    cd $workdir 
+
+    if jobsub_submit --OS=nosuch "$@"  > jobsub.out 2>&1
     then
         :
     else
@@ -179,19 +187,12 @@ do_work() {
     dagfile=`basename $dagfile`
     n_procs=`grep submitted.to.cluster $workdir/jobsub.out | sed -e 's/ .*//'`
 
-    cd $workdir 
-    jobsub_fetchlog --jobid=$jobid
+    jobsub_fetchlog --group=$group --jobid=$jobid
     tar zxvf $jobid.tgz
 
-    # if they didn't specify a proxy file, grab the
-    # default one from gpsn01
-    if [ -z "$proxy" ]
-    then
-        echo "cannot fetch proxy from fifebatch, please use '--x proxy_file'"
-        exit 1
-    fi
+    fix_working_dir *.cmd *.dag
 
-    jobsub_rm --jobid=$jobid
+    jobsub_rm --group=$group --jobid=$jobid
 
     : using_dag $using_dag
 
@@ -226,8 +227,9 @@ fi
 # done_startup file before we exit, so we don't get output
 # spewing after we exit.
 # 
-export workdir=${TMPDIR:-/tmp}/fake_jobsub_work$$
+export workdir=${TMPDIR:-/tmp}/fake_jobsub_work$$_`date +%s`
 mkdir $workdir
+cluster="${$}`date +%s`"
 
 do_work "$@" &
 
