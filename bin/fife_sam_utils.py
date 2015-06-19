@@ -66,6 +66,20 @@ class dataset:
         return self._loc_iterator(locmap)
 
 def samprefix(dir):
+    
+    #
+    # try data disks
+    #
+    try:
+	l = subprocess.Popen(['samweb', '-e', os.environ['EXPERIMENT'], 'list-data-disks' ], stdout=subprocess.PIPE).stdout.readlines()
+	for pp in l:
+	   prefix, rest = pp.split(":",1)
+	   if dir.startswith(pp):
+		return "%s:" % prefix
+    except:
+        print "exception in samweb list-data-disks..."
+        pass
+
     if (dir.startswith('/pnfs/uboone/scratch')):
        return 'fnal-dcache:'
 
