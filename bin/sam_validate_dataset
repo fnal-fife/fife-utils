@@ -39,8 +39,8 @@ if __name__ == '__main__':
     
     parser = optparse.OptionParser(usage="usage: %prog [options] dataset [dataset ...] \n make sure files in dataset actually exist")
     parser.add_option('-v','--verbose',   action='count')
-    parser.add_option('-j','--just_say',  action='store_false', help="do not actually copy, just say what you would do")
-    parser.add_option('-p','--prune',  action='store_false', help="prune locations we cannot reach")
+    parser.add_option('-j','--just_say',  action='store_true', help="do not actually copy, just say what you would do")
+    parser.add_option('-p','--prune',  action='store_true', help="prune locations we cannot reach")
     parser.add_option('-e','--experiment')
     parser.add_option('-n', '--name',     help="dataset name to copy", )
 

@@ -22,9 +22,9 @@ if __name__ == '__main__':
 
     parser = optparse.OptionParser(usage="usage: %prog [options] \n pin in dataset in dcache for 30 days")
     parser.add_option('-v','--verbose',   action='count')
-    parser.add_option('-j','--just_say',  action='store_false', help="do not actually copy, just say what you would do")
+    parser.add_option('-j','--just_say',  action='store_true', help="do not actually pin, just say what you would do")
     parser.add_option('-e','--experiment')
-    parser.add_option('-n', '--name',     help="dataset name to copy", )
+    parser.add_option('-n', '--name',     help="dataset name to pin", )
 
     (o,a) = parser.parse_args()
 

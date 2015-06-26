@@ -33,7 +33,7 @@ if __name__ == '__main__':
     
     parser = optparse.OptionParser(usage="usage: %prog [options] dataset dest_url \n remove copies of files in dataset under destination")
     parser.add_option('-v','--verbose',   action='count')
-    parser.add_option('-j','--just_say',  action='store_false', help="do not actually copy, just say what you would do")
+    parser.add_option('-j','--just_say',  action='store_true', help="do not actually copy, just say what you would do")
     parser.add_option('-e','--experiment')
     parser.add_option('-n', '--name',     help="dataset name to clean", )
     parser.add_option('-d', '--dest',     help="destination pattern to match", )
