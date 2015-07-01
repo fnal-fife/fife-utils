@@ -62,7 +62,12 @@ class dataset:
             return res + '/' + self.curfile
 
     def fullpath_iterator(self):
-        locmap = dict(self.ifdh_handle.locateFiles(self.get_flist()))
+        flist = self.get_flist()
+        locmap = {}
+        while len(flist) > 0:
+            first_k = flist[:500]
+            flist = flist[500:]
+            locmap.update(self.ifdh_handle.locateFiles(first_k))
         return self._loc_iterator(locmap)
 
 def samprefix(dir):
@@ -71,7 +76,9 @@ def samprefix(dir):
     # try data disks
     #
     try:
-	l = subprocess.Popen(['samweb', '-e', os.environ['EXPERIMENT'], 'list-data-disks' ], stdout=subprocess.PIPE).stdout.readlines()
+        nowhere=open("/dev/null","w")
+	l = subprocess.Popen(['samweb', '-e', os.environ['EXPERIMENT'], 'list-data-disks' ], stdout=subprocess.PIPE, stderr=nowhere).stdout.readlines()
+        nowhere.close()
 	for pp in l:
 	   prefix, rest = pp.split(":",1)
 	   if dir.startswith(pp):
@@ -130,12 +137,18 @@ def has_uuid_prefix(s):
 
 if __name__ == '__main__':
     os.environ['EXPERIMENT'] = 'nova'
-    d1 = dataset('mwm_test_6')
+    #d1 = dataset('mwm_test_6')
+    d1 = dataset('rock_onlyMC_FA141003xa_raw3')
+    count1=0
     for f in d1.file_iterator():
         print "file: ", f
+        count1=count1+1
+    count2=0
     print "-------------"
     for l in d1.fullpath_iterator():
         print "loc:" ,  l
+        count2 = count2+1
+    print "count1 " , count1 , " count2 " , count2
     for exp in [ 'uboone', 'nova', 'minerva', 'hypot' ]:
         os.environ['EXPERIMENT'] = exp
         for d  in [ '/pnfs/%s/raw/' % exp, '/pnfs/%s/scratch' % exp , '/%s/data/' % exp ]:
