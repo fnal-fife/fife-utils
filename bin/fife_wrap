@@ -5,7 +5,7 @@ import sys
 import time
 import subprocess
 import signal
-import group
+import grp
 
 class Wrapper:
     def __init__(self):
@@ -74,7 +74,7 @@ class Wrapper:
 	parser.add_option("-L","--limit", type="int", help="Set SAM project file delivery limit", default=0)
 	parser.add_option("-I","--inputfile", action="append", help="Input file to copy to job area before running the executable")
 	parser.add_option("-T","--inputtar", action="append", help="Input tar file to copy to job area and unpack running the executable")
-	parser.add_option("-I","--inputlist", action="append", help="ifdh cp -f file to run to fetch inputs")
+	parser.add_option("--inputlist", action="append", help="ifdh cp -f file to run to fetch inputs")
 	parser.add_option("--outputlist", action="append", help="ifdh cp -f file to run to copy out outputs")
 	parser.add_option("-O","--addoutput",action="append",  help="glob pattern to match and call addOutputFile on")
 	parser.add_option("--export",action="append",  help="export environment variable before running")
@@ -122,6 +122,8 @@ cat <<'EOF' | python
 import os
 import re
 for v in os.environ.keys():
+    if v.find('()') > 0:
+        continue
     fix= re.sub( "\'", "\\'", os.environ[v])
     print "os.environ['"+v+"'] = '" + fix + "'" 
 EOF
@@ -195,6 +197,10 @@ exit
         if self.options.multifile or self.options.getconfig:
             furi=self.ih.getNextFile(self.cpurl,self.consumerid)
 	    while furi:
+                # do not unneccesarily go through bestman...
+                if furi.startswith("gsiftp://fg-bestman1.fnal.gov:2811"):
+                    uri = "file://" + furi[34:]
+                    print "de-bestman-ified path: ", furi
                 fname=self.ih.fetchInput(furi)
                 print "Fetching: %s gave: %s" % (furi, fname)
                 self.ih.updateFileStatus(self.cpurl, self.consumerid, fname, 'transferred')
@@ -256,6 +262,12 @@ exit
     def fetch_inputs(self):
         # first copy any tarfiles,inputlists, and outputlists here
         cplist = ['-D']
+        if self.options.inputtar == None:
+            self.options.inputtar = []
+        if self.options.inputlist == None:
+            self.options.inputlist= []
+        if self.options.outputlist == None:
+            self.options.outputlist= []
         for it in self.options.inputtar + self.options.inputlist + self.options.outputlist:
             cplist.append(it)
         cplist.append('.')
@@ -274,11 +286,13 @@ exit
         for it in self.options.inputtar:
             if it.find('gz') > 0:
                 os.system("tar xzvf %s" % it)
-            else;
+            else:
                 os.system("tar xvf %s" % it)
 
     def userscripts(self):
-        for s in self.options.userscripts:
+        if not self.options.userscript:
+            return
+        for s in self.options.userscript:
             os.system(s)
 
     def copy_back(self):
