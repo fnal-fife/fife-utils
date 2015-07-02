@@ -115,11 +115,28 @@ def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 20, verbose 
     if experiment:
         samweb.experiment = experiment
 
-    for f in d.file_iterator():
+    res = samweb.listApplications({"name":"sam_clone_dataset"})
+    if not res:
+        samweb.addApplication("fife_utils","sam_clone_dataset","1")
+       
+
+    user = os.envrion.get("USER","unknown")
+    projname = time.strftime("sam_clone_%%s_%Y%m%d%H_%%d")%(user,os.getpid())
+    hostname = socket.gethostname()
+    purl = d.ifdh_handle.startProject(projname,"minerva", "mwm_test_2", "mengel", "minerva")
+    consumer_id = d.ifdh_handle.establishProcess( purl, "sam_clone_dataset", "1", hostname, user)
+
+    furi = d.ifdh_handle.getNextFile(purl, consumer_id)
+
+    while furi:
+
+        f = basename(furi)
 
         loclist = samweb.getFileAccessUrls(f, schema = "gsiftp")
 
         if already_there(f, loclist, dest):
+            d.ifdh_handle.updateFileStatus(purl, consumer_id,fname, 'transferred')
+            d.ifdh_handle.updateFileStatus(purl, consumer_id,fname, 'consumed')
             continue
                 
         if len(loclist) > 0:
@@ -139,8 +156,14 @@ def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 20, verbose 
             cpargs = []
             locargs = []
 
+        d.ifdh_handle.updateFileStatus(purl, consumer_id,fname, 'transferred')
+        d.ifdh_handle.updateFileStatus(purl, consumer_id,fname, 'consumed')
+        furi = d.ifdh_handle.getNextFile(purl, consumer_id)
+
     copy_and_declare(d, cpargs, locargs, dest, subdirf, samweb, just_say, verbose)
 
+    d.ifdh_handle.setStatus( purl, consumer_id, "completed")
+    d.ifdh_handle.endProject(purl)
 
 if __name__ == '__main__':
 
