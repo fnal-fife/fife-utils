@@ -4,18 +4,28 @@ Product=fife_utils
 Flavor=ANY
 QUalifiers=
 
+Action=unsetup_ifdhc_if_not_setup
+   Execute(": unsetup_ifdhc_if_not_setup", NO_UPS_ENV)
+   
 Action=setup_ifdhc_if_not_setup
     EnvSetIfNotSet(SETUP_IFDHC,"")
     If(test -z "$SETUP_IFDHC")
        EnvUnset(SETUP_IFDHC)
-       SourceRequired(`ups setup ifdhc`, NO_UPS_ENV)
+       EnvSet(x,`ups setup ifdhc`)
+       SourceRequired($x, NO_UPS_ENV)
+       EnvUnset(x)
     EndIf(test -z "$SETUP_IFDHC")
+
+Action=unsetup_sam_web_client_if_not_setup
+   Execute(": unsetup_sam_web_client_if_not_setup", NO_UPS_ENV)
 
 Action=setup_sam_web_client_if_not_setup
     EnvSetIfNotSet(SETUP_SAM_WEB_CLIENT,"")
     If(test -z "$SETUP_SAM_WEB_CLIENT")
        EnvUnset(SETUP_SAM_WEB_CLIENT)
-       SourceRequired(`ups setup sam_web_client -z ${UPS_THIS_DB}`, NO_UPS_ENV)
+       EnvSet(x,`ups setup sam_web_client -z ${UPS_THIS_DB}`)
+       SourceRequired($x, NO_UPS_ENV)
+       EnvUnset(x)
     EndIf(test -z "$SETUP_SAM_WEB_CLIENT")
 
 
