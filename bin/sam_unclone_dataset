@@ -52,5 +52,7 @@ if __name__ == '__main__':
         parser.error("expected --dest pattern")
         exit(1)
 
+    o.dest = canonical(o.dest)
+
     unclone(dataset(o.name), just_say = o.just_say, delete_match = o.dest, verbose = o.verbose)
 

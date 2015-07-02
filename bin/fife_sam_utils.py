@@ -70,8 +70,19 @@ class dataset:
             locmap.update(self.ifdh_handle.locateFiles(first_k))
         return self._loc_iterator(locmap)
 
+def sampath(dir):
+    if dir.find("://") > 0:
+        # it is a URL, so convert it to a hostname/path
+        path = re.sub("[a-z]+://([-a-z0-9_.]*)(/.*\?SFN=)?(/.*)","\\3", dir)
+        return path
+    return dir[dir.find(":")+1:]
+    
 def samprefix(dir):
     
+    if dir.find("://") > 0:
+        # it is a URL, so convert it to a hostname/path
+        prefix = re.sub("[a-z]+://([-a-z0-9_.]*)(/.*\?SFN=)?(/.*)","\\1:", dir)
+        return prefix
     #
     # try data disks
     #
@@ -112,25 +123,22 @@ def dirname(dir):
     l = dir.rfind('/', 0,len(dir)-2 )
     return dir[0:l]
 
-'''commenting this out for now because i think it may be causing andrew problems
-def is_cert_valid():
-    try:
-        a = subprocess.Popen(["klist"], stdout=subprocess.PIPE).stdout.read()
-        b = a.split("\n")
+def canonical(uri):
+    # get rid of doulbed slashes past the protocol:// part
+    # and /dir/./path
 
-        expiry_date_list = b[4].split(" ")[3:5]
-        expiry_date_string = ' '.join(expiry_date_list)
-      
-        expiry_datetime = datetime.datetime.strptime(expiry_date_string, "%m/%d/%y %H:%M:%S")
-        now = datetime.datetime.now()
-    
-        if expiry_datetime > now:
-            return True
-        else:
-            return False
-    except Exception, e:
-        print e
-'''
+    pos = uri.rfind('//')
+    while pos > 7:
+        uri = uri[:pos] + uri[(pos+1):]
+        pos = uri.rfind('//')
+
+    pos = uri.rfind('/./')
+    while pos > 0:
+        uri = uri[:pos] + uri[(pos+2):]
+        pos = uri.rfind('/./')
+
+    return uri      
+
 
 def has_uuid_prefix(s):
     return bool(re.match(r'[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}',s))
@@ -151,5 +159,5 @@ if __name__ == '__main__':
     print "count1 " , count1 , " count2 " , count2
     for exp in [ 'uboone', 'nova', 'minerva', 'hypot' ]:
         os.environ['EXPERIMENT'] = exp
-        for d  in [ '/pnfs/%s/raw/' % exp, '/pnfs/%s/scratch' % exp , '/%s/data/' % exp ]:
+        for d  in [ '/pnfs/%s/raw/' % exp, '/pnfs/%s/scratch' % exp , '/%s/data/' % exp, 'srm://smuosge.smu.edu/foo/bar?SFN=/data/%s/file' % exp, 'gsiftp://random.host/stuff/%s/file' % exp ]:
            print d , "->", samprefix(d)

@@ -20,10 +20,10 @@ def check_destination(samweb,dest):
     # /pnfs is officially okay
     if dest.find('/pnfs/') == 0:
         return 1
+    samdest = samprefix(dest) + sampath(dest)
     # or any known data disk..
     for d in samweb.listDataDisks():
-        p = re.sub('^\w+:','', d["mount_point"])
-        if dest.find(p) == 0:
+        if samdest.find(d) == 0:
             return 1
     # otherwise, nope.
     return 0
@@ -169,5 +169,7 @@ if __name__ == '__main__':
     if not o.dest:
         parser.error("expected --dest url")
         exit(1)
+
+    o.dest = canonical(o.dest)
 
     clone(dataset(o.name), o.dest, subdirf = o.dirfunc, just_say = o.just_say, batch_size = o.batch_size, verbose = o.verbose, experiment=o.experiment)

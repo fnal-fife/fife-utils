@@ -439,6 +439,8 @@ def main():
   
   options, arguments = p.parse_args()
 
+  if options.directory:
+    optinons.directory = canonical(options.directory)
   
   if options.verbose:
     logging.basicConfig(level=logging.DEBUG)
