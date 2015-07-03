@@ -158,8 +158,8 @@ def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 20, verbose 
             cpargs = []
             locargs = []
 
-        d.ifdh_handle.updateFileStatus(purl, consumer_id,fname, 'transferred')
-        d.ifdh_handle.updateFileStatus(purl, consumer_id,fname, 'consumed')
+        d.ifdh_handle.updateFileStatus(purl, consumer_id,f, 'transferred')
+        d.ifdh_handle.updateFileStatus(purl, consumer_id,f, 'consumed')
         furi = d.ifdh_handle.getNextFile(purl, consumer_id)
 
     copy_and_declare(d, cpargs, locargs, dest, subdirf, samweb, just_say, verbose)
