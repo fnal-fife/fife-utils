@@ -22,8 +22,9 @@ setup_tests() {
    kx509
    voms-proxy-init -rfc -noregen -debug -voms fermilab:/fermilab/nova/Role=Analysis
    export IFDH_NO_PROXY=1
-   export X509_USER_PROXY=/tmp/x509up_u`id -u`
-   export SSL_CERT_DIR=/etc/grid-security/certificates
+   # now in table file...
+   # export X509_USER_PROXY=/tmp/x509up_u`id -u`
+   # export SSL_CERT_DIR=/etc/grid-security/certificates
    export CPN_DIR=/no/such/dir
 }
 
@@ -180,6 +181,22 @@ test_unclone() {
     locs3=`sam_validate_dataset -v --name $dataset | wc -l`
     [ "$locs2" -gt "$locs1" -a "$locs3" -lt "$locs2" ]
 }
+test_unclone_slashes() {
+    # same as the other, but extra slashes in unclone --dest param
+    echo "before:"
+    sam_validate_dataset -v --name $dataset
+    locs1=`sam_validate_dataset -v --name $dataset | wc -l`
+    ifdh mkdir /pnfs/nova/scratch/users/$USER/fife_util_test || true
+    sam_clone_dataset -v --name $dataset --dest /pnfs/nova/scratch/users/$USER/fife_util_test
+    echo "after:"
+    sam_validate_dataset -v --name $dataset
+    locs2=`sam_validate_dataset -v --name $dataset | wc -l`
+    sam_unclone_dataset --name $dataset --dest /pnfs/nova//scratch//users/$USER/fife_util_test2/
+    echo "after unclone:"
+    sam_validate_dataset -v --name $dataset
+    locs3=`sam_validate_dataset -v --name $dataset | wc -l`
+    [ "$locs2" -gt "$locs1" -a "$locs3" -lt "$locs2" ]
+}
 
 test_modify() {
     cat >> foo.json <<EOF
@@ -208,6 +225,7 @@ testsuite test_utils \
         test_modify \
 	test_clone  \
         test_unclone \
+        test_unclone_slashes \
         test_pin \
         test_retire \
         test_add_dataset_flist \
