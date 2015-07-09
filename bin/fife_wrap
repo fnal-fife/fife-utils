@@ -157,7 +157,9 @@ exit
 
         hostname = socket.getfqdn()
 
-        if os.environ.has_key("CLUSTER"):
+        if os.environ.has_key('JOBSUBJOBID'):
+            description = os.environ['JOBSUBJOBID']
+        elif os.environ.has_key('CLUSTER'):
             description = "%s.%s" %(os.environ['CLUSTER'],os.environ('PROCESS'))
         else:
             description = "process %d on %s" % (os.getpid(), hostname)
