@@ -300,21 +300,23 @@ exit
     def copy_back(self):
         print "Entering copy_back:"
 
-	if self.options.dest:
+	if self.options.dest and self.options.addoutput:
 	    for g in self.options.addoutput:
 		for f in glob.glob(g):
 		    self.ih.addOutputFile(f)
 
-	    for r in self.options.renameoutput:
-		self.ih.renameOutput(r)
+            if self.options.renameoutput:
+	        for r in self.options.renameoutput:
+		    self.ih.renameOutput(r)
 
 	    self.ih.copyBackOutput(self.options.dest)
 
-        # handle any ouput file lists
+        # handle any touput file lists
         cplist = []
-        for it in self.options.outputlist:
-            cplist.append('-f')
-            cplist.append(it)
+        if self.options.outputlist:
+            for it in self.options.outputlist:
+                cplist.append('-f')
+                cplist.append(it)
         if len(cplist) > 1:
            self.ih.cp(cplist)
   

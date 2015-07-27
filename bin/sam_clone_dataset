@@ -14,7 +14,8 @@ import os
 from samweb_client import *
 import socket
 import optparse
-
+import time
+import grp
 
 def check_destination(samweb,dest):
     # /pnfs is officially okay
@@ -115,15 +116,16 @@ def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 20, verbose 
     if experiment:
         samweb.experiment = experiment
 
-    res = samweb.listApplications({"name":"sam_clone_dataset"})
+    res = samweb.listApplications(name="sam_clone_dataset")
+
     if not res:
         samweb.addApplication("fife_utils","sam_clone_dataset","1")
        
 
-    user = os.envrion.get("USER","unknown")
+    user = os.environ.get("USER","unknown")
     projname = time.strftime("sam_clone_%%s_%Y%m%d%H_%%d")%(user,os.getpid())
     hostname = socket.gethostname()
-    purl = d.ifdh_handle.startProject(projname,"minerva", "mwm_test_2", "mengel", "minerva")
+    purl = d.ifdh_handle.startProject(projname, experiment, d.name, user, experiment)
     consumer_id = d.ifdh_handle.establishProcess( purl, "sam_clone_dataset", "1", hostname, user)
 
     furi = d.ifdh_handle.getNextFile(purl, consumer_id)
@@ -156,8 +158,8 @@ def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 20, verbose 
             cpargs = []
             locargs = []
 
-        d.ifdh_handle.updateFileStatus(purl, consumer_id,fname, 'transferred')
-        d.ifdh_handle.updateFileStatus(purl, consumer_id,fname, 'consumed')
+        d.ifdh_handle.updateFileStatus(purl, consumer_id,f, 'transferred')
+        d.ifdh_handle.updateFileStatus(purl, consumer_id,f, 'consumed')
         furi = d.ifdh_handle.getNextFile(purl, consumer_id)
 
     copy_and_declare(d, cpargs, locargs, dest, subdirf, samweb, just_say, verbose)
@@ -181,8 +183,13 @@ if __name__ == '__main__':
 
     (o,a) = parser.parse_args()
 
+    if not o.experiment:
+        o.experiment = os.environ.get('EXPERIMENT',os.environ.get('SAM_EXPERIMENT',grp.getgrgid(os.getgid())[0]))
+
     if o.experiment:
+
         os.environ['EXPERIMENT']= o.experiment
+        os.environ['SAM_EXPERIMENT']= o.experiment
         os.environ['IFDH_BASE_URI'] = "http://samweb.fnal.gov:8480/sam/%s/api" % o.experiment
 
     if not o.name:
