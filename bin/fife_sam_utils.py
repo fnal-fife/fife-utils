@@ -104,6 +104,9 @@ def samprefix(dir):
     elif (dir.startswith('/pnfs/%s/scratch' % os.environ.get('EXPERIMENT'))):
        return 'dcache:'
 
+    elif (dir.startswith('/pnfs/%s/persistent' % os.environ.get('EXPERIMENT'))):
+       return 'dcache:'
+
     elif (dir.startswith('/pnfs')) :
        return 'enstore:'
 
