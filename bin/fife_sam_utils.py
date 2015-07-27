@@ -54,7 +54,7 @@ class dataset:
                     self.next_key()
 
             #pre = res
-            res = re.sub('^(enstore|[a-z]*data):','',res)
+            prefix, res = res.split(':',1)
             res = re.sub('\(.*?\)$','',res)
 
             #print "converted\n\t%s\nto\n\t%s" % ( pre, res)
