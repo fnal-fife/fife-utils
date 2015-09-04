@@ -6,7 +6,7 @@ from samweb_client import *
 
 pnfs_prefixes = {
    "/pnfs/cdfen": "srm://cdfdca1.fnal.gov:8443/srm/managerv2?SFN=",
-   "/pnfs/d0en": "srm://d0ca1.fnal.gov:8443/srm/managerv2?SFN=",
+   "/pnfs/dzero": "srm://d0ca1.fnal.gov:8443/srm/managerv2?SFN=",
    "/pnfs/": "srm://fndca1.fnal.gov:8443/srm/managerv2?SFN=",
 }
 
@@ -61,9 +61,11 @@ def pnfs_verify_checksum(path):
     samweb = SAMWebClient()
     filename = path[path.rfind("/") + 1:]
     meta = samweb.getMetadata(filename)
-    #print "metadata[crc]: ", meta['crc']
-    #print "metadata[size]: ", meta['file_size']
-    meta_adler32_0 = long(meta['crc']['crc_value'], base=10)
+    #print meta
+    #print "meta[checksum]:", meta['checksum']
+    print "meta[checksum][8:]:", meta['checksum'][0][8:]
+    print "meta[file_size]: ", meta['file_size']
+    meta_adler32_0 = long(meta['checksum'][0][8:], base=10)
     meta_size = long(meta['file_size'])
     pnfs_adler32_1, pnfs_size = get_pnfs_1_adler32_and_size( path )
     meta_adler32_1 = convert_0_adler32_to_1_adler32(meta_adler32_0, meta_size)
