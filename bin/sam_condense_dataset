@@ -1,0 +1,104 @@
+
+    def __init__(self):
+        self.setupstring = 
+        self.projname =
+        self.datasetname =
+        self.user =
+        self.group =
+        self.basecmd =
+        self.sumsums =
+
+    def startproject_command(self):
+        return "ifdh startProject %s ''  %s %s %s" % (
+                 self.projname, self.datasetname, self.user, self.group )
+
+    def endproject_command(self):
+        return "ifdh endProject `ifdh findProject %s `" % self.projname
+
+    def start_consumer_command(self):
+        return """
+             cpurl=`ifdh findProject %s`
+             cpid=`ifdh establishConsumer "$cpurl" "demo" "$ART_VERSION" "$hostname" "${GRID_USER:-$USER}" "art" "" "$JOBSUBJOBID" xrootd`
+        """ % self.projname"
+
+    def condense_command(self):
+        return self.basecommand + " --sam-web-uri=$cpurl --sam-process-id=$cpid ---process-name=test"
+
+    def condense2_command(self):
+        return self.sumsums
+
+    def cleanup(self):
+        os.system("rm -rf %s" % self.workdir())
+
+    def wait_for_job(self):
+        """ watch with jobsub_q for job to finish..."""
+        still_running = True
+        while still_running:
+	    still_runing = False
+            time.sleep(10)
+            f = os.popen("jobsub_q --group %s --jobid=%s" % (self.group, self.jobid))
+            for line in f:
+	        if line.startswith(self.jobid):
+                    still_runing = True
+            f.close()
+        
+    def launch_condense_dag(self, njobs):
+
+        """ build 3-stage DAG and run it """
+
+	os.mkdir(self.workdir)
+
+	f = open("%s/startproj.sh" % self.workdir,"w")
+	f.write(self.setupstring)
+	f.write(self.startproject_command())
+	f.close()
+
+	f = open("%s/condense1.sh" % self.workdir,"w")
+	f.write(self.setup_string)
+	f.write(self.start_consumer_command())
+	f.write(self.condense_command())
+	f.write("ifdh addOutput %s" %  self.outputglob)
+	f.write("ifdh renameOutput unique")
+	f.write("ifdh copyBackOutput %s" % self.scratchdir)
+	f.close()
+
+	f = open("%s/condense2.sh" % self.workdir,"w")
+	f.write(self.setup_string)
+	f.write("ifdh ls %s 1 > flist " % self.scratchdir)
+	f.write("sed -e s';.*/pnfs/;xrootd://fndca1.fnal.gov:1904/pnfs;' < flist > ulist " % self.scratchdir)
+	f.write(self.condense2_command() + ' `cat ulist`' )
+	f.write("ifdh addOutput %s" %  self.outputglob)
+	f.write("ifdh copyBackOutput %s" % self.scratchdir)
+	f.write(self.endproject_command())
+	f.close()
+
+	f = open("%s/condense.dag" % self.workdir, "w")
+	f.write("<serial>\n")
+	f.write("jobsub file://%s/startproj.sh\n" % self.workdir)
+	f.write("jobsub -N %d file://%s/condense1.sh\n" % (njobs, self.workdir))
+	f.write("jobsub file://%s/condense2.sh\n" % self.workdir)
+	f.write("</serial>\n")
+	f.close()
+
+	f = os.popen("jobsub_submit_dag --group=%s --resource-provides=usage_model=OPPORTUNISTIC file://%s/condense.dag" % (self.group, self.workdir), "r")
+	for line in f:
+	    if line.startswith("JobsubJobID of first job:"):
+		self.jobid = line[26:]
+	f.close()
+	self.wait_for_job()
+        self.cleanup()
+
+    def condense_locally():
+       os.system(self.startproject_command())
+       time.sleep(1)
+       os.system(self.start_consumer_command())
+       os.system(self.condense_command())
+       os.system(self.endproject_command())
+
+    def condense_it():
+        n = samweb.count_datset(self.dataset)
+        if (n < 50 or self.force_local):
+            condense_locally()
+         else:
+            launch_condense_dag(int(sqrt(n)))
+        
