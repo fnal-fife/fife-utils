@@ -3,6 +3,7 @@
 . unittest.bash
 
 setup_tests() {
+   echo "Entering setup tests" > /dev/tty
    export EXPERIMENT=samdev
    export SAM_EXPERIMENT=samdev
    export IFDH_BASE_URI="http://samweb.fnal.gov:8480/sam/samdev/api"
@@ -26,6 +27,7 @@ setup_tests() {
    # export X509_USER_PROXY=/tmp/x509up_u`id -u`
    # export SSL_CERT_DIR=/etc/grid-security/certificates
    export CPN_DIR=/no/such/dir
+   echo "setup: dataset is $dataset" > /dev/tty
 }
 
 test_add_dataset_flist() {
@@ -241,13 +243,8 @@ test_retire() {
 
 testsuite test_utils \
 	-s setup_tests \
-        add_dataset \ 
-        test_cp_dataset_to_scratch \
-        test_retire \
-        add_dataset \ 
-        test_archive_dataset \
-        test_retire \
         add_dataset \
+        test_retire \
 	test_validate_1 \
 	test_validate_2 \
         test_modify \
@@ -261,6 +258,12 @@ testsuite test_utils \
         test_retire \
         test_add_dataset_directory \
 	test_validate_1 \
+        test_retire  \
+        add_dataset \
+        test_cp_dataset_to_scratch \
+        test_retire \
+        add_dataset \
+        test_archive_dataset \
         test_retire 
 
 test_utils "$@"
