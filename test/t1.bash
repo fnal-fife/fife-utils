@@ -166,6 +166,28 @@ test_clone() {
     [ "$locs2" -gt "$locs1" ]
 }
 
+test_cp_dataset_to_scratch() {
+    echo "before:"
+    sam_validate_dataset -v --name $dataset
+    locs1=`sam_validate_dataset -v --name  $dataset | wc -l`
+    sam_cp_dataset_to_scratch -v --name $dataset
+    echo "after:"
+    sam_validate_dataset -v --name $dataset
+    locs2=`sam_validate_dataset -v --name $dataset | wc -l`
+    [ "$locs2" -gt "$locs1" ]
+}
+
+test_archive_dataset() {
+    echo "before:"
+    sam_validate_dataset -v --name $dataset
+    locs1=`sam_validate_dataset -v --name  $dataset | wc -l`
+    # use a non-archving location for testing!
+    sam_archive_dataset -v --name $dataset --dest /pnfs/nova/scratch/users/$USER/fife_util_test
+    echo "after:"
+    sam_validate_dataset -v --name $dataset
+    locs2=`sam_validate_dataset -v --name $dataset | wc -l`
+    [ "$locs2" -eq "$locs1" ]
+}
 test_unclone() {
     echo "before:"
     sam_validate_dataset -v --name $dataset
@@ -219,6 +241,12 @@ test_retire() {
 
 testsuite test_utils \
 	-s setup_tests \
+        add_dataset \ 
+        test_cp_dataset_to_scratch \
+        test_retire \
+        add_dataset \ 
+        test_archive_dataset \
+        test_retire \
         add_dataset \
 	test_validate_1 \
 	test_validate_2 \

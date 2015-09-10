@@ -40,6 +40,14 @@ def twodeep(f):
     h = hashlib.md5(f).hexdigest()
     return "/%s/%s/" % (h[0:4], h[4:8])
 
+def threedeep(f):
+    h = hashlib.md5(f).hexdigest()
+    return "/%s/%s/%s/" % (h[0:4], h[4:8], h[8:12])
+
+def fourdeep(f):
+    h = hashlib.md5(f).hexdigest()
+    return "/%s/%s/%s/%s/" % (h[0:4], h[4:8], h[8:12], h[12:16])
+
 notmade = {}
 def dodir(ih, dir):
     
@@ -178,6 +186,10 @@ if __name__ == '__main__':
     parser.add_option('-0','--zerodeep',  dest='dirfunc', action='store_const', const=zerodeep, help="make no subdirectories in destination")
     parser.add_option('-1','--onedeep',   dest='dirfunc', action='store_const', const=onedeep, help = "make subdirectories one deep in destination")
     parser.add_option('-2','--twodeep',   dest='dirfunc', action='store_const', const=twodeep, help = "make subdirectories two deep in destination")
+    parser.add_option('-3','--threedeep',   dest='dirfunc', action='store_const', const=threedeep, help = "make subdirectories two deep in destination")
+    parser.add_option('-4','--fourdeep',   dest='dirfunc', action='store_const', const=fourdeep, help = "make subdirectories two deep in destination")
+    parser.add_option('-n', '--name',     help="dataset name to copy", )
+    parser.add_option('-n', '--name',     help="dataset name to copy", )
     parser.add_option('-n', '--name',     help="dataset name to copy", )
     parser.add_option('-d', '--dest',     help="destination for copy", )
 
