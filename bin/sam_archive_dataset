@@ -26,9 +26,8 @@ def check_dest(dest):
 
 if __name__ == '__main__':
 
-    parser = optparse.OptionParser(usage="usage: %prog [options] \n copy files in named dataset to scratch and declare.\n  (Use %prog --help for full options list)")
+    print "checking argv[0] -> %s" % sys.argv[0]
 
-    experiment = os.environ.get('EXPERIMENT',os.environ.get('SAM_EXPERIMENT',grp.getgrgid(os.getgid())[0]))
     if sys.argv[0].find("persistent") > 0:
          type= "persistent"
          sdir = ""
@@ -36,12 +35,16 @@ if __name__ == '__main__':
     elif sys.argv[0].find("scratch") > 0:
          type= "scratch"
          sdir = ""
-         clean_others= True
+         clean_others= False
     else:
          type= "archive"
          sdir = "/data"
          clean_others= True
+
+    print "type is %s" % type
          
+    parser = optparse.OptionParser(usage="usage: %prog [options] \n copy files in named dataset to scratch and declare.\n  (Use %prog --help for full options list)")
+    experiment = os.environ.get('EXPERIMENT',os.environ.get('SAM_EXPERIMENT',grp.getgrgid(os.getgid())[0]))
     dest = "/pnfs/%s/%s/sam_managed_users/%s%s" % ( 
 	    experiment, type, os.environ.get('USER',os.environ.get('GRID_USER')), sdir)
 
@@ -51,7 +54,7 @@ if __name__ == '__main__':
     parser.add_option('-e','--experiment')
     parser.add_option('-b','--batch_size',default = 20, type='int', help="copy then declare in batches of this size")
     parser.add_option('-n', '--name',     help="dataset name to copy", )
-    parser.add_option('-d', '--dest',     help="destination to archive to, default is %s" % dest)
+    parser.add_option('-d', '--dest',     help="override destination to archive to, default is %s" % dest)
 
     (o,a) = parser.parse_args()
 
