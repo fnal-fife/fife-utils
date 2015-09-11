@@ -1,0 +1,364 @@
+#!/usr/bin/env python
+
+import datetime
+import grp
+import optparse
+import os
+import re
+import socket
+import subprocess
+import sys
+import time
+
+import ifdh
+from samweb_client import *
+
+try:
+  import hashlib 
+except:
+  import md5
+  class hashlib:
+     pass
+  hashlib.md5 = md5.md5
+
+class dataset:
+    def __init__( self, name ):
+        self.ifdh_handle = ifdh.ifdh()   
+        self.name = name
+        self.flist = None
+
+    def get_flist( self ):
+        if self.flist == None:
+            self.flist =  self.ifdh_handle.translateConstraints("defname: %s " % self.name)
+        return self.flist
+
+    def file_iterator(self):
+        flist = self.get_flist()
+        return flist.__iter__()
+        
+    class _loc_iterator:
+        def __init__(self, locmap):
+            #print "in _loc_iterator.__init__, locmap is:", locmap
+            self.loc_iter = [].__iter__()
+            self.locmap = locmap
+            self.key_iter = locmap.keys().__iter__()
+            try:
+                self.next_key()
+            except StopIteration:
+                pass
+
+        def next_key(self):
+            #print "in _loc_iterator.next_key..."
+            self.curfile = self.key_iter.next()
+ 
+            #print "curfile is: ",  self.curfile
+            self.loc_iter = self.locmap[self.curfile].__iter__()
+
+        def __iter__(self):
+            return self
+ 
+        def next(self):
+            #print "in _loc_iterator.next..."
+            res = None
+            while res == None:
+                try:
+                    res = self.loc_iter.next()
+                except StopIteration:
+                    #print "in _loc_iterator.next, trying next key.."
+                    # if *this* rasies StopIter, we bail...
+                    self.next_key()
+
+            #pre = res
+            prefix, res = res.split(':',1)
+            res = re.sub('\(.*?\)$','',res)
+
+            #print "converted\n\t%s\nto\n\t%s" % ( pre, res)
+
+            return res + '/' + self.curfile
+
+    def fullpath_iterator(self):
+        flist = self.get_flist()
+        locmap = {}
+        while len(flist) > 0:
+            first_k = flist[:500]
+            flist = flist[500:]
+            locmap.update(self.ifdh_handle.locateFiles(first_k))
+        return self._loc_iterator(locmap)
+
+def sampath(dir):
+    if dir.find("://") > 0:
+        # it is a URL, so convert it to a hostname/path
+        path = re.sub("[a-z]+://([-a-z0-9_.]*)(/.*\?SFN=)?(/.*)","\\3", dir)
+        return path
+    return dir[dir.find(":")+1:]
+    
+def samprefix(dir):
+    
+    if dir.find("://") > 0:
+        # it is a URL, so convert it to a hostname/path
+        prefix = re.sub("[a-z]+://([-a-z0-9_.]*)(/.*\?SFN=)?(/.*)","\\1:", dir)
+        return prefix
+    #
+    # try data disks
+    #
+    try:
+        nowhere=open("/dev/null","w")
+	l = subprocess.Popen(['samweb', '-e', os.environ['EXPERIMENT'], 'list-data-disks' ], stdout=subprocess.PIPE, stderr=nowhere).stdout.readlines()
+        nowhere.close()
+	for pp in l:
+	   prefix, rest = pp.split(":",1)
+	   if dir.startswith(pp):
+		return "%s:" % prefix
+    except:
+        print "exception in samweb list-data-disks..."
+        pass
+
+    if (dir.startswith('/pnfs/uboone/scratch')):
+       return 'fnal-dcache:'
+
+    elif (dir.startswith('/pnfs/%s/scratch' % os.environ.get('EXPERIMENT'))):
+       return 'dcache:'
+
+    elif (dir.startswith('/pnfs/%s/persistent' % os.environ.get('EXPERIMENT'))):
+       return 'dcache:'
+
+    elif (dir.startswith('/pnfs')) :
+       return 'enstore:'
+
+    elif (dir.startswith('/grid/') or dir.startswith('/%s/'%os.environ.get('EXPERIMENT',None))):
+       if (os.environ.get('EXPERIMENT') in ['minerva',]):
+           return os.environ.get('EXPERIMENT') + '_bluearc:'
+       else:
+           return os.environ.get('EXPERIMENT') + 'data:'
+
+    else:
+       return socket.gethostname()
+
+def basename(path):
+    return path[path.rfind('/')+1:]
+
+def dirname(dir):
+    l = dir.rfind('/', 0,len(dir)-2 )
+    return dir[0:l]
+
+def canonical(uri):
+    # get rid of doulbed slashes past the protocol:// part
+    # and /dir/./path
+
+    pos = uri.rfind('//')
+    while pos > 7:
+        uri = uri[:pos] + uri[(pos+1):]
+        pos = uri.rfind('//')
+
+    pos = uri.rfind('/./')
+    while pos > 0:
+        uri = uri[:pos] + uri[(pos+2):]
+        pos = uri.rfind('/./')
+
+    return uri      
+
+
+def has_uuid_prefix(s):
+    return bool(re.match(r'[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}',s))
+
+
+
+def check_destination(samweb,dest):
+    # /pnfs is officially okay
+    if dest.find('/pnfs/') == 0:
+        return 1
+    samdest = samprefix(dest) + sampath(dest)
+    # or any known data disk..
+    for d in samweb.listDataDisks():
+        if samdest.find(d) == 0:
+            return 1
+    # otherwise, nope.
+    return 0
+
+def zerodeep(f):
+    return '/'
+
+def onedeep(f):
+    h = hashlib.md5(f).hexdigest()
+    return "/%s/" % h[0:4]
+
+def twodeep(f):
+    h = hashlib.md5(f).hexdigest()
+    return "/%s/%s/" % (h[0:4], h[4:8])
+
+def threedeep(f):
+    h = hashlib.md5(f).hexdigest()
+    return "/%s/%s/%s/" % (h[0:4], h[4:8], h[8:12])
+
+def fourdeep(f):
+    h = hashlib.md5(f).hexdigest()
+    return "/%s/%s/%s/%s/" % (h[0:4], h[4:8], h[8:12], h[12:16])
+
+notmade = {}
+def dodir(ih, dir):
+    
+    if dir.startswith("/pnfs/") or dir.startswith("/%s/"%os.environ.get('EXPERIMENT','')):
+        # we think globus-url-copy with -cd will make these, so we're done
+        return
+
+    for d in (dirname(dir), dir):
+        if notmade.get(d,True):
+           notmade[d] = False
+           try:
+               print "doing mkdir " , d
+               ih.mkdir(d, '')
+           except:
+               pass
+
+def already_there( f, loclist, dest ):
+    res = False
+    dest = dest + '/'
+    for p in loclist:
+	if p.find(dest) != -1:
+	    print "Notice: file %s already has a copy at %s, skipping" % ( f, p)
+	    res = True
+            break
+    return res
+
+def copy_and_declare(d, cpargs, locargs, dest, subdirf, samweb, just_say, verbose):
+    res = 0
+
+    if len(cpargs) == 0:
+        # nothing to do!
+        return res
+
+    # trailing ; confuses ifdh cp
+    if cpargs[-1] == ';':
+        cpargs = cpargs[:-1]
+
+    if just_say:
+	print "I would 'ifdh cp %s'" % cpargs
+	for f in locargs:
+	    print "I would declare location for %s of %s" % (f, dest+subdirf(f))
+    else: 
+        if verbose: print "doing ifdh cp %s" % cpargs
+	res = d.ifdh_handle.cp(cpargs)
+        if verbose: print "ifdh cp returns %d" % res
+        # XXX note this is arguably incorrect, we only declare locations if
+        #     *all* the copies in the batch succeed; but if *some* of them
+        #     do we don't...
+	if res == 0:
+	    if verbose: print "doing locargs: ", locargs
+	    for f in locargs:
+                try:
+                    loc =  samprefix(dest) + dest + subdirf(f)
+                    if verbose: print "addFileLocation(%s, %s)" % (f, loc)
+		    samweb.addFileLocation(f, loc )
+                except:
+                    raise
+                    res = 1
+    return res
+
+def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 20, verbose = False, experiment = None ):
+    # make gridftp tool add directories
+    os.environ['IFDH_GRIDFTP_EXTRA'] = '-cd -sync'
+    cpargs = []
+    locargs = []
+    count = 0
+    samweb = SAMWebClient()
+
+    if not check_destination(samweb,dest):
+        print "Destination: %s is not known to SAM" % dest;
+        print "...maybe you wanted ifdh_fetch?"
+        return 0
+
+    if experiment:
+        samweb.experiment = experiment
+
+    res = samweb.listApplications(name="sam_clone_dataset")
+
+    if not res:
+        samweb.addApplication("fife_utils","sam_clone_dataset","1")
+       
+
+    user = os.environ.get("USER","unknown")
+    projname = time.strftime("sam_clone_%%s_%Y%m%d%H_%%d")%(user,os.getpid())
+    hostname = socket.gethostname()
+    purl = d.ifdh_handle.startProject(projname, experiment, d.name, user, experiment)
+    consumer_id = d.ifdh_handle.establishProcess( purl, "sam_clone_dataset", "1", hostname, user)
+
+    furi = d.ifdh_handle.getNextFile(purl, consumer_id)
+
+    while furi:
+
+        f = basename(furi)
+
+        loclist = samweb.getFileAccessUrls(f, schema = "gsiftp")
+
+        if already_there(f, loclist, dest):
+            d.ifdh_handle.updateFileStatus(purl, consumer_id,fname, 'transferred')
+            d.ifdh_handle.updateFileStatus(purl, consumer_id,fname, 'consumed')
+            continue
+                
+        if len(loclist) > 0:
+            locargs.append(f)
+            cpargs.append(loclist[0])
+	    cpargs.append(dest + subdirf(f) + f)
+            cpargs.append(';')
+            dodir(d.ifdh_handle, dest+subdirf(f))
+        else:
+            print "Notice: skipping file %s, no locations" % f
+
+        count = count + 1
+        if count % batch_size == 0:
+
+	    # above loop leaves a trailng ';', which confuses things.
+            copy_and_declare(d, cpargs, locargs, dest, subdirf, samweb, just_say, verbose)
+            cpargs = []
+            locargs = []
+
+        d.ifdh_handle.updateFileStatus(purl, consumer_id,f, 'transferred')
+        d.ifdh_handle.updateFileStatus(purl, consumer_id,f, 'consumed')
+        furi = d.ifdh_handle.getNextFile(purl, consumer_id)
+
+    copy_and_declare(d, cpargs, locargs, dest, subdirf, samweb, just_say, verbose)
+
+    d.ifdh_handle.setStatus( purl, consumer_id, "completed")
+    d.ifdh_handle.endProject(purl)
+
+
+def unclone( d, just_say = False, delete_match = '.*', verbose = False ):
+    samweb = SAMWebClient()
+
+    for full in d.fullpath_iterator():
+        file = basename(full)
+	if just_say:
+	    if re.match(delete_match, full): 
+	        print "I would 'ifdh rm %s'" % full
+	        print "I would remove location %s for %s" % ( file, samprefix(full)+dirname(full) )
+	else:
+	    if re.match(delete_match, full): 
+                if len(d.ifdh_handle.locateFile(file)) == 1:
+                    print "NOT removing %s, it is the only location!"
+                    continue
+		try:
+                    if verbose: print "removing: " , full
+                    d.ifdh_handle.rm(full, '')
+		except:
+		    pass
+	        if verbose: print "removing location: " , full
+	        samweb.removeFileLocation(file, samprefix(full) + dirname(full))
+
+if __name__ == '__main__':
+    os.environ['EXPERIMENT'] = 'nova'
+    #d1 = dataset('mwm_test_6')
+    d1 = dataset('rock_onlyMC_FA141003xa_raw3')
+    count1=0
+    for f in d1.file_iterator():
+        print "file: ", f
+        count1=count1+1
+    count2=0
+    print "-------------"
+    for l in d1.fullpath_iterator():
+        print "loc:" ,  l
+        count2 = count2+1
+    print "count1 " , count1 , " count2 " , count2
+    for exp in [ 'uboone', 'nova', 'minerva', 'hypot' ]:
+        os.environ['EXPERIMENT'] = exp
+        for d  in [ '/pnfs/%s/raw/' % exp, '/pnfs/%s/scratch' % exp , '/%s/data/' % exp, 'srm://smuosge.smu.edu/foo/bar?SFN=/data/%s/file' % exp, 'gsiftp://random.host/stuff/%s/file' % exp ]:
+           print d , "->", samprefix(d)

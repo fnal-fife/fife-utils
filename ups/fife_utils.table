@@ -36,7 +36,7 @@ Action=setup
     ExeActionRequired(setup_sam_web_client_if_not_setup)
     SetupOptional(jobsub_client)
     PathPrepend(PATH, ${UPS_PROD_DIR}/bin)
-    PathPrepend(PYTHONPATH, ${UPS_PROD_DIR}/bin)
+    PathPrepend(PYTHONPATH, ${UPS_PROD_DIR}/lib)
 
     # workaround environment variables, should go away with
     # newer sam_web_client, ifdh versions.

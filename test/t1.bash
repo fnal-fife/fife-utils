@@ -3,7 +3,6 @@
 . unittest.bash
 
 setup_tests() {
-   echo "Entering setup tests" > /dev/tty
    export EXPERIMENT=samdev
    export SAM_EXPERIMENT=samdev
    export IFDH_BASE_URI="http://samweb.fnal.gov:8480/sam/samdev/api"
@@ -27,7 +26,6 @@ setup_tests() {
    # export X509_USER_PROXY=/tmp/x509up_u`id -u`
    # export SSL_CERT_DIR=/etc/grid-security/certificates
    export CPN_DIR=/no/such/dir
-   echo "setup: dataset is $dataset" > /dev/tty
 }
 
 test_add_dataset_flist() {
@@ -172,7 +170,7 @@ test_cp_dataset_to_scratch() {
     echo "before:"
     sam_validate_dataset -v --name $dataset
     locs1=`sam_validate_dataset -v --name  $dataset | wc -l`
-    sam_cp_dataset_to_scratch -v --name $dataset
+    sam_cp_dataset_to_scratch -v --name $dataset --dest /pnfs/nova/scratch/users/$USER/fife_util_test
     echo "after:"
     sam_validate_dataset -v --name $dataset
     locs2=`sam_validate_dataset -v --name $dataset | wc -l`
@@ -244,7 +242,6 @@ test_retire() {
 testsuite test_utils \
 	-s setup_tests \
         add_dataset \
-        test_retire \
 	test_validate_1 \
 	test_validate_2 \
         test_modify \

@@ -1,14 +1,12 @@
 #!/usr/bin/env python
-
-import ifdh
-import os.path
-from sam_clone_dataset import clone, fourdeep
-from sam_unclone_dataset import unclone
-from fife_sam_utils import dataset
 import optparse
 import grp
 import sys
 import os
+
+import ifdh
+import os.path
+from fife_sam_utils import clone, fourdeep, unclone, dataset
 
 def check_dest(dest):
     destp = os.path.dirname(dest)
@@ -31,8 +29,21 @@ if __name__ == '__main__':
     parser = optparse.OptionParser(usage="usage: %prog [options] \n copy files in named dataset to scratch and declare.\n  (Use %prog --help for full options list)")
 
     experiment = os.environ.get('EXPERIMENT',os.environ.get('SAM_EXPERIMENT',grp.getgrgid(os.getgid())[0]))
-    dest = "/pnfs/%s/archive/sam_managed_users/%s" % ( 
-	    experiment, os.environ.get('USER',os.environ.get('GRID_USER')))
+    if sys.argv[0].find("persistent") > 0:
+         type= "persistent"
+         sdir = ""
+         clean_others= True
+    elif sys.argv[0].find("scratch") > 0:
+         type= "scratch"
+         sdir = ""
+         clean_others= True
+    else:
+         type= "archive"
+         sdir = "/data"
+         clean_others= True
+         
+    dest = "/pnfs/%s/%s/sam_managed_users/%s%s" % ( 
+	    experiment, type, os.environ.get('USER',os.environ.get('GRID_USER')), sdir)
 
     parser.set_defaults(dirfunc = fourdeep, experiment = experiment, dest = dest)
     parser.add_option('-v','--verbose',   action='count')
@@ -57,4 +68,6 @@ if __name__ == '__main__':
     d = dataset(o.name)
         
     clone(d, o.dest, subdirf = o.dirfunc, just_say = o.just_say, batch_size = o.batch_size, verbose = o.verbose, experiment=o.experiment)
-    unclone(d, delete_match = '(?!%s)' % o.dest, verbose = o.verbose) 
+
+    if clean_others:
+        unclone(d, delete_match = '(?!%s)' % o.dest, verbose = o.verbose) 
