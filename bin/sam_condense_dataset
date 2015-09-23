@@ -1,16 +1,13 @@
 
-    def __init__(self):
-        self.setupstring = 
-        self.projname =
-        self.datasetname =
-        self.user =
-        self.group =
-        self.basecmd =
-        self.sumsums =
+import os
+
+class condenser:
+    def __init__(self, options):
+        self.options = options
 
     def startproject_command(self):
         return "ifdh startProject %s ''  %s %s %s" % (
-                 self.projname, self.datasetname, self.user, self.group )
+                 self.options.projname, self.options.name, self.options.user, self.options.group )
 
     def endproject_command(self):
         return "ifdh endProject `ifdh findProject %s `" % self.projname
@@ -22,10 +19,11 @@
         """ % self.projname"
 
     def condense_command(self):
-        return self.basecommand + " --sam-web-uri=$cpurl --sam-process-id=$cpid ---process-name=test"
+        if self.options.artflag:
+            return self.basecommand + " --sam-web-uri=$cpurl --sam-process-id=$cpid ---process-name=test"
 
     def condense2_command(self):
-        return self.sumsums
+        return self.options.phase_2
 
     def cleanup(self):
         os.system("rm -rf %s" % self.workdir())
@@ -65,7 +63,12 @@
 	f = open("%s/condense2.sh" % self.workdir,"w")
 	f.write(self.setup_string)
 	f.write("ifdh ls %s 1 > flist " % self.scratchdir)
-	f.write("sed -e s';.*/pnfs/;xrootd://fndca1.fnal.gov:1904/pnfs;' < flist > ulist " % self.scratchdir)
+        if options.xrootd:
+	    f.write("sed -e 's;.*/pnfs/;xrootd://fndca1.fnal.gov:1904/pnfs;' < flist > ulist " % self.scratchdir)
+        else:
+            f.write("sed -e 's;\(.*\)/\(.*\);& \2;' < flist > cplist")
+            f.write("sed -e 's;\(.*\)/\(.*\);\2;' < flist > ulist")
+            f.write("ifdh cp -f cplist")
 	f.write(self.condense2_command() + ' `cat ulist`' )
 	f.write("ifdh addOutput %s" %  self.outputglob)
 	f.write("ifdh copyBackOutput %s" % self.scratchdir)
@@ -102,3 +105,23 @@
          else:
             launch_condense_dag(int(sqrt(n)))
         
+
+if __name__ == '__main__':
+    import optparse
+    import time
+
+    parser = optparse.OptionParser(usage="usage: %prog [options] \n slurp dataset through program and generate summed files")
+    parser.add_option('-p','--projname', default='%s-%d-%d-%s' % (os.environ.get('USER'), time.time(), os.
+    parser.add_option('-v','--verbose',   action='count')
+    parser.add_option('-e','--experiment', default = os.environ.get('EXPERIMENT',os.environ.get('SAM_EXPERIMENT','unknown'))
+    parser.add_option('-b','--batch_size',default = 50, type='int', help="run in batches of this size")
+    parser.add_option('-n', '--name',     help="dataset name to sum" )
+    parser.add_option('-1', '--phase-1',  help="command to generate summary" )
+    parser.add_option('-2', '--phase-2',  help="command to sum summary files" )
+    parser.add_option('-w', '--work',     help="working directory location" )
+    parser.add_option('-a', '--art',      help="phase 1 command is an art executable", action=store_true)
+
+    (o,a) = parser.parse_args()
+    
+    c = condenser(o)
+    c.condense_it()
