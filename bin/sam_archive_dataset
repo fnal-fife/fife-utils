@@ -8,7 +8,7 @@ import ifdh
 import os.path
 from fife_sam_utils import clone, fourdeep, unclone, dataset
 
-def check_dest(dest):
+def check_dest(dest, default_dest):
     destp = os.path.dirname(dest)
 
     h = ifdh.ifdh()
@@ -21,7 +21,15 @@ def check_dest(dest):
                 pass
 	res = h.ls(d, 1, "")
 	if len(res) == 0:
-	    sys.stderr.write("\nERROR: Cannot find or create %s:\n-- please contect servicedesk to request it be made" % d)
+            if default_dest == dest:
+                if dest.find("none") > 0:
+                    
+	            sys.stderr.write("\nERROR: no destination specified to " + sys.argv[0])
+                else:
+	            sys.stderr.write("\nERROR: Cannot find or create %s:\n-- please contect servicedesk to request it be made" % d)
+            else:
+	        sys.stderr.write("\nERROR: Cannot find or create %s:\n-- please check spelling, permissions, etc" % d)
+            
             exit(1)
 
 if __name__ == '__main__':
@@ -36,9 +44,13 @@ if __name__ == '__main__':
          type= "scratch"
          sdir = ""
          clean_others= False
-    else:
+    elif sys.argv[0].find("archive") > 0:
          type= "archive"
          sdir = "/data"
+         clean_others= True
+    else:
+         # plain sam_move_dataset
+         type = "none"
          clean_others= True
 
     print "type is %s" % type
@@ -67,7 +79,7 @@ if __name__ == '__main__':
         parser.error("expected --name dataset-name")
         exit(1)
 
-    check_dest(o.dest)
+    check_dest(o.dest, dest)
     d = dataset(o.name)
         
     clone(d, o.dest, subdirf = o.dirfunc, just_say = o.just_say, batch_size = o.batch_size, verbose = o.verbose, experiment=o.experiment)
