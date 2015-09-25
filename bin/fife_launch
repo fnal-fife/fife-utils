@@ -1,0 +1,80 @@
+#!/usr/bin/env python
+
+import ConfigParser
+import sys
+import os
+
+class launcher:
+ 
+    def __init__(self, cfgfilename):
+	self.cfg = ConfigParser.SafeConfigParser()
+        self.cfg.optionxform = str
+	self.cfg.read(cfgfilename)
+
+    def launch(self):
+        print "I would:\n", self.build_launch()
+
+	#os.system(self.build_launch())
+
+    def build_launch(self):
+	res = []
+	globals = dict(self.cfg.items('global'))
+
+        print "globals are: " , globals
+
+	res.append( "export GROUP=%s" % self.cfg.get('global','group'))
+
+	for k,v in self.cfg.items("env_pass", raw = 1):
+	    v = self.cfg.get("env_pass",k,vars = globals)
+	    res.append("export %s='%s'" % (k, v))
+
+	if self.cfg.has_section("submit"):
+
+	    res.append("jobsub_submit \\")
+
+	    for k,v in self.cfg.items("env_pass", raw = 1):
+		 res.append( "--e %s" % k )
+
+	    for k,v in self.cfg.items("submit", raw = 1):
+		v = self.cfg.get("submit",k,vars = globals)
+		if v == 'True':
+		    res.append("  --%s \\" % k)
+		else:
+		    res.append("  --%s='%s'  \\" %( k,v))
+
+	    res.append("  " + os.path.expandvars(self.cfg.get('global','wrapper')))
+
+	    for k,v in self.cfg.items("job_setup", raw=1):
+		v = self.cfg.get("job_setup",k,vars = globals)
+		if v == 'True':
+		    res.append("    --%s \\" % k)   
+		else:
+		    if k[-2] == '_' and k[-1] in "0123456789":
+			 k = k[:-2]
+		    res.append("    --%s '%s' \\" % (k,v))   
+
+	    for k,v in self.cfg.items("job_output", raw=1):
+		v = self.cfg.get("job_output",k,vars = globals)
+		res.append("    --%s '%s' \\" % (k,v))
+   
+	    for k,v in self.cfg.items("sam_consumer", raw=1):
+		v = self.cfg.get("sam_consumer",k,vars = globals)
+		res.append("    --%s '%s' \\" % (k,v))   
+
+	    res.append("    %s \\" % self.cfg.get('executable','name'))
+	    for k,v in self.cfg.items("executable", raw=1):
+		v = self.cfg.get("executable",k,vars = globals)
+		if k.startswith('arg_'):
+		    res.append("      %s \\" % v)
+
+	elif self.cfg.has_section("submit_dag"):
+	    # XXX not doing dags -- yet
+	    pass
+	else:
+	    raise KeyError("Need [submit] or [submit_dag] sections...")
+
+	return "\n".join(res)
+
+if __name__ == '__main__':
+    l = launcher(sys.argv[1])
+    l.launch()
