@@ -3,24 +3,29 @@
 import ConfigParser
 import sys
 import os
+import optparse
 
 class launcher:
  
-    def __init__(self, cfgfilename):
+    def __init__(self, cfgfilename, overrides ):
 	self.cfg = ConfigParser.SafeConfigParser()
         self.cfg.optionxform = str
 	self.cfg.read(cfgfilename)
+        if overrides:
+	    for o in overrides:
+		print "o is", o
+		k, v = o.split('=',1)
+		s,n = k.split('.',1)
+		self.cfg.set(s,n,v)
 
     def launch(self):
-        print "I would:\n", self.build_launch()
-
-	#os.system(self.build_launch())
+        cmd = self.build_launch()
+        print "running: " , cmd
+	os.system(cmd)
 
     def build_launch(self):
 	res = []
 	globals = dict(self.cfg.items('global'))
-
-        print "globals are: " , globals
 
 	res.append( "export GROUP=%s" % self.cfg.get('global','group'))
 
@@ -33,16 +38,18 @@ class launcher:
 	    res.append("jobsub_submit \\")
 
 	    for k,v in self.cfg.items("env_pass", raw = 1):
-		 res.append( "--e %s" % k )
+		 res.append( "  -e %s \\" % k )
 
 	    for k,v in self.cfg.items("submit", raw = 1):
 		v = self.cfg.get("submit",k,vars = globals)
-		if v == 'True':
+                if len(k) == 1:
+		    res.append("  -%s '%s'  \\" %( k,v))
+		elif v == 'True':
 		    res.append("  --%s \\" % k)
 		else:
 		    res.append("  --%s='%s'  \\" %( k,v))
 
-	    res.append("  " + os.path.expandvars(self.cfg.get('global','wrapper')))
+	    res.append("  %s \\" % os.path.expandvars(self.cfg.get('global','wrapper')))
 
 	    for k,v in self.cfg.items("job_setup", raw=1):
 		v = self.cfg.get("job_setup",k,vars = globals)
@@ -51,6 +58,7 @@ class launcher:
 		else:
 		    if k[-2] == '_' and k[-1] in "0123456789":
 			 k = k[:-2]
+                    v = v.replace(' ',':')
 		    res.append("    --%s '%s' \\" % (k,v))   
 
 	    for k,v in self.cfg.items("job_output", raw=1):
@@ -76,5 +84,17 @@ class launcher:
 	return "\n".join(res)
 
 if __name__ == '__main__':
-    l = launcher(sys.argv[1])
+    p = optparse.OptionParser(description='launch a job with parameters'
+,
+                            prog='fife_launch',
+                            version='0.9',
+                            usage='%prog --config file.cfg --override foo.bar=10')
+
+
+    p.add_option('-c', '--config', help='config file describing job')
+    p.add_option('-O', '--override',  help='override config file values', action='append' )
+
+    options, args = p.parse_args()
+   
+    l = launcher(options.config, options.override)
     l.launch()
