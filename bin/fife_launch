@@ -20,25 +20,27 @@ class launcher:
 
     def launch(self):
         cmd = self.build_launch()
-        print "running: " , cmd
+        print "running:\n " , cmd
 	os.system(cmd)
 
     def build_launch(self):
 	res = []
 	globals = dict(self.cfg.items('global'))
 
-	res.append( "export GROUP=%s" % self.cfg.get('global','group'))
+        res.append("set -x")
 
-	for k,v in self.cfg.items("env_pass", raw = 1):
-	    v = self.cfg.get("env_pass",k,vars = globals)
-	    res.append("export %s='%s'" % (k, v))
+	res.append( "GROUP=%s; export GROUP" % self.cfg.get('global','group'))
+
+	#for k,v in self.cfg.items("env_pass", raw = 1):
+	#    v = self.cfg.get("env_pass",k,vars = globals)
+	#    res.append("%s='%s'; export %s" % (k, v, k))
 
 	if self.cfg.has_section("submit"):
 
 	    res.append("jobsub_submit \\")
 
 	    for k,v in self.cfg.items("env_pass", raw = 1):
-		 res.append( "  -e %s \\" % k )
+		 res.append( "  -e %s='%s' \\" % (k,v) )
 
 	    for k,v in self.cfg.items("submit", raw = 1):
 		v = self.cfg.get("submit",k,vars = globals)
