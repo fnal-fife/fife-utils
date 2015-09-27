@@ -75,6 +75,8 @@ class launcher:
 		if k.startswith('arg_'):
 		    res.append("      %s \\" % v)
 
+            res.append("")
+
 	elif self.cfg.has_section("submit_dag"):
 	    # XXX not doing dags -- yet
 	    pass
