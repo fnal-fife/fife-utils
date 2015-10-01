@@ -34,8 +34,6 @@ def check_dest(dest, default_dest):
 
 if __name__ == '__main__':
 
-    print "checking argv[0] -> %s" % sys.argv[0]
-
     if sys.argv[0].find("persistent") > 0:
          type= "persistent"
          sdir = ""
@@ -53,8 +51,6 @@ if __name__ == '__main__':
          type = "none"
          clean_others= True
 
-    print "type is %s" % type
-         
     parser = optparse.OptionParser(usage="usage: %prog [options] \n copy files in named dataset to scratch and declare.\n  (Use %prog --help for full options list)")
     experiment = os.environ.get('EXPERIMENT',os.environ.get('SAM_EXPERIMENT',grp.getgrgid(os.getgid())[0]))
     dest = "/pnfs/%s/%s/sam_managed_users/%s%s" % ( 
