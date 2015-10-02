@@ -1,5 +1,21 @@
+#!/usr/bin/env python 
 
 import os
+import socket
+
+try:
+   import uuid
+except:
+   class uuid:
+       def uuid4():
+         return "%s-%s-%s-%s-%s" % (
+              hex(int(time.time()))[2:],
+              hex(os.getpid())[2:],
+              hex(os.getppid())[2:],
+              hex(os.getpid())[2:],
+              ''.join([hex(int(x))[2:] for x in socket.gethostbyname(socket.gethostname()).split('.')])
+            )
+       uuid4 = staticmethod(uuid4)
 
 class condenser:
     def __init__(self, options):
@@ -16,7 +32,7 @@ class condenser:
         return """
              cpurl=`ifdh findProject %s`
              cpid=`ifdh establishConsumer "$cpurl" "demo" "$ART_VERSION" "$hostname" "${GRID_USER:-$USER}" "art" "" "$JOBSUBJOBID" xrootd`
-        """ % self.projname"
+        """ % self.projname
 
     def condense_command(self):
         if self.options.artflag:
@@ -102,7 +118,7 @@ class condenser:
         n = samweb.count_datset(self.dataset)
         if (n < 50 or self.force_local):
             condense_locally()
-         else:
+        else:
             launch_condense_dag(int(sqrt(n)))
         
 
@@ -111,17 +127,26 @@ if __name__ == '__main__':
     import time
 
     parser = optparse.OptionParser(usage="usage: %prog [options] \n slurp dataset through program and generate summed files")
-    parser.add_option('-p','--projname', default='%s-%d-%d-%s' % (os.environ.get('USER'), time.time(), os.
+    parser.add_option('-p','--projname', default='condense-%s'%uuid.uuid4())
     parser.add_option('-v','--verbose',   action='count')
-    parser.add_option('-e','--experiment', default = os.environ.get('EXPERIMENT',os.environ.get('SAM_EXPERIMENT','unknown'))
+    parser.add_option('-e','--experiment', default = os.environ.get('EXPERIMENT',os.environ.get('SAM_EXPERIMENT','unknown')))
     parser.add_option('-b','--batch_size',default = 50, type='int', help="run in batches of this size")
     parser.add_option('-n', '--name',     help="dataset name to sum" )
     parser.add_option('-1', '--phase-1',  help="command to generate summary" )
     parser.add_option('-2', '--phase-2',  help="command to sum summary files" )
     parser.add_option('-w', '--work',     help="working directory location" )
-    parser.add_option('-a', '--art',      help="phase 1 command is an art executable", action=store_true)
+    parser.add_option('-a', '--art',      help="phase 1 command is an art executable", action='store_true')
 
     (o,a) = parser.parse_args()
-    
+
+    if not o.name:
+       parser.error("expected --name dataset-name")
+
+    if not o.phase_1:
+       parser.error("expected --phase-1 program-name")
+
+    if not o.phase_2:
+       parser.error("expected --phase-2 program-name")
+
     c = condenser(o)
     c.condense_it()

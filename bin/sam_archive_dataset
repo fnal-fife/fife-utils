@@ -49,10 +49,15 @@ if __name__ == '__main__':
     else:
          # plain sam_move_dataset
          type = "none"
+         sdir = ""
          clean_others= True
 
-    parser = optparse.OptionParser(usage="usage: %prog [options] \n copy files in named dataset to scratch and declare.\n  (Use %prog --help for full options list)")
+    if type == "none":
+        parser = optparse.OptionParser(usage="usage: %prog [options] \n copy files in named dataset to given destination, declare, and clean out other locations.\n  (Use %prog --help for full options list)")
+    else:
+        parser = optparse.OptionParser(usage="usage: %%prog [options] \n copy files in named dataset to %s and declare%s.\n  (Use %%prog --help for full options list)" % (type, " and clean out other locations " if clean_others else "" ))
     experiment = os.environ.get('EXPERIMENT',os.environ.get('SAM_EXPERIMENT',grp.getgrgid(os.getgid())[0]))
+
     dest = "/pnfs/%s/%s/sam_managed_users/%s%s" % ( 
 	    experiment, type, os.environ.get('USER',os.environ.get('GRID_USER')), sdir)
 
@@ -62,7 +67,12 @@ if __name__ == '__main__':
     parser.add_option('-e','--experiment')
     parser.add_option('-b','--batch_size',default = 20, type='int', help="copy then declare in batches of this size")
     parser.add_option('-n', '--name',     help="dataset name to copy", )
-    parser.add_option('-d', '--dest',     help="override destination to archive to, default is %s" % dest)
+    parser.add_option('-k', '--keep',     help="keep existing copies", action='store_true' )
+
+    if type == "none":
+        parser.add_option('-d', '--dest',     help="destination to move to")
+    else:
+        parser.add_option('-d', '--dest',     help="override destination to archive to, default is %s" % dest)
 
     (o,a) = parser.parse_args()
 
@@ -74,6 +84,9 @@ if __name__ == '__main__':
     if not o.name:
         parser.error("expected --name dataset-name")
         exit(1)
+
+    if o.keep:
+       clean_others = False
 
     check_dest(o.dest, dest)
     d = dataset(o.name)
