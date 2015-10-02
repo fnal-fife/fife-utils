@@ -6,6 +6,7 @@ import time
 import subprocess
 import signal
 import grp
+import urllib
 
 class Wrapper:
     def __init__(self):
@@ -19,6 +20,7 @@ class Wrapper:
         ]
         os.setpgrp()
         self.ih = None
+        self.cpurl = None
         self.consumerid = None
         self.timeoutproc = None
 
@@ -58,7 +60,6 @@ class Wrapper:
         import optparse
         parser = optparse.OptionParser()
     
-	# parser.add_option("-h","--help) 
 	parser.add_option("-q","--quals", help="Set qualifiers for ifdh_art setup")
 	parser.add_option("-v","--vers", help="Set version for ifdh_art setup")
 	parser.add_option("-c","--config", help="Specify config file (fcl) for art executable")
@@ -78,6 +79,7 @@ class Wrapper:
 	parser.add_option("--outputlist", action="append", help="ifdh cp -f file to run to copy out outputs")
 	parser.add_option("-O","--addoutput",action="append",  help="glob pattern to match and call addOutputFile on")
 	parser.add_option("--export",action="append",  help="export environment variable before running")
+	parser.add_option("--export-unquote",action="append",  help="export environment variable before running")
 	parser.add_option("--source",action="append",  help="source setup file before running")
 	parser.add_option("--self_destruct_timer", type="int", help="After this many seconds, suicide the job so we get output back")
 	parser.add_option("--prescript", help="script to run before Art executable")
@@ -89,6 +91,9 @@ class Wrapper:
         parser.add_option("--appfamily", help="application family for SAM", default="demo")
         parser.add_option("--appvers", help="application version for SAM", default=os.environ.get("ART_VERSION","1"))
         parser.add_option("--userscript", action="append", help="extra user script to run after main executable" )
+	parser.add_option("--find_setups", action="store_true", help="look in the 'usual places' for the ups setups script at startup")
+	parser.add_option("--start_project_on", default=None, help="start a sam project on this dataset ")
+	parser.add_option("--end_project", action="store_true", help="look in the 'usual places' for the ups setups script at startup")
 	parser.add_option("--nosetup", action="store_true", help="do not run setup actions (used internally)")
 
 	(self.options, self.args) = parser.parse_args()
@@ -106,10 +111,14 @@ class Wrapper:
 
         scriptlist = ['set -x\n']
 
-        scriptlist.append("for p in %s ; do if [ -r $p ]; then . $p; break; fi; done" % ' '.join(self.setupslist))
+        if self.options.find_setups:
+            scriptlist.append("for p in %s ; do if [ -r $p ]; then . $p; break; fi; done" % ' '.join(self.setupslist))
 
         for e in self.options.export:
             scriptlist.append("export %s" % e)
+
+        for e in self.options.export_unquote:
+            scriptlist.append("export %s" % urllib.unquote(e))
 
         for s in self.options.source:
             scriptlist.append("source %s" % s)
@@ -164,10 +173,12 @@ exit
         else:
             description = "process %d on %s" % (os.getpid(), hostname)
 
-        self.ih = ifdh.ifdh()
+        if self.ih == None:
+            self.ih = ifdh.ifdh()
 
         # assume SAM_PROJECT and SAM_STATION are set...
-        self.cpurl = self.ih.findProject(os.environ['SAM_PROJECT'],os.environ.get('SAM_STATION', os.environ.get('EXPERIMENT','')))
+        if self.cpurl == None:
+            self.cpurl = self.ih.findProject(os.environ['SAM_PROJECT'],os.environ.get('SAM_STATION', os.environ.get('EXPERIMENT','')))
         self.consumerid=None
 
         for i in range(0,1):
@@ -328,6 +339,23 @@ exit
         if self.timeoutproc:
             os.kill(self.timeoutproc)
 
+    def start_project(self):
+        if self.ih == None:
+            self.ih = ifdh.ifdh()
+
+        self.cpurl = self.ih.startProject(
+		os.environ['SAM_PROJECT'],
+		os.environ.get('SAM_STATION', 
+		os.environ.get('EXPERIMENT','')), 
+                self.start_project_on,
+                os.environ.get('GRID_USER',os.environ.get('USER','unknown')),
+		os.environ.get('EXPERIMENT',''))
+
+    def end_project(self):
+        if self.cpurl == None:
+            self.cpurl = self.ih.findProject(os.environ['SAM_PROJECT'],os.environ.get('SAM_STATION', os.environ.get('EXPERIMENT','')))
+        self.ih.endProject(self.cpurl)
+
 # end Wrapper
 
 if __name__ == '__main__' :
@@ -336,6 +364,8 @@ if __name__ == '__main__' :
     try:
 	w.parse_arguments()
 	w.do_setup()
+        if w.options.start_project:
+             w.start_project()
 	w.start_self_destruct()
         w.fetch_inputs()
 	w.start_client()
@@ -346,4 +376,11 @@ if __name__ == '__main__' :
         raise
     finally:
         w.cleanup()
+
+    try:
+	if w.options.end_project:
+	   w.end_project()
+    except:
+        pass
+
     exit(w.rres)

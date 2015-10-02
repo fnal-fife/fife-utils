@@ -4,6 +4,7 @@ import ConfigParser
 import sys
 import os
 import optparse
+import urllib
 
 class launcher:
  
@@ -60,7 +61,9 @@ class launcher:
 		else:
 		    if k[-2] == '_' and k[-1] in "0123456789":
 			 k = k[:-2]
-                    v = v.replace(' ',':')
+                    if k == 'export' and urllib.quote(v) != v:
+                         k = 'export-unquote'
+                         v = urllib.quote(v)
 		    res.append("    --%s '%s' \\" % (k,v))   
 
 	    for k,v in self.cfg.items("job_output", raw=1):
@@ -81,6 +84,7 @@ class launcher:
 
 	elif self.cfg.has_section("submit_dag"):
 	    # XXX not doing dags -- yet
+            print "submit_dag not yet implemented..."
 	    pass
 	else:
 	    raise KeyError("Need [submit] or [submit_dag] sections...")
