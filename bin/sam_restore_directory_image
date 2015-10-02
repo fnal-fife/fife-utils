@@ -7,6 +7,8 @@ import time
 import ifdh
 import samweb_client
 from fife_sam_utils import dataset, sampath
+import subprocess
+
 
 try:
    import uuid
@@ -36,12 +38,10 @@ class restorer:
 
     def list(self, o):
         print "Archived areas in dataset", o.name, ":"
-        print "Date\tsize(k)\tPath"
+        print "Date\t\t\t\tsize(k)\tPath"
         for f in d.file_iterator():
-            print "looking for metadata for: '%s'" % f
             m = samweb.getMetadata(f)
-            print m
-            print m['create_date'], m['file_size']/1024, m['Archive.source']
+            print "%s\t%d\t%s" % (m['create_date'], m['file_size']/1024, m['Archive.source'])
 
     def restore(self, o):
         if not o.restore or not o.date:
@@ -51,13 +51,13 @@ class restorer:
         for f in d.file_iterator():
             m = samweb.getMetadata(f)
             if m['Archive.source'] == o.restore and m['create_date'] == o.date:
-                src = sampath(samweb.locateFile(f)[0]['full_path'])          
+                src = sampath(samweb.locateFile(f)[0]['full_path']) + '/' + f
                 self.fifopath = os.environ.get('TMPDIR','/tmp') + "/fifo_%d" % os.getpid()
-                os.mkfifo(fifopath)
+                os.mkfifo(self.fifopath)
                 # copy retries and FIFO's dont mix...
-                os.environ["IFDH_CP_MAXRETRIES"] = 0
-                p1 = subprocess.Popen(["ifdh", "cp",  src, fifopath])
-                p2 = subprocess.Popen(["tar", "xzvf", fifopath])
+                os.environ["IFDH_CP_MAXRETRIES"] = '0'
+                p1 = subprocess.Popen(["ifdh", "cp",  src, self.fifopath])
+                p2 = subprocess.Popen(["tar", "xzvf", self.fifopath])
                 p2.wait()
                 p1.wait()
 
@@ -79,13 +79,11 @@ if __name__ == '__main__':
     (o,a) = parser.parse_args()
 
     if o.experiment:
-        print "seting experiment to: " , o.experiment
         os.environ['EXPERIMENT']= o.experiment
         os.environ['SAM_EXPERIMENT']= o.experiment
         os.environ['IFDH_BASE_URI'] = "http://samweb.fnal.gov:8480/sam/%s/api" % o.experiment
 
     samweb = samweb_client.SAMWebClient(experiment = o.experiment)
-    samweb.verbose = True
 
     d = dataset(o.name)
     r = restorer()
