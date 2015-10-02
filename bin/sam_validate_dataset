@@ -54,6 +54,6 @@ if __name__ == '__main__':
         parser.error("expected --name dataset-name")
         exit(1)
 
-    res = validate(dataset(o.name), just_say = o.just_say, prune = o.prune, verbose = o.verbose)
+    res = validate(dataset(o.name), just_say = o.just_say, prune = o.prune, verbose = o.verbose , experiment = o.experiment)
 
     sys.exit(res)

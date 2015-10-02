@@ -322,8 +322,8 @@ def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 20, verbose 
     d.ifdh_handle.endProject(purl)
 
 
-def unclone( d, just_say = False, delete_match = '.*', verbose = False ):
-    samweb = SAMWebClient()
+def unclone( d, just_say = False, delete_match = '.*', verbose = False, experiment = '' ):
+    samweb = SAMWebClient(experiment = experiment)
 
     for full in d.fullpath_iterator():
         file = basename(full)

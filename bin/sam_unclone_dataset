@@ -30,5 +30,5 @@ if __name__ == '__main__':
 
     o.dest = canonical(o.dest)
 
-    unclone(dataset(o.name), just_say = o.just_say, delete_match = o.dest, verbose = o.verbose)
+    unclone(dataset(o.name), just_say = o.just_say, delete_match = o.dest, verbose = o.verbose, experiment = o.experiment)
 

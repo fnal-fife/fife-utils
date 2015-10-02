@@ -37,17 +37,18 @@ class restorer:
     def list(self, o):
         print "Archived areas in dataset", o.name, ":"
         print "Date\tsize(k)\tPath"
-        for f in d.file_iterator:
-            print m
+        for f in d.file_iterator():
+            print "looking for metadata for: '%s'" % f
             m = samweb.getMetadata(f)
+            print m
             print m['create_date'], m['file_size']/1024, m['Archive.source']
 
-     def restore(self, o)
+    def restore(self, o):
         if not o.restore or not o.date:
             parser.error("either --list or --restore=/some/path and --date=some-date required")
 
         os.chdir('/')
-        for f in d.file_iterator:
+        for f in d.file_iterator():
             m = samweb.getMetadata(f)
             if m['Archive.source'] == o.restore and m['create_date'] == o.date:
                 src = sampath(samweb.locateFile(f)[0]['full_path'])          
@@ -64,6 +65,7 @@ if __name__ == '__main__':
 
     parser = optparse.OptionParser(usage="usage: %prog [options] \n restore files from dcache archviver area.\n  (Use %prog --help for full options list)")
     experiment = os.environ.get('EXPERIMENT',os.environ.get('SAM_EXPERIMENT',grp.getgrgid(os.getgid())[0]))
+    dname = os.environ.get('USER',os.environ.get('GRID_USER'))
     default_dataset = dname + '_archive_images' 
     datedir = time.strftime("%Y/%m-%d")
     parser.add_option('-v','--verbose',   action='count')
@@ -82,7 +84,8 @@ if __name__ == '__main__':
         os.environ['SAM_EXPERIMENT']= o.experiment
         os.environ['IFDH_BASE_URI'] = "http://samweb.fnal.gov:8480/sam/%s/api" % o.experiment
 
-    samweb = samweb_client.SAMWebClient(experiment = experiment)
+    samweb = samweb_client.SAMWebClient(experiment = o.experiment)
+    samweb.verbose = True
 
     d = dataset(o.name)
     r = restorer()

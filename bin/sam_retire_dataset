@@ -7,8 +7,9 @@ import sys
 import os
 import re
 
-def retire( d, just_say = False, keep_files = False, delete_match = '.*' ):
-    samweb = SAMWebClient()
+def retire( d, just_say = False, keep_files = False, delete_match = '.*', experiment = '' ):
+    samweb = SAMWebClient(experiment = experiment)
+    
 
     for full in d.fullpath_iterator():
         file = basename(full)
@@ -63,5 +64,5 @@ if __name__ == '__main__':
         parser.error("expected --name dataset-name")
         exit(1)
 
-    retire(dataset(o.name), just_say = o.just_say, keep_files = o.keep_files, delete_match = o.delete_match)
+    retire(dataset(o.name), just_say = o.just_say, keep_files = o.keep_files, delete_match = o.delete_match, experiment = o.experiment)
 
