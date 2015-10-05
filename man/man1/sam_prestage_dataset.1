@@ -1,0 +1,94 @@
+.TH sam_prestage_dataset 1 "fife_utils"
+.SH NAME
+ sam_prestage_dataset \- Prestage a dataset
+.SH SYNOPSIS
+.B sam_prestage_dataset --name=\fIDATASET\fB
+.SH DESCRIPTION
+
+As you can probably tell by the help output, this is simply a wrapper that calls samweb prestage-dataset, which will go through the files in your dataset and pull any that are on tape into DCache.   This can make processes that do not use SAM projects to fetch their files find them ready and waiting, or it can be used in advance of scripts that do use SAM, to reduce file access latency.
+
+.SH OPTIONS
+.TP
+.B --version
+show program's version number and exit
+.TP
+.B -h|--help
+show this help message and exit
+.TP
+.B --help-commands
+list available commands
+.TP
+.B -e \fIEXPERIMENT\fB|--experiment=\fIEXPERIMENT\fB
+
+use this experiment server. If not set, defaults to
+$SAM_EXPERIMENT.
+.TP
+.B --dev
+use development server
+.TP
+.B -s|--secure
+always use secure (SSL) mode
+.TP
+.B --cert=\fICERT\fB
+x509 certificate for authentication. If not specified,
+use $X509_USER_PROXY, $X509_USER_CERT/$X509_USER_KEY
+or standard grid proxy location
+.TP
+.B --key=\fIKEY\fB
+x509 key for authentication (defaults to same as
+certificate)
+.TP
+.B -r \fIROLE\fB|--role=\fIROLE\fB
+
+specific role to use for authorization
+.TP
+.B -z \fITIMEZONE\fB|--timezone=\fITIMEZONE\fB
+
+set time zone for server responses
+.TP
+.B -v|--verbose
+Verbose mode
+.TP
+.B --defname=\fIDEFNAME\fB
+Specify dataset definition name.
+.TP
+.B --snapshot_id=\fISNAPSHOT\fB_\fIID\fB
+Specify a snapshot of a dataset definition.
+.TP
+.B --max-files=\fIMAX\fB_\fIFILES\fB
+Maximum files to stage
+.TP
+.B --station=\fISTATION\fB
+SAM Station to use
+.TP
+.B --parallel=\fIPARALLEL\fB
+Number of parallel processes to run
+.TP
+.B --delivery-location=\fIDELIVERY\fB_\fILOCATION\fB
+
+Location to which the files should be delivered
+(defaults to the same as the node option)
+.TP
+.B --node=\fINODE\fB
+The current node name. The default is the local
+hostname, which is appropriate for most situations
+
+.SH "SEE ALSO"
+
+sam_add_dataset(1),
+sam_archive_dataset(1),
+sam_clone_dataset(1),
+sam_condense_dataset(1),
+sam_copy2scratch_dataset(1),
+sam_modify_dataset_metadata(1),
+sam_move2archive_dataset(1),
+sam_move2persistent_dataset(1),
+sam_move_dataset(1),
+sam_pin_dataset(1),
+sam_prestage_dataset(1),
+sam_remove_location_dataset(1),
+sam_restore_directory_image(1),
+sam_retire_dataset(1),
+sam_revert_names(1),
+sam_unclone_dataset(1),
+sam_validate_dataset(1)

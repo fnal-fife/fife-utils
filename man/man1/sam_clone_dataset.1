@@ -1,0 +1,66 @@
+.TH sam_clone_dataset 1 "fife_utils"
+.SH NAME
+ sam_clone_dataset \- copy files in dataset to destination and declare
+
+
+.SH SYNOPSIS
+.B sam_clone_dataset [options]
+.SH DESCRIPTION
+
+This utility makes copies of the files in a dataset at a given location.
+It will by default make hashed subdirectories so as not to put too many files
+in a given directory.  It can be useful for prestaging files at a given site
+(i.e. in Amazon S3: storage) or putting a copy of a set of BlueArc files in 
+DCache scratch before using the dataset in Grid jobs.
+
+.SH OPTIONS
+.TP
+.B -h|--help
+show this help message and exit
+.TP
+.B -v|--verbose
+
+.TP
+.B -n|--name
+xxx        name of dataset
+.TP
+.B -d|--dest
+url        destination 
+.TP
+.B -j|--just_say
+do not actually copy, just say what you would do
+.TP
+.B -e \fIEXPERIMENT\fB|--experiment=\fIEXPERIMENT\fB
+
+.TP
+.B -b \fIBATCH\fB_\fISIZE\fB|--batch_size=\fIBATCH\fB_\fISIZE\fB
+
+copy then declare in batches of this size
+.TP
+.B -0|--zerodeep
+make no subdirectories in destination
+.TP
+.B -1|--onedeep
+make subdirectories one deep in destination
+.TP
+.B -2|--twodeep
+make subdirectories two deep in destination
+.SH "SEE ALSO"
+
+sam_add_dataset(1),
+sam_archive_dataset(1),
+sam_clone_dataset(1),
+sam_condense_dataset(1),
+sam_copy2scratch_dataset(1),
+sam_modify_dataset_metadata(1),
+sam_move2archive_dataset(1),
+sam_move2persistent_dataset(1),
+sam_move_dataset(1),
+sam_pin_dataset(1),
+sam_prestage_dataset(1),
+sam_remove_location_dataset(1),
+sam_restore_directory_image(1),
+sam_retire_dataset(1),
+sam_revert_names(1),
+sam_unclone_dataset(1),
+sam_validate_dataset(1)
