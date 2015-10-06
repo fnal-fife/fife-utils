@@ -1,64 +1,18 @@
-.TH sam_copy2scratch_dataset 1 "fife_utils"
+.TH sam_modify_dataset_metadata 1 "fife_utils"
 .SH NAME
- sam_copy2scratch_dataset \- copy files in named dataset to scratch and declare.
-  (Use sam_copy2scratch_dataset --help for full options list)
-
+ modify_dataset_metadata \- update metadata on a whole dataset
 
 .SH SYNOPSIS
-.B sam_copy2scratch_dataset [options] 
+.B sam_modify_dataset_metadata [options] --name=\fIdataset\fB --metadata=\fImetadatafile\fB
 .SH DESCRIPTION
-This script will run through all the files in a dataset and basically call samweb modify-metadata on each file with th eprovided metadata file.   This lets you tag a whole dataset with addiitional information, as needed.
 
+Update the metadata on all files in a dataset with the metadata information
+provided.
 
 .SH OPTIONS
 .TP
 .B -h|--help
 show this help message and exit
-.TP
-.B -v|--verbose
-
-.TP
-.B -j|--just_say
-do not actually copy, just say what you would do
-.TP
-.B -e \fIEXPERIMENT\fB|--experiment=\fIEXPERIMENT\fB
-
-.TP
-.B -b \fIBATCH\fB_\fISIZE\fB|--batch_size=\fIBATCH\fB_\fISIZE\fB
-
-copy then declare in batches of this size
-.TP
-.B -n \fINAME\fB|--name=\fINAME\fB
-dataset name to copy
-.TP
-.B -d \fIDEST\fB|--dest=\fIDEST\fB
-override destination to archive to, default is
-/pnfs/$EXPERIMENT/scratch/sam_managed_users/$USER
-
-This script is basicaly a wrapper on sam_clone_dataset, that copies your data to the experiment DCache scratch area without you having to specify a location.h2. sam_copy2scratch_dataset
-
-<pre>
-Usage: sam_copy2scratch_dataset [options] 
- copy files in named dataset to scratch and declare.
-  (Use sam_copy2scratch_dataset --help for full options list)
-
- copy files in named dataset to scratch and declare.
-  (Use sam_copy2scratch_dataset --help for full options list)
-
- copy files in named dataset to scratch and declare.
-  (Use sam_copy2scratch_dataset --help for full options list)
-
-
-.SH SYNOPSIS
-.B sam_copy2scratch_dataset [options] 
-.SH DESCRIPTION
-
-.SH OPTIONS
-Options:
-.TP
-.B -h|--help
-show this help message and exit
-  -h, --help            show this help message and exit
 .TP
 .B -v|--verbose
 
@@ -66,76 +20,15 @@ show this help message and exit
 .TP
 .B -j|--just_say
 do not actually copy, just say what you would do
-  -j, --just_say        do not actually copy, just say what you would do
 .TP
 .B -e \fIEXPERIMENT\fB|--experiment=\fIEXPERIMENT\fB
 
-  -e EXPERIMENT, --experiment=EXPERIMENT
-.TP
-.B -b \fIBATCH\fB_\fISIZE\fB|--batch_size=\fIBATCH\fB_\fISIZE\fB
-
-  -b BATCH_SIZE, --batch_size=BATCH_SIZE
-copy then declare in batches of this size
-copy then declare in batches of this size
-.TP
-.B -n \fINAME\fB|--name=\fINAME\fB
-dataset name to copy
-  -n NAME, --name=NAME  dataset name to copy
-.TP
-.B -d \fIDEST\fB|--dest=\fIDEST\fB
-override destination to archive to, default is
-  -d DEST, --dest=DEST  override destination to archive to, default is
-/pnfs/$EXPERIMENT/scratch/sam_managed_users/$USER
-/pnfs/$EXPERIMENT/scratch/sam_managed_users/$USER
-
-</pre>
-
-This script is basicaly a wrapper on sam_clone_dataset, that copies your data to the experiment DCache scratch area without you having to specify a locationam_modify_dataset_metadata
-
-<pre>
-Usage: sam_modify_dataset_metadata [options] 
- modify metadata on all files in dataset
-
- copy files in named dataset to scratch and declare.
-  (Use sam_copy2scratch_dataset --help for full options list)
-
- copy files in named dataset to scratch and declare.
-  (Use sam_copy2scratch_dataset --help for full options list)
-
- modify metadata on all files in dataset
-
-
-.SH SYNOPSIS
-.B sam_modify_dataset_metadata [options] 
-.SH DESCRIPTION
-
-.SH OPTIONS
-Options:
-.TP
-.B -h|--help
-show this help message and exit
-  -h, --help            show this help message and exit
-.TP
-.B -v|--verbose
-
-  -v, --verbose         
-.TP
-.B -j|--just_say
-do not actually copy, just say what you would do
-  -j, --just_say        do not actually copy, just say what you would do
-.TP
-.B -e \fIEXPERIMENT\fB|--experiment=\fIEXPERIMENT\fB
-
-  -e EXPERIMENT, --experiment=EXPERIMENT
 .TP
 .B -n \fINAME\fB|--name=\fINAME\fB
 dataset name to modify
-  -n NAME, --name=NAME  dataset name to modify
 .TP
 .B -m \fIMETADATA\fB|--metadata=\fIMETADATA\fB
 
-  -m METADATA, --metadata=METADATA
-metadata file with updates
 metadata file with updates
 
 </pre>

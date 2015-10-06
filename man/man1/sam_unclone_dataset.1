@@ -4,9 +4,8 @@
 
 
 .SH SYNOPSIS
-.B sam_unclone_dataset [options] 
+.B sam_unclone_dataset [options] --name=\fIdataset\fB --dest=\fIlocation\fB
 .SH DESCRIPTION
-
 
 This command removes files in a datset stored at a given locaion -- for example if you previously staged a copy
 in your experiment persistent area, you might <pre>sam_unclone_dataset --dest=/pnfs/$EXPERIMENT/persistent</pre>
@@ -21,11 +20,11 @@ show this help message and exit
 .B -v|--verbose
 
 .TP
-.B -n|--name
-NAME       datset name (required)
+.B -n|--name=\fINAME\fB
+datset name (required)
 .TP
-.B -d|--dest
-DEST       destination url match (required)
+.B -d|--dest=\fILOCATION\fB
+destination url match (required)
 .TP
 .B -j|--just_say
 do not actually copy, just say what you would do

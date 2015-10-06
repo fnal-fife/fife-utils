@@ -4,7 +4,7 @@
 
 
 .SH SYNOPSIS
-.B sam_validate_dataset [options]
+.B sam_validate_dataset [options] --name=\fIdataset\fB
 .SH DESCRIPTION
 
 This command is particularly targeted at scratch DCache -- it will check the locations that SAM thinks it has for files in the given dataset, and let you knwo if any are not present. It can also clean out the location data for those pruned locaitons.
@@ -15,19 +15,19 @@ This command is particularly targeted at scratch DCache -- it will check the loc
 show this help message and exit
 .TP
 .B -v|--verbose
-
+print extra information
 .TP
-.B -n|--name
+.B -n \fIdataset\fB|--name=\fIdataset\fB
 dataset name (required)
 .TP
 .B -j|--just_say
 do not actually copy, just say what you would do
 .TP
 .B -p|--prune
-prune locations we cannot reach
+prune locations we cannot reach from SAM
 .TP
 .B -e \fIEXPERIMENT\fB|--experiment=\fIEXPERIMENT\fB
-
+set experiment
 
 .SH "SEE ALSO"
 

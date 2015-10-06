@@ -1,18 +1,16 @@
 .TH sam_archive_directory_image 1 "fife_utils"
 .SH NAME
- sam_archive_directory_image \- archive files sin source directory dcache archviver area and declare.
-  (Use sam_archive_directory_image --help for full options list)
-
+ sam_archive_directory_image \- archive files to experiment archvive area and declare.
 
 .SH SYNOPSIS
-.B sam_archive_directory_image [options] 
+.B sam_archive_directory_image [options] --src=\fIpath\fB
 .SH DESCRIPTION
 
 This script basically makes a tarfile  backup of a directory, and stores it the experiment tape-backed area, and declares it to SAM.  It also makes, if it does not exist, a datset $USER_archive_images (with $USER replaced by your username) which lists all your archive images, and puts the path which was archvied in the metadata of the file.
 
 It is very useful if there is a disk area in your DCache persistent, or BlueArc areas which you want to free up, but you're not sure you should throw away; you can archive it, and then remove the directory, and you can unpack it later if needed -- see sam_restore_directory_image.
 
-Note: while you could schedule regular backups of directories with this tool and a cron job,  the incremental backup tools provided by the systems folks at the lab are far more efficient.  If you find yourself considering running a nightly or weekly backup this way, please see the "FNAL Site Backups":http://computing.fnal.gov/site-backups/ page, and use their tools,  instead.
+Note: while you could schedule regular backups of directories with this tool and a cron job,  the incremental backup tools provided by the systems folks at the lab are far more efficient.  If you find yourself considering running a nightly or weekly backup this way, please see the \fBFNAL Site Backups\fN page  at http://computing.fnal.gov/site-backups/, and use their tools,  instead.
 
 .SH OPTIONS
 .TP
