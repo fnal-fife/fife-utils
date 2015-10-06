@@ -1,0 +1,123 @@
+#!/usr/bin/env python
+import optparse
+import grp
+import sys
+import os
+import time
+import samweb_client
+from fife_sam_utils import dataset
+
+try:
+   import uuid
+except:
+   class uuid:
+       def uuid4():
+         return "%s-%s-%s-%s-%s" % (
+              hex(int(time.time()))[2:],
+              hex(os.getpid())[2:],
+              hex(os.getppid())[2:],
+              hex(os.getpid())[2:],
+              ''.join([hex(int(x))[2:] for x in socket.gethostbyname(socket.gethostname()).split('.')])
+            )
+       uuid4 = staticmethod(uuid4)
+
+
+import ifdh
+import os.path
+
+def check_dest(dest, default_dest):
+    destp = os.path.dirname(dest)
+
+    h = ifdh.ifdh()
+    for d in [ destp , dest]:
+	res = h.ls(d, 1, "")
+	if len(res) == 0:
+            try:
+	        h.mkdir(d,"")
+            except:
+                pass
+	res = h.ls(d, 1, "")
+	if len(res) == 0:
+            if default_dest == dest:
+                if dest.find("none") > 0:
+                    
+	            sys.stderr.write("\nERROR: no destination specified to " + sys.argv[0])
+                else:
+	            sys.stderr.write("\nERROR: Cannot find or create %s:\n-- please contect servicedesk to request it be made" % d)
+            else:
+	        sys.stderr.write("\nERROR: Cannot find or create %s:\n-- please check spelling, permissions, etc" % d)
+            
+            exit(1)
+
+if __name__ == '__main__':
+
+    parser = optparse.OptionParser(usage="usage: %prog [options] \n archive files sin source directory dcache archviver area and declare.\n  (Use %prog --help for full options list)")
+    experiment = os.environ.get('EXPERIMENT',os.environ.get('SAM_EXPERIMENT',grp.getgrgid(os.getgid())[0]))
+    dname = os.environ.get('USER',os.environ.get('GRID_USER')) 
+    default_dataset = dname + '_archive_images' 
+    datedir = time.strftime("%Y/%m-%d")
+    default_dest = "/pnfs/%s/archive/sam_managed_users/%s/image/%s" % ( 
+	    experiment, dname, datedir )
+    parser.add_option('-v','--verbose',   action='count')
+    parser.add_option('-j','--just_say',  action='store_true', help="do not actually copy, just say what you would do")
+    parser.add_option('-e','--experiment', default = experiment)
+    parser.add_option('-n', '--name',     default= default_dataset, help="dataset name/tag to put in: default is %s" % default_dataset, )
+    parser.add_option('-s', '--src',      help="source directory to archive")
+    parser.add_option('-d', '--dest',     help="override destination to archive to, default is %s" % default_dest, default= default_dest )
+    parser.add_option('-4', '--nfs4',     help="write tarfile directly via nfs4", action='store_true')
+
+    (o,a) = parser.parse_args()
+
+    if o.experiment:
+        print "seting experiment to: " , o.experiment
+        os.environ['EXPERIMENT']= o.experiment
+        os.environ['SAM_EXPERIMENT']= o.experiment
+        os.environ['IFDH_BASE_URI'] = "http://samweb.fnal.gov:8480/sam/%s/api" % o.experiment
+
+    samweb = samweb_client.SAMWebClient(experiment = o.experiment)
+
+    check_dest(o.dest, default_dest)
+    d = dataset(o.name)
+
+    tarfilename = "image-%s.tgz" % uuid.uuid4()
+
+    if o.nfs4:
+        tmpdir = o.dest
+    else:
+        tmpdir = os.getenv("TMPDIR","/var/tmp")
+
+    res = os.system("tar czf %s/%s %s" % ( tmpdir, tarfilename, o.src))
+
+    if (res != 0): 
+	raise logicError("tar failed")
+
+    statinfo =  os.stat("%s/%s" % (tmpdir, tarfilename))
+
+    metadata = { 
+	"file_name":      tarfilename, 
+	"file_type":      "unknown", 
+	"file_format":    "tar", 
+        "file_size":      statinfo.st_size,
+	"Archive.source": o.src, 
+	"Dataset.Tag":    o.name,
+    }
+
+    samweb.declareFile(metadata)
+
+    # if we are not going direct via nfs4, we need to copy
+    # the tarfile there.
+    if not o.nfs4:
+	ih = ifdh.ifdh()
+
+	res = ih.cp(["%s/%s" % (tmpdir,tarfilename) , 
+	      "%s/%s" % (o.dest,  tarfilename)])
+
+	if (res != 0): raise logicError("ifdh::cp failed")
+
+    samweb.addFileLocation(tarfilename, o.dest);
+
+    try:
+       samweb.createDefinition(o.name, "Dataset.tag %s" % o.name);
+    except:
+       pass
+
