@@ -1,0 +1,51 @@
+.TH sam_retire_dataset 1 "fife_utils"
+.SH NAME
+ sam_retire_dataset \- delete files, undeclare locations, and delete dataset
+
+.SH SYNOPSIS
+.B sam_retire_dataset [options] --name=\fIdataset\fB
+.SH DESCRIPTION
+
+This command is useful when you have made a dataset of preliminary files, and then discover you want to just throw them out and start over.  You can call sam_restire_datset on them, and the files will be removed from wherever SAM thinks they are, the locations will be undeclare from SAM, and then the files will be retired in SAM, and the dataset name deleted.  You can then re-run whatever generated the dataset initially, and declare the new files, and go on with the new data.
+.SH OPTIONS
+.TP
+.B -h|--help
+show this help message and exit
+.TP
+.B -v|--verbose
+print extra information 
+.TP
+.B -n|--name
+name of dataset (required) 
+.TP
+.B -n|--just_say
+do not actually copy, just say what you would do
+.TP
+.B -k|--keep_files
+do not delete actual files, just retire them from SAM
+.TP
+.B -m \fIDELETE\fB_\fIMATCH\fB|--delete_match=\fIDELETEMATCH\fB
+delete only files matching this regexp
+.TP
+.B -e \fIEXPERIMENT\fB|--experiment=\fIEXPERIMENT\fB
+set experiment name
+
+.SH "SEE ALSO"
+
+sam_add_dataset(1),
+sam_archive_dataset(1),
+sam_clone_dataset(1),
+sam_condense_dataset(1),
+sam_copy2scratch_dataset(1),
+sam_modify_dataset_metadata(1),
+sam_move2archive_dataset(1),
+sam_move2persistent_dataset(1),
+sam_move_dataset(1),
+sam_pin_dataset(1),
+sam_prestage_dataset(1),
+sam_remove_location_dataset(1),
+sam_restore_directory_image(1),
+sam_retire_dataset(1),
+sam_revert_names(1),
+sam_unclone_dataset(1),
+sam_validate_dataset(1)

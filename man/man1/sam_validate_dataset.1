@@ -1,0 +1,50 @@
+.TH sam_validate_dataset 1 "fife_utils"
+.SH NAME
+ sam_validate_dataset \- make sure files in dataset actually exist
+
+
+.SH SYNOPSIS
+.B sam_validate_dataset [options] --name=\fIdataset\fB
+.SH DESCRIPTION
+
+This command is particularly targeted at scratch DCache -- it will check the locations that SAM thinks it has for files in the given dataset, and let you knwo if any are not present. It can also clean out the location data for those pruned locaitons.
+
+.SH OPTIONS
+.TP
+.B -h|--help
+show this help message and exit
+.TP
+.B -v|--verbose
+print extra information
+.TP
+.B -n \fIdataset\fB|--name=\fIdataset\fB
+dataset name (required)
+.TP
+.B -j|--just_say
+do not actually copy, just say what you would do
+.TP
+.B -p|--prune
+prune locations we cannot reach from SAM
+.TP
+.B -e \fIEXPERIMENT\fB|--experiment=\fIEXPERIMENT\fB
+set experiment
+
+.SH "SEE ALSO"
+
+sam_add_dataset(1),
+sam_archive_dataset(1),
+sam_clone_dataset(1),
+sam_condense_dataset(1),
+sam_copy2scratch_dataset(1),
+sam_modify_dataset_metadata(1),
+sam_move2archive_dataset(1),
+sam_move2persistent_dataset(1),
+sam_move_dataset(1),
+sam_pin_dataset(1),
+sam_prestage_dataset(1),
+sam_remove_location_dataset(1),
+sam_restore_directory_image(1),
+sam_retire_dataset(1),
+sam_revert_names(1),
+sam_unclone_dataset(1),
+sam_validate_dataset(1)

@@ -1,0 +1,71 @@
+.TH sam_condense_dataset 1 "fife_utils"
+.SH NAME
+ sam_condense_dataset \- slurp dataset through program and generate summed files
+
+
+.SH SYNOPSIS
+.B sam_condense_dataset [options] --name=\fIdataset\fB --phase-1=\fIprog\fB --phase-2=\fIprog\fB
+.SH DESCRIPTION
+
+This script attempts to apply a pair of programs to a dataset of files.
+The first "phase-1" program reads the input files and generates some sort
+of merged/summary/histogram file.  The second "phase-2" program combines
+merged/summary/histogram files into a single file.  For small datasets,
+it can run interactively, and just run the phase-1 program; for large datasets
+it can launch a set of grid jobs which will run phase-1 on files, and generate
+some number of intermediate files, and then run phase-2 on those to generate
+a final output.
+
+.SH OPTIONS
+.TP
+.B -h|--help
+show this help message and exit
+.TP
+.B -p \fIPROJNAME\fB|--projname=\fIPROJNAME\fB
+
+.TP
+.B -v|--verbose
+
+.TP
+.B -e \fIEXPERIMENT\fB|--experiment=\fIEXPERIMENT\fB
+
+.TP
+.B -b \fIBATCH\fB_\fISIZE\fB|--batch_size=\fIBATCH\fB_\fISIZE\fB
+
+run in batches of this size
+.TP
+.B -n \fINAME\fB|--name=\fINAME\fB
+dataset name to sum
+.TP
+.B -1 \fIPHASE\fB_1|--phase-1=\fIPHASE\fB_1
+
+command to generate summary
+.TP
+.B -2 \fIPHASE\fB_2|--phase-2=\fIPHASE\fB_2
+
+command to sum summary files
+.TP
+.B -w \fIWORK\fB|--work=\fIWORK\fB
+working directory location
+.TP
+.B -a|--art
+phase 1 command is an art executable
+.SH "SEE ALSO"
+
+sam_add_dataset(1),
+sam_archive_dataset(1),
+sam_clone_dataset(1),
+sam_condense_dataset(1),
+sam_copy2scratch_dataset(1),
+sam_modify_dataset_metadata(1),
+sam_move2archive_dataset(1),
+sam_move2persistent_dataset(1),
+sam_move_dataset(1),
+sam_pin_dataset(1),
+sam_prestage_dataset(1),
+sam_remove_location_dataset(1),
+sam_restore_directory_image(1),
+sam_retire_dataset(1),
+sam_revert_names(1),
+sam_unclone_dataset(1),
+sam_validate_dataset(1)

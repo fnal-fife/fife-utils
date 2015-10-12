@@ -1,0 +1,50 @@
+.TH sam_move_dataset 1 "fife_utils"
+.SH SYNOPSIS
+.B sam_move_dataset [options] --name=\fIname\fB --dest=\fIlocation\fB 
+.SH DESCRIPTION
+
+This command will move all the files in a given dataset to the experiment persistent DCache area, and then clean out the copies elsewhere, updating the SAM bookkeepig as to the locations. You can use the --keep option to prevent the cleaning out of other copies.
+
+.SH OPTIONS
+.TP
+.B -h|--help
+show this help message and exit
+.TP
+.B -v|--verbose
+.TP
+.B -j|--just_say
+do not actually copy, just say what you would do
+.TP
+.B -e \fIEXPERIMENT\fB|--experiment=\fIEXPERIMENT\fB
+.TP
+.B -b \fIBATCH\fB_\fISIZE\fB|--batch_size=\fIBATCH\fB_\fISIZE\fB
+copy then declare in batches of this size
+.TP
+.B -n \fINAME\fB|--name=\fINAME\fB
+dataset name to copy
+.TP
+.B -d \fIDEST\fB|--dest=\fIDEST\fB
+override destination to archive to>
+.TP
+.B -k |--keep
+Do not remove other copies of the files, just make a new set.
+
+.SH "SEE ALSO"
+
+sam_add_dataset(1),
+sam_archive_dataset(1),
+sam_clone_dataset(1),
+sam_condense_dataset(1),
+sam_copy2scratch_dataset(1),
+sam_modify_dataset_metadata(1),
+sam_move2archive_dataset(1),
+sam_move2persistent_dataset(1),
+sam_move_dataset(1),
+sam_pin_dataset(1),
+sam_prestage_dataset(1),
+sam_remove_location_dataset(1),
+sam_restore_directory_image(1),
+sam_retire_dataset(1),
+sam_revert_names(1),
+sam_unclone_dataset(1),
+sam_validate_dataset(1)

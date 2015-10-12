@@ -1,0 +1,80 @@
+.TH sam_add_dataset 1 "fife_utils"`
+.SH NAME
+sam_add_dataset \- Add a group of files to SAM and create a dataset out of it.
+.SH SYNOPSIS
+.B sam_add_datset [\fIopts\fB] --name=\fIdataset\fB [--directory=\fIdir\fB | --file=\fIflist\fB]
+
+.SH DESCRIPTION
+This script will take a group of files, give them metadata with a Dataset.Tag = TAG, and make a dataset
+with the given NAME.  There are several requirements:
+
+* The files must exist in an area SAM knows about (i.e. experiment BlueArc or DCache areas).
+* You must have a certificate/proxy for your experiment.
+
+Other useful tidits:
+
+* Files will be renamed to have a unique prefix, as all files in a given experiment SAM instance
+   need unique names
+* You can specify an already used Dataset.Tag to expand an existing dataset; this will however
+  give you two datasets (the old one, and a new one) with the same files in them.
+
+.SH OPTIONS
+.TP
+.B   --version             
+show program's version number and exit
+.TP
+.B  -h, --help            
+show this help message and exit
+.TP
+.B  -e \fIEXPERIMENT\fB|--experiment=\FIEXPERIMENT\FB
+use this experiment server defaults to $SAM_EXPERIMENT if not set
+.TP
+.B  -u \fIUSER\fB|--user=\fIUSER\fB 
+ username to use for SAM operations: default is $USER
+.TP
+.B -t \fITAG\fB|--tag=\fITAG\FB
+the value for Dataset.Tag which will be used to distinguish this new dataset default format is user+date
+.TP
+.B -n \fINAME\fB, --name=\fINAME\fB
+the dataset name default is userdataset+user+date
+.TP
+.B -d \fIDIRECTORY\fB|--directory=\fIDIRECTORY\fB
+directory of files to roll into dataset
+.TP
+.B  -r|--recurse 
+walk down all levels of directory
+.TP
+.B -f \fIFILE\fB|--file=\fIFILE\fB  
+file containing list of  file paths to roll into dataset
+.TP
+.B -m \fIMETADATA\fB, --metadata=\fIMETADATA\fB
+json file of metadata you would like added to all files
+.TP
+.B -s \fISUBPROCESS\fB|--subprocess=\fISUBPROCESS\fB
+execute a child program \fISUBPROCESS\fN iin a new process to extract metadata
+-- only 'sam_metadata_dumper' currently supported
+.TP
+.B -c \fICERT\fB, --cert=\fICERT\fB
+x509 certificate for authentication. If not specified, use $X509_USER_PROXY, $X509_USER_CERT/$X509_USER_KEY or standard grid proxy location
+.TP
+.B -v|--verbose    
+turns on  verbose output
+
+.SH "SEE ALSO"
+
+sam_archive_dataset(1),
+sam_clone_dataset(1),
+sam_condense_dataset(1),
+sam_copy2scratch_dataset(1),
+sam_modify_dataset_metadata(1),
+sam_move2archive_dataset(1),
+sam_move2persistent_dataset(1),
+sam_move_dataset(1),
+sam_pin_dataset(1),
+sam_prestage_dataset(1),
+sam_remove_location_dataset(1),
+sam_restore_directory_image(1),
+sam_retire_dataset(1),
+sam_revert_names(1),
+sam_unclone_dataset(1),
+sam_validate_dataset(1)

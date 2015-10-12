@@ -59,7 +59,6 @@ if __name__ == '__main__':
         parser = optparse.OptionParser(usage="usage: %%prog [options] \n copy files in named dataset to %s and declare%s.\n  (Use %%prog --help for full options list)" % (type, " and clean out other locations " if clean_others else "" ))
     experiment = os.environ.get('EXPERIMENT',os.environ.get('SAM_EXPERIMENT',grp.getgrgid(os.getgid())[0]))
 
-
     parser.set_defaults(dirfunc = fourdeep, experiment = experiment, dest = dest)
     parser.add_option('-v','--verbose',   action='count')
     parser.add_option('-j','--just_say',  action='store_true', help="do not actually copy, just say what you would do")
@@ -85,7 +84,7 @@ if __name__ == '__main__':
     else:
         edir = o.experiment
 
-    dest = "/pnfs/%s/%s/sam_managed_users/%s%s" % ( 
+    dest = "/pnfs/%s/%s/sfu_users/%s%s" % ( 
 	    edir, type, os.environ.get('USER',os.environ.get('GRID_USER')), sdir)
 
     if not o.dest:
