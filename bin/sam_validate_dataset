@@ -6,8 +6,8 @@ import sys
 import os
 import optparse
 
-def validate( ds, just_say = False, prune = False, verbose = False ):
-    samweb = SAMWebClient()
+def validate( ds, just_say = False, prune = False, verbose = False, experiment = None ):
+    samweb = SAMWebClient(experiment=experiment)
     res=0
 
     for p in ds.fullpath_iterator():

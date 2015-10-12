@@ -166,15 +166,37 @@ test_clone() {
     [ "$locs2" -gt "$locs1" ]
 }
 
-test_cp_dataset_to_scratch() {
+test_copy2scratch_dataset() {
     echo "before:"
     sam_validate_dataset -v --name $dataset
     locs1=`sam_validate_dataset -v --name  $dataset | wc -l`
-    sam_cp_dataset_to_scratch -v --name $dataset --dest /pnfs/nova/scratch/users/$USER/fife_util_test
+    sam_copy2scratch_dataset -v --name $dataset --dest /pnfs/nova/scratch/users/$USER/fife_util_test
     echo "after:"
     sam_validate_dataset -v --name $dataset
     locs2=`sam_validate_dataset -v --name $dataset | wc -l`
     [ "$locs2" -gt "$locs1" ]
+}
+
+test_move2archive_dataset() {
+    echo "before:"
+    sam_validate_dataset -v --name $dataset
+    locs1=`sam_validate_dataset -v --name  $dataset | wc -l`
+    sam_move2archive_dataset -v --name $dataset --dest /pnfs/nova/scratch/users/$USER/fife_util_test
+    echo "after:"
+    sam_validate_dataset -v --name $dataset
+    locs2=`sam_validate_dataset -v --name $dataset | wc -l`
+    [ "$locs2" -eq "$locs1" ]
+}
+
+test_move2persistent() {
+    echo "before:"
+    sam_validate_dataset -v --name $dataset
+    locs1=`sam_validate_dataset -v --name  $dataset | wc -l`
+    sam_move2persistent_dataset -v --name $dataset --dest /pnfs/nova/scratch/users/$USER/fife_util_test
+    echo "after:"
+    sam_validate_dataset -v --name $dataset
+    locs2=`sam_validate_dataset -v --name $dataset | wc -l`
+    [ "$locs2" -eq "$locs1" ]
 }
 
 test_archive_dataset() {
@@ -257,10 +279,16 @@ testsuite test_utils \
 	test_validate_1 \
         test_retire  \
         add_dataset \
-        test_cp_dataset_to_scratch \
+        test_copy2scratch_dataset \
         test_retire \
         add_dataset \
         test_archive_dataset \
-        test_retire 
-
+        test_retire \
+        add_dataset \
+        test_move2persistent_dataset \
+        test_retire \
+        add_dataset \
+        test_move2archive_dataset \
+        test_retire \
+         
 test_utils "$@"

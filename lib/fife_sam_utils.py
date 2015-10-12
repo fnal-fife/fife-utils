@@ -37,10 +37,11 @@ class dataset:
         return flist.__iter__()
         
     class _loc_iterator:
-        def __init__(self, locmap):
+        def __init__(self, locmap, fulllocflag = False):
             #print "in _loc_iterator.__init__, locmap is:", locmap
             self.loc_iter = [].__iter__()
             self.locmap = locmap
+            self.fulllocflag = fulllocflag
             self.key_iter = locmap.keys().__iter__()
             try:
                 self.next_key()
@@ -69,23 +70,27 @@ class dataset:
                     self.next_key()
 
             #pre = res
-            prefix, res = res.split(':',1)
+            if not self.fulllocflag:
+                prefix, res = res.split(':',1)
             res = re.sub('\(.*?\)$','',res)
 
             #print "converted\n\t%s\nto\n\t%s" % ( pre, res)
 
             return res + '/' + self.curfile
 
-    def fullpath_iterator(self):
+    def fullpath_iterator(self, fulllocflag = False):
         flist = self.get_flist()
         locmap = {}
         while len(flist) > 0:
             first_k = flist[:500]
             flist = flist[500:]
             locmap.update(self.ifdh_handle.locateFiles(first_k))
-        return self._loc_iterator(locmap)
+        return self._loc_iterator(locmap, fulllocflag)
 
 def sampath(dir):
+    if dir.find("s3:") == 0:
+       return dir[3:]
+
     if dir.find("://") > 0:
         # it is a URL, so convert it to a hostname/path
         path = re.sub("[a-z]+://([-a-z0-9_.]*)(/.*\?SFN=)?(/.*)","\\3", dir)
@@ -94,6 +99,8 @@ def sampath(dir):
     
 def samprefix(dir):
     
+    if dir.find("s3:") == 0:
+        return "s3:"
     if dir.find("://") > 0:
         # it is a URL, so convert it to a hostname/path
         prefix = re.sub("[a-z]+://([-a-z0-9_.]*)(/.*\?SFN=)?(/.*)","\\1:", dir)
@@ -169,8 +176,12 @@ def check_destination(samweb,dest):
         return 1
     samdest = samprefix(dest) + sampath(dest)
     # or any known data disk..
+    print "samdest is:" , samdest
     for d in samweb.listDataDisks():
-        if samdest.find(d) == 0:
+        pos = samdest.find(d['mount_point'])
+        print "d is: " , d
+        print "d.mount_point %s pos: %d" % (d['mount_point'], pos)
+        if samdest.find(d['mount_point']) == 0:
             return 1
     # otherwise, nope.
     return 0
@@ -254,37 +265,74 @@ def copy_and_declare(d, cpargs, locargs, dest, subdirf, samweb, just_say, verbos
                     res = 1
     return res
 
-def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 20, verbose = False, experiment = None ):
+def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 20, verbose = False, experiment = None, ncopies=1, just_start_project = False, connect_project = False , projname = None):
     # make gridftp tool add directories
     os.environ['IFDH_GRIDFTP_EXTRA'] = '-cd -sync'
     cpargs = []
     locargs = []
     count = 0
-    samweb = SAMWebClient()
+    samweb = SAMWebClient(experiment = experiment)
 
     if not check_destination(samweb,dest):
         print "Destination: %s is not known to SAM" % dest;
         print "...maybe you wanted ifdh_fetch?"
-        return 0
-
-    if experiment:
-        samweb.experiment = experiment
+        return 1
 
     res = samweb.listApplications(name="sam_clone_dataset")
+
+    print 'here1'
 
     if not res:
         samweb.addApplication("fife_utils","sam_clone_dataset","1")
        
+    print 'here2'
 
-    user = os.environ.get("USER","unknown")
-    projname = time.strftime("sam_clone_%%s_%Y%m%d%H_%%d")%(user,os.getpid())
+    user = os.environ.get("GRID_USER", os.environ.get("USER","unknown"))
+
+    if projname == None:
+        projname = time.strftime("sam_clone_%%s_%Y%m%d%H_%%d")%(user,os.getpid())
     hostname = socket.gethostname()
-    purl = d.ifdh_handle.startProject(projname, experiment, d.name, user, experiment)
+
+    if connect_project:
+        purl = d.ifdh_handle.findProject(projname, os.environ.get('SAM_STATION',experiment))
+    else:
+        purl = d.ifdh_handle.startProject(projname, os.environ.get('SAM_STATION',experiment), d.name, user, experiment)
+
+    if (just_start_project):
+        print "started:", purl
+        return 
+    if verbose:
+         print "got project url: ", purl
+
+    kidlist = []
+    for i in range(0,int(ncopies) - 1):
+        res = os.fork()
+        if res > 0:
+           kidlist.append(res)
+           print "started child", res
+        if res == 0:
+           # we are a child
+           kidlist = []
+           break
+        if res < 0:
+           print "Could not fork!"
+
+       
     consumer_id = d.ifdh_handle.establishProcess( purl, "sam_clone_dataset", "1", hostname, user)
+    if verbose:
+         print "got consumer id: ", consumer_id
 
     furi = d.ifdh_handle.getNextFile(purl, consumer_id)
 
+    # deal with single/double s3 urls silliness..
+    cpdest = dest
+    if dest.find("s3:/") == 0 and dest.find("s3://") != 0:
+        cpdest="s3://"+dest[4:]
+
     while furi:
+
+	if verbose:
+	    print "got file uri:", furi
 
         f = basename(furi)
 
@@ -298,7 +346,7 @@ def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 20, verbose 
         if len(loclist) > 0:
             locargs.append(f)
             cpargs.append(loclist[0])
-	    cpargs.append(dest + subdirf(f) + f)
+	    cpargs.append(cpdest + subdirf(f) + f)
             cpargs.append(';')
             dodir(d.ifdh_handle, dest+subdirf(f))
         else:
@@ -317,15 +365,22 @@ def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 20, verbose 
         furi = d.ifdh_handle.getNextFile(purl, consumer_id)
 
     copy_and_declare(d, cpargs, locargs, dest, subdirf, samweb, just_say, verbose)
-
     d.ifdh_handle.setStatus( purl, consumer_id, "completed")
-    d.ifdh_handle.endProject(purl)
+
+    if len(kidlist) > 1:
+       # we're the parent, and there are kids
+       for i in range(0,kidlist-1):
+           os.wait()
+
+    if len(kidlist) > 1 or int(ncopies) == 1:
+       d.ifdh_handle.endProject(purl)
 
 
 def unclone( d, just_say = False, delete_match = '.*', verbose = False, experiment = '' ):
     samweb = SAMWebClient(experiment = experiment)
 
-    for full in d.fullpath_iterator():
+    for full in d.fullpath_iterator(True):
+        print "looking at full path:", full
         file = basename(full)
 	if just_say:
 	    if re.match(delete_match, full): 
@@ -333,16 +388,24 @@ def unclone( d, just_say = False, delete_match = '.*', verbose = False, experime
 	        print "I would remove location %s for %s" % ( file, samprefix(full)+dirname(full) )
 	else:
 	    if re.match(delete_match, full): 
+                print "matches: " , delete_match
                 if len(d.ifdh_handle.locateFile(file)) == 1:
                     print "NOT removing %s, it is the only location!"
                     continue
 		try:
                     if verbose: print "removing: " , full
-                    d.ifdh_handle.rm(full, '')
+                    if full.find("s3:/") == 0:
+                       path = full[0:4]+full[3:]
+                    else:
+                       path = sampath(full)
+                    d.ifdh_handle.rm(path, '')
 		except:
 		    pass
 	        if verbose: print "removing location: " , full
-	        samweb.removeFileLocation(file, samprefix(full) + dirname(full))
+                loc = dirname(full)
+	        samweb.removeFileLocation(file, loc)
+            else:
+                print "not matches: " , delete_match
 
 if __name__ == '__main__':
     os.environ['EXPERIMENT'] = 'nova'
@@ -360,5 +423,5 @@ if __name__ == '__main__':
     print "count1 " , count1 , " count2 " , count2
     for exp in [ 'uboone', 'nova', 'minerva', 'hypot' ]:
         os.environ['EXPERIMENT'] = exp
-        for d  in [ '/pnfs/%s/raw/' % exp, '/pnfs/%s/scratch' % exp , '/%s/data/' % exp, 'srm://smuosge.smu.edu/foo/bar?SFN=/data/%s/file' % exp, 'gsiftp://random.host/stuff/%s/file' % exp ]:
-           print d , "->", samprefix(d)
+        for d  in [ 's3:/nova-analysis/data/output/stuff', '/pnfs/%s/raw/' % exp, '/pnfs/%s/scratch' % exp , '/%s/data/' % exp, 'srm://smuosge.smu.edu/foo/bar?SFN=/data/%s/file' % exp, 'gsiftp://random.host/stuff/%s/file' % exp ]:
+           print d , "->", sampath(d), '//', samprefix(d)
