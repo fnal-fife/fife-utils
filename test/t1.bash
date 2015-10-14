@@ -6,6 +6,7 @@ setup_tests() {
    export EXPERIMENT=samdev
    export SAM_EXPERIMENT=samdev
    export IFDH_BASE_URI="http://samweb.fnal.gov:8480/sam/samdev/api"
+   export IFDH_CP_MAXRETRIES=1
 
    workdir=/grid/data/mengel/work.$$
    if [ ! -r $workdir ]
@@ -96,7 +97,7 @@ EOF
 #
 
 add_dataset() {
-   for i in 1 2 3 
+   for i in 1 2 3 4 5 6 7 8 9
    do
        fname="${dataset}_f${i}"
        echo "file $i" > $fname
@@ -154,15 +155,32 @@ test_validate_2() {
     return $res
 }
 
+
 test_clone() {
     echo "before:"
-    sam_validate_dataset -v --name $dataset
-    locs1=`sam_validate_dataset -v --name  $dataset | wc -l`
+    sam_validate_dataset -v --name $dataset 2>/dev/null
+    locs1=`sam_validate_dataset -v --name  $dataset 2>/dev/null | wc -l`
     ifdh mkdir /pnfs/nova/scratch/users/$USER/fife_util_test || true
+    echo "----------------------------------"
     sam_clone_dataset -v -b 2 --name $dataset --dest /pnfs/nova/scratch/users/$USER/fife_util_test
+    echo "----------------------------------"
     echo "after:"
-    sam_validate_dataset -v --name $dataset
-    locs2=`sam_validate_dataset -v --name $dataset | wc -l`
+    sam_validate_dataset -v --name $dataset 2>/dev/null
+    locs2=`sam_validate_dataset -v --name $dataset 2>/dev/null | wc -l`
+    [ "$locs2" -gt "$locs1" ]
+}
+
+test_clone_n() {
+    echo "before:"
+    sam_validate_dataset -v --name $dataset 2>/dev/null
+    locs1=`sam_validate_dataset -v --name  $dataset 2>/dev/null | wc -l`
+    ifdh mkdir /pnfs/nova/scratch/users/$USER/fife_util_test || true
+    echo "----------------------------------"
+    sam_clone_dataset -v -N 3 -b 2 --name $dataset --dest /pnfs/nova/scratch/users/$USER/fife_util_test
+    echo "----------------------------------"
+    echo "after:"
+    sam_validate_dataset -v --name $dataset 2>/dev/null
+    locs2=`sam_validate_dataset -v --name $dataset 2>/dev/null | wc -l`
     [ "$locs2" -gt "$locs1" ]
 }
 
@@ -177,7 +195,7 @@ test_copy2scratch_dataset() {
     [ "$locs2" -gt "$locs1" ]
 }
 
-test_move2archive_dataset() {
+test_move2archive() {
     echo "before:"
     sam_validate_dataset -v --name $dataset
     locs1=`sam_validate_dataset -v --name  $dataset | wc -l`
@@ -210,15 +228,16 @@ test_archive_dataset() {
     locs2=`sam_validate_dataset -v --name $dataset | wc -l`
     [ "$locs2" -eq "$locs1" ]
 }
+
 test_unclone() {
     echo "before:"
     sam_validate_dataset -v --name $dataset
-    locs1=`sam_validate_dataset -v --name $dataset | wc -l`
-    ifdh mkdir /pnfs/nova/scratch/users/$USER/fife_util_test2 || true
-    sam_clone_dataset -v --name $dataset --dest /pnfs/nova/scratch/users/$USER/fife_util_test2
+    locs1=`sam_validate_dataset -v --name $dataset 2>/dev/null | wc -l`
+    ifdh mkdir /pnfs/nova/scratch/users/$USER/fife_util_test || true
+    sam_clone_dataset -v --name $dataset --dest /pnfs/nova/scratch/users/$USER/fife_util_test
     echo "after:"
     sam_validate_dataset -v --name $dataset
-    locs2=`sam_validate_dataset -v --name $dataset | wc -l`
+    locs2=`sam_validate_dataset -v --name $dataset 2>/dev/null | wc -l`
     sam_unclone_dataset --name $dataset --dest /pnfs/nova/scratch/users/$USER/fife_util_test/
     echo "after unclone:"
     sam_validate_dataset -v --name $dataset
@@ -235,7 +254,7 @@ test_unclone_slashes() {
     echo "after:"
     sam_validate_dataset -v --name $dataset
     locs2=`sam_validate_dataset -v --name $dataset | wc -l`
-    sam_unclone_dataset --name $dataset --dest /pnfs/nova//scratch//users/$USER/fife_util_test2/
+    sam_unclone_dataset --name $dataset --dest /pnfs/nova//scratch//users/$USER/fife_util_test/
     echo "after unclone:"
     sam_validate_dataset -v --name $dataset
     locs3=`sam_validate_dataset -v --name $dataset | wc -l`
@@ -272,6 +291,9 @@ testsuite test_utils \
         test_unclone_slashes \
         test_pin \
         test_retire \
+        add_dataset \
+	test_clone_n  \
+        test_retire \
         test_add_dataset_flist \
 	test_validate_1 \
         test_retire \
@@ -285,10 +307,10 @@ testsuite test_utils \
         test_archive_dataset \
         test_retire \
         add_dataset \
-        test_move2persistent_dataset \
+        test_move2persistent \
         test_retire \
         add_dataset \
-        test_move2archive_dataset \
+        test_move2archive \
         test_retire \
          
 test_utils "$@"

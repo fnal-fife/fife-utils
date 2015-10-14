@@ -89,22 +89,21 @@ class dataset:
 
 def sampath(dir):
     if dir.find("s3:") == 0:
-       return dir[3:]
+       return dir
 
     if dir.find("://") > 0:
-        # it is a URL, so convert it to a hostname/path
-        path = re.sub("[a-z]+://([-a-z0-9_.]*)(/.*\?SFN=)?(/.*)","\\3", dir)
-        return path
+        return dir
+
     return dir[dir.find(":")+1:]
     
 def samprefix(dir):
-    
+   
     if dir.find("s3:") == 0:
-        return "s3:"
+        return ""
+
     if dir.find("://") > 0:
-        # it is a URL, so convert it to a hostname/path
-        prefix = re.sub("[a-z]+://([-a-z0-9_.]*)(/.*\?SFN=)?(/.*)","\\1:", dir)
-        return prefix
+        # it is a URL, so leave it alone!
+        return ""
     #
     # try data disks
     #
