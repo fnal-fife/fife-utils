@@ -45,6 +45,19 @@ make subdirectories one deep in destination
 .TP
 .B -2|--twodeep
 make subdirectories two deep in destination
+.TP
+.B -p \fIPROJECT\fB|--project=\fIPROJECT\fB
+SAM project name to use
+.TP
+.B  -C|--connect-project
+Connect to an existing project, do not start one; assumes you either already ransam_clone_project --just-start-project, or you used jobsub_submit with the --dataset option, etc.
+.TP
+.B -N \fINCOPIES\fB|--ncopies=\fINCOPIES\fB
+number of copies to run in parallel
+.TP
+.B -S, --just-start-project
+start the project, but do not make any copies. Used with another invocation of sam_clone_dataset and --connect-project with the same -p project-name.
+
 .SH "SEE ALSO"
 
 sam_add_dataset(1),
