@@ -296,12 +296,13 @@ def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 20, verbose 
         purl = d.ifdh_handle.findProject(projname, os.environ.get('SAM_STATION',experiment))
     else:
         purl = d.ifdh_handle.startProject(projname, os.environ.get('SAM_STATION',experiment), d.name, user, experiment)
+        time.sleep(5)
+
+    if verbose or just_start_project:
+        print ("found" if connect_project else "started"), "project:", projname, "->", purl
 
     if (just_start_project):
-        print "started:", purl
         return 
-    if verbose:
-         print "got project url: ", purl
 
     kidlist = []
     for i in range(0,int(ncopies) - 1):
@@ -315,11 +316,14 @@ def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 20, verbose 
            break
         if res < 0:
            print "Could not fork!"
-
        
-    consumer_id = d.ifdh_handle.establishProcess( purl, "sam_clone_dataset", "1", hostname, user)
+    consumer_id = d.ifdh_handle.establishProcess( purl, "sam_clone_dataset", "1", hostname, user, "fife_utils", "sam_clone_dataset project", 0 , "")
     if verbose:
          print "got consumer id: ", consumer_id
+
+    if consumer_id == "":
+         print "Error: could not establish sam consumer id for project: ", projname
+         sys.exit(1)
 
     furi = d.ifdh_handle.getNextFile(purl, consumer_id)
 

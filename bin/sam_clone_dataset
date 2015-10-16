@@ -50,4 +50,4 @@ if __name__ == '__main__':
 
     o.dest = canonical(o.dest)
 
-    clone(dataset(o.name), o.dest, subdirf = o.dirfunc, just_say = o.just_say, batch_size = o.batch_size, verbose = o.verbose, experiment=o.experiment, ncopies=o.ncopies, just_start_project = o.just_start_project, connect_project=o.connect_project )
+    clone(dataset(o.name), o.dest, subdirf = o.dirfunc, just_say = o.just_say, batch_size = o.batch_size, verbose = o.verbose, experiment=o.experiment, ncopies=o.ncopies, just_start_project = o.just_start_project, connect_project=o.connect_project , projname = o.project)

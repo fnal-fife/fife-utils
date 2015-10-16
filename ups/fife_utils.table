@@ -35,8 +35,10 @@ Action=setup
     ExeActionRequired(setup_ifdhc_if_not_setup)
     ExeActionRequired(setup_sam_web_client_if_not_setup)
     SetupOptional(jobsub_client)
+    SetupOptional(awscli)
     PathPrepend(PATH, ${UPS_PROD_DIR}/bin)
     PathPrepend(PYTHONPATH, ${UPS_PROD_DIR}/lib)
+    EnvSet(FIFE_UTILS_VERSION, ${UPS_PROD_VERSION})
 
     # workaround environment variables, should go away with
     # newer sam_web_client, ifdh versions.

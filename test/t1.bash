@@ -276,6 +276,24 @@ test_pin() {
     sam_pin_dataset --name $dataset
 }
 
+test_split_clone() {
+    proj="${USER}_clonetest_$$_`date +%s`"
+    echo "before:"
+    sam_validate_dataset -v --name $dataset 2>/dev/null
+    locs1=`sam_validate_dataset -v --name  $dataset 2>/dev/null | wc -l`
+    ifdh mkdir /pnfs/nova/scratch/users/$USER/fife_util_test || true
+    echo "----------------------------------"
+    sam_clone_dataset -v --project=${proj} --just-start-project -b 2 --name $dataset --dest /pnfs/nova/scratch/users/$USER/fife_util_test
+    echo "----------------------------------"
+    sam_clone_dataset -v --project=${proj} --connect-project    -b 2 --name $dataset --dest /pnfs/nova/scratch/users/$USER/fife_util_test
+    echo "----------------------------------"
+    echo "after:"
+    sam_validate_dataset -v --name $dataset 2>/dev/null
+    locs2=`sam_validate_dataset -v --name $dataset 2>/dev/null | wc -l`
+    [ "$locs2" -gt "$locs1" ]
+}
+
+
 test_retire() {
     sam_retire_dataset --name $dataset
 }
