@@ -39,6 +39,8 @@ Action=setup
     PathPrepend(PATH, ${UPS_PROD_DIR}/bin)
     PathPrepend(PYTHONPATH, ${UPS_PROD_DIR}/lib)
     EnvSet(FIFE_UTILS_VERSION, ${UPS_PROD_VERSION})
+    EnvSetIfNotSet(MANPATH,:)
+    PathPrepend(MANPATH, ${UPS_PROD_DIR}/man)
 
     # workaround environment variables, should go away with
     # newer sam_web_client, ifdh versions.
