@@ -56,7 +56,7 @@ if __name__ == '__main__':
     dname = os.environ.get('USER',os.environ.get('GRID_USER')) 
     default_dataset = dname + '_archive_images' 
     datedir = time.strftime("%Y/%m-%d")
-    default_dest = "/pnfs/%s/archive/sfu_users/%s/image/%s" % ( 
+    default_dest = "/pnfs/%s/archive/sam_managed_users/%s/image/%s" % ( 
 	    experiment, dname, datedir )
     parser.add_option('-v','--verbose',   action='count')
     parser.add_option('-j','--just_say',  action='store_true', help="do not actually copy, just say what you would do")
