@@ -316,6 +316,12 @@ def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 20, verbose 
            break
         if res < 0:
            print "Could not fork!"
+
+    # rebuild our SAMWebClient and ifdh handle if we forked...
+    # we've seen confusion in some cases, so just to be safe...
+    if ncopies > 0:
+        samweb = SAMWebClient(experiment = experiment)
+        d.ifdh_handle = ifdh.ifdh()
        
     consumer_id = d.ifdh_handle.establishProcess( purl, "sam_clone_dataset", "1", hostname, user, "fife_utils", "sam_clone_dataset project", 0 , "")
     if verbose:
