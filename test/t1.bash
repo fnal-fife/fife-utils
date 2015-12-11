@@ -5,6 +5,7 @@
 setup_tests() {
    export EXPERIMENT=samdev
    export SAM_EXPERIMENT=samdev
+   export SAM_STATION=samdev-test
    export IFDH_BASE_URI="http://samweb.fnal.gov:8480/sam/samdev/api"
    export IFDH_CP_MAXRETRIES=1
 

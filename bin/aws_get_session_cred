@@ -1,5 +1,12 @@
 #!/bin/sh
 
+if [ $1 = "-g" ]
+then
+   group=$2
+else
+   group=${EXPERIMENT:-${SAM_EXPERIMENT}}
+fi
+
 (
     aws sts get-session-token | 
         egrep 'Key|Session' | 
@@ -9,5 +16,5 @@
             -e 's/AccessKeyId/export AWS_ACCESS_KEY_ID/'
 ) > /tmp/${USER}_token
 
-ifdh cp /tmp/${USER}_token  /pnfs/nova/scratch/users/${USER}/awst
-ifdh chmod 600 /pnfs/nova/scratch/users/${USER}/awst
+ifdh cp /tmp/${USER}_token  /pnfs/$group/scratch/users/${USER}/awst
+ifdh chmod 600 /pnfs/$group/scratch/users/${USER}/awst
