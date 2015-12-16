@@ -214,6 +214,10 @@ def dodir(ih, dir):
     for d in (dirname(dir), dir):
         if notmade.get(d,True):
            notmade[d] = False
+
+           if d.startswith('s3:/') and not d.startswith('s3://'):
+               d = 's3://' + d[4:]
+
            try:
                print "doing mkdir " , d
                ih.mkdir(d, '')
