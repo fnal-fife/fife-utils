@@ -324,6 +324,7 @@ def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 20, verbose 
         d.ifdh_handle = ifdh.ifdh()
        
     consumer_id = d.ifdh_handle.establishProcess( purl, "sam_clone_dataset", "1", hostname, user, "fife_utils", "sam_clone_dataset project", 0 , "")
+    consumer_id = consumer_id.strip()
     if verbose:
          print "got consumer id: ", consumer_id
 

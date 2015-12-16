@@ -64,8 +64,8 @@ if __name__ == '__main__':
     parser.add_option('-j','--just_say',  action='store_true', help="do not actually copy, just say what you would do")
     parser.add_option('-e','--experiment', default=experiment)
     parser.add_option('-b','--batch_size',default = 20, type='int', help="copy then declare in batches of this size")
-    parser.add_option('-n', '--name',     help="dataset name to copy", )
-    parser.add_option('-N', '--ncopies',  help="number of copy threads", )
+    parser.add_option('-n', '--name',     help="dataset name to copy" )
+    parser.add_option('-N', '--ncopies',  help="number of copy threads", default=1)
     parser.add_option('-k', '--keep',     help="keep existing copies", action='store_true' )
 
     #
