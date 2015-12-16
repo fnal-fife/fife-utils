@@ -68,6 +68,12 @@ if __name__ == '__main__':
     parser.add_option('-N', '--ncopies',  help="number of copy threads", )
     parser.add_option('-k', '--keep',     help="keep existing copies", action='store_true' )
 
+    #
+    # rough guess at dest, for usage message..
+    #
+    dest = "/pnfs/%s/%s/sam_managed_users/%s%s" % ( 
+	    '$EXPERIMENT', type, os.environ.get('USER',os.environ.get('GRID_USER')), sdir)
+
     if type == "none":
         parser.add_option('-d', '--dest',     help="destination to move to")
     else:
@@ -85,7 +91,7 @@ if __name__ == '__main__':
     else:
         edir = o.experiment
 
-    dest = "/pnfs/%s/%s/sfu_users/%s%s" % ( 
+    dest = "/pnfs/%s/%s/sam_managed_users/%s%s" % ( 
 	    edir, type, os.environ.get('USER',os.environ.get('GRID_USER')), sdir)
 
     if not o.dest:
