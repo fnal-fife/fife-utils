@@ -1,0 +1,47 @@
+#!/bin/sh
+
+usage() {
+  echo "launch_clone_jobs --group=GRP --jobs=njobs --name=dataset --dest=url"
+  echo "   slice dataset and run multiple sam_clone_dataset instances"
+  echo "   in grid jobs"
+}
+
+get_val() {
+  echo "$1" | sed -e 's/.*=//'
+}
+
+while [ $# -gt 0 ]
+do
+   case "x$1" in
+   x-j) njobs=$2; shift; shift;;
+   x-n) datasetname=$2; shift; shift;;
+   x-d) dest=$2; shift; shift;;
+   x-G) group=$2; shift; shift;;
+   x--group=*) group=`get_val "$1"`      ; shift;;
+   x--jobs=*)  njobs=`get_val "$1"`      ; shift;;
+   x--name=*)  datasetname=`get_val "$1"`; shift;;
+   x--dest=*)  dest=`get_val "$1"`       ; shift;;
+   x--jobs) njobs=$2; shift; shift;;
+   x--name) datasetname=$2; shift; shift;;
+   x--dest) dest=$2; shift; shift;;
+   x--group) group=$2; shift; shift;;
+   *) extras="$extras $1"; shift;;
+   esac
+done
+
+export SAM_EXPERIMENT=${SAM_EXPERIMENT:-$group}
+export EXPERIMENT=${EXPERIMENT:-$group}
+
+if [ "x$dest" = x -o "x$njobs" = x -o "x$datasetname" = x ]
+then
+    usage
+    exit 1
+fi
+
+#pick a project name if we don't have one
+export SAM_PROJECT=${SAM_PROJECT:-"clone-${USER}-`hostname --fqdn`-`date +%s`-$$"}
+
+sam_clone_dataset --just-start-project -p $SAM_PROJECT --name=$datasetname --dest=$dest
+
+jobsub_submit -e FIFE_UTILS_VERSION=$FIFE_UTILS_VERSION -e EXPERIMENT=$group -e SAM_EXPERIMENT=$group --resource-provides=usage_model=DEDICATED,OPPORTUNISITIC --group=$group -N $njobs file://$FIFE_UTILS_DIR/libexec/clone_stripe.sh --dest=$dest --name=$datasetname --connect-project -p $SAM_PROJECT $extras
+
