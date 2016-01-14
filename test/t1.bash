@@ -5,9 +5,10 @@
 setup_tests() {
    export EXPERIMENT=samdev
    export SAM_EXPERIMENT=samdev
-   export SAM_STATION=samdev-test
+   #export SAM_STATION=samdev-test
+   export SAM_STATION=samdev
    export IFDH_BASE_URI="http://samweb.fnal.gov:8480/sam/samdev/api"
-   export IFDH_CP_MAXRETRIES=1
+   export IFDH_CP_MAXRETRIES=0
 
    workdir=/grid/data/mengel/work.$$
    if [ ! -r $workdir ]
@@ -239,10 +240,10 @@ test_unclone() {
     echo "after:"
     sam_validate_dataset -v --name $dataset
     locs2=`sam_validate_dataset -v --name $dataset 2>/dev/null | wc -l`
-    sam_unclone_dataset --name $dataset --dest /pnfs/nova/scratch/users/$USER/fife_util_test/
+    sam_unclone_dataset -v --name $dataset --dest /pnfs/nova/scratch/users/$USER/fife_util_test/
     echo "after unclone:"
     sam_validate_dataset -v --name $dataset
-    locs3=`sam_validate_dataset -v --name $dataset | wc -l`
+    locs3=`sam_validate_dataset -v --name $dataset 2>/dev/null | wc -l`
     [ "$locs2" -gt "$locs1" -a "$locs3" -lt "$locs2" ]
 }
 test_unclone_slashes() {

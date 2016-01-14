@@ -27,6 +27,7 @@ if __name__ == '__main__':
     parser.add_option('-C', '--connect-project', action='store_const', const=True)
     parser.add_option('-N', '--ncopies',  default=1, help="number of copies to run in parallel")
     parser.add_option('-S', '--just-start-project', action='store_const', const=True)
+    parser.add_option('-P', '--paranoid', action='store_const', const=True, default = False, help = "do not believe copy status, check existence before declaring a location")
     parser.set_defaults(dirfunc = twodeep)
 
     (o,a) = parser.parse_args()
@@ -50,4 +51,4 @@ if __name__ == '__main__':
 
     o.dest = canonical(o.dest)
 
-    clone(dataset(o.name), o.dest, subdirf = o.dirfunc, just_say = o.just_say, batch_size = o.batch_size, verbose = o.verbose, experiment=o.experiment, ncopies=o.ncopies, just_start_project = o.just_start_project, connect_project=o.connect_project , projname = o.project)
+    clone(dataset(o.name), o.dest, subdirf = o.dirfunc, just_say = o.just_say, batch_size = o.batch_size, verbose = o.verbose, experiment=o.experiment, ncopies=o.ncopies, just_start_project = o.just_start_project, connect_project=o.connect_project , projname = o.project, paranoid = o.paranoid)
