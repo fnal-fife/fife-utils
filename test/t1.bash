@@ -307,6 +307,8 @@ testsuite test_utils \
 	test_validate_2 \
         test_modify \
 	test_clone  \
+        test_retire \
+        add_dataset \
         test_unclone \
         test_unclone_slashes \
         test_pin \

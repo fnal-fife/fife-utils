@@ -9,6 +9,7 @@ import socket
 import subprocess
 import sys
 import time
+import traceback
 
 import ifdh
 from samweb_client import *
@@ -449,10 +450,15 @@ def unclone( d, just_say = False, delete_match = '.*', verbose = False, experime
                            os.wait()
                            proccount = proccount - 1
                 except:
+                    traceback.print_stack()
                     pass
                 loc = dirname(full)
                 if verbose: print "removing location: " , loc , " for " , file
-                samweb.removeFileLocation(file, loc)
+                try:
+                    samweb.removeFileLocation(file, loc)
+                except:
+                    traceback.print_stack()
+                    pass
             else:
                 print "not matches: " , delete_match
 
