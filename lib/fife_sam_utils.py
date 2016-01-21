@@ -189,10 +189,10 @@ def check_destination(samweb,dest):
     # or any known data disk..
     #print "samdest is:" , samdest
     for d in samweb.listDataDisks():
-        pos = samdest.find(d['mount_point'])
+        #pos = samdest.find(d['mount_point'])
         #print "d is: " , d
         #print "d.mount_point %s pos: %d" % (d['mount_point'], pos)
-        if samdest.find(d['mount_point']) == 0:
+        if samdest.find(d['mount_point']) == 0 or dest.find(d['mount_point']) == 0:
             return 1
     # otherwise, nope.
     return 0
