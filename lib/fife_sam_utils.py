@@ -88,8 +88,11 @@ class dataset:
         return self._loc_iterator(locmap, fulllocflag)
 
 def sampath(dir):
-    if dir.find("s3:") == 0:
+    if dir.find("s3://") == 0:
        return dir
+
+    if dir.find("s3:/") == 0:
+       return dir[0:4]+dir[3:]
 
     if dir.find("://") > 0:
         return dir
