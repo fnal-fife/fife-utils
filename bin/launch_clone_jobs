@@ -43,5 +43,5 @@ export SAM_PROJECT=${SAM_PROJECT:-"clone-${USER}-`hostname --fqdn`-`date +%s`-$$
 
 sam_clone_dataset --just-start-project -p $SAM_PROJECT --name=$datasetname --dest=$dest
 
-jobsub_submit -e FIFE_UTILS_VERSION=$FIFE_UTILS_VERSION -e EXPERIMENT=$group -e SAM_EXPERIMENT=$group --resource-provides=usage_model=DEDICATED,OPPORTUNISITIC --group=$group -N $njobs file://$FIFE_UTILS_DIR/libexec/clone_stripe.sh --dest=$dest --name=$datasetname --connect-project -p $SAM_PROJECT $extras
+jobsub_submit -e FIFE_UTILS_VERSION=$FIFE_UTILS_VERSION -e EXPERIMENT=$group -e SAM_EXPERIMENT=$group -e SAM_STATION=${SAM_STATION:-$group} --resource-provides=usage_model=DEDICATED,OPPORTUNISITIC --group=$group -N $njobs file://$FIFE_UTILS_DIR/libexec/clone_stripe.sh --dest=$dest --name=$datasetname --connect-project -p $SAM_PROJECT $extras
 
