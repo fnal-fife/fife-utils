@@ -27,6 +27,41 @@ class dataset:
         self.ifdh_handle = ifdh.ifdh()   
         self.name = name
         self.flist = None
+        self.dircache = {}
+
+    def get_base_dir(self, fullpath):
+        nspath = fullpath.replace('/','')
+        nslashes = len(fullpath) - len(nspath) 
+        isurl = fullpath.find('://') > 0
+        if isurl:
+           nslashes = nslashes - 2
+        # if it is a really deep location, start 5 subdirs in
+        # otherwise 1 subdir in
+        if nslashes > 6:
+           trim = nslashes - 5
+        elif nslashes > 4:
+           trim = nslashes - 3
+        else:
+           trim = nslashes - 1
+        base = fullpath
+        for i in range(trim):
+            base = base[:base.rfind('/')]
+        return base
+ 
+    def normalize_list(self, fl):
+        res = []
+        for f in fl:
+            f = f.replace('/pnfs/fnal.gov/usr/','/pnfs/')
+            res.append(f)
+        return res
+
+    def location_has_file(self, fullpath):
+        base = self.get_base_dir(fullpath)
+        if not self.dircache.has_key(base):
+            fl = self.normalize_list(self.ifdh_handle.ls(base, 5, ''))
+            #print "got file list: ", fl
+            self.dircache[base] = set(fl)
+        return fullpath in self.dircache[base]
 
     def get_flist( self ):
         if self.flist == None:

@@ -15,7 +15,7 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
         if just_say and not prune:
             print "I would: ifdh ls %s 0" % sp
         else:
-            if len(ds.ifdh_handle.ls(sp,0,'')) == 0:
+            if not ds.location_has_file( sp ):
                 print "missing: %s" % sp
                 res = 1
                 if prune:
