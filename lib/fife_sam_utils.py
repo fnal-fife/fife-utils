@@ -28,6 +28,7 @@ class dataset:
         self.name = name
         self.flist = None
         self.dircache = {}
+        self.locmap = None
 
     def get_base_dir(self, fullpath):
         nspath = fullpath.replace('/','')
@@ -52,6 +53,13 @@ class dataset:
         res = []
         for f in fl:
             f = f.replace('/pnfs/fnal.gov/usr/','/pnfs/')
+            if f.find('s3:/') == 0 and f.find('s3://') != 0:
+                f = f.replace('s3:/','s3://')
+            for pat in ('//', '/./'):
+                pos = f.rfind(pat)
+                while pos > 7:
+                    f = f[:pos] + f[(pos+len(pat)-1):]
+                    pos = f.rfind(pat)
             res.append(f)
         return res
 
@@ -114,16 +122,34 @@ class dataset:
 
             return res + '/' + self.curfile
 
-    def fullpath_iterator(self, fulllocflag = False):
+    def get_paths_for(self, filename):
+        self.get_locmap(fulllocflag = True)
+        locs = self.locmap.get(filename,[])
+        locs = [sampath(x) for x in locs]
+        locs = self.normalize_list(locs)
+        locs = [(x + '/' + filename) for x in locs]
+        return locs
+
+    def get_locmap(self, fulllocflag = False):
+        print "get_locmap: starting", time.ctime()
+        if self.locmap != None:
+            return
         flist = self.get_flist()
-        locmap = {}
+        self.locmap = {}
         while len(flist) > 0:
             first_k = flist[:500]
             flist = flist[500:]
-            locmap.update(self.ifdh_handle.locateFiles(first_k))
-        return self._loc_iterator(locmap, fulllocflag)
+            self.locmap.update(self.ifdh_handle.locateFiles(first_k))
+        print "get_locmap: finishing", time.ctime()
+
+    def fullpath_iterator(self, fulllocflag = False):
+        self.get_locmap(fulllocflag)
+        return self._loc_iterator(self.locmap, fulllocflag)
 
 def sampath(dir):
+    if dir.find("("):
+       dir = dir[:dir.find("(")]
+
     if dir.find("s3://") == 0:
        return dir
 
@@ -210,11 +236,8 @@ def canonical(uri):
 
     return uri      
 
-
 def has_uuid_prefix(s):
     return bool(re.match(r'[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}',s))
-
-
 
 def check_destination(samweb,dest):
     # /pnfs is officially okay
@@ -323,7 +346,7 @@ def copy_and_declare(d, cpargs, locargs, dest, subdirf, samweb, just_say, verbos
                     res = 1
     return res
 
-def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 20, verbose = False, experiment = None, ncopies=1, just_start_project = False, connect_project = False , projname = None, paranoid = False):
+def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 1, verbose = False, experiment = None, ncopies=1, just_start_project = False, connect_project = False , projname = None, paranoid = False):
     # make gridftp tool add directories
     os.environ['IFDH_GRIDFTP_EXTRA'] = '-cd -sync'
     cpargs = []
@@ -406,8 +429,7 @@ def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 20, verbose 
 
         f = basename(furi)
 
-        loclist = samweb.getFileAccessUrls(f, schema = "gsiftp")
-        loclist = loclist + samweb.getFileAccessUrls(f, schema = "s3")
+        loclist = d.get_paths_for(f)
 
         if already_there(f, loclist, dest):
             d.ifdh_handle.updateFileStatus(purl, consumer_id,fname, 'transferred')
@@ -456,8 +478,8 @@ def unclone( d, just_say = False, delete_match = '.*', verbose = False, experime
         file = basename(full)
         if just_say:
             if re.match(delete_match, full) or re.match(delete_match, spath):
-                print "I would 'ifdh rm %s'" % full
-                print "I would remove location %s for %s" % ( file, samprefix(full)+dirname(full) )
+                print "I would 'ifdh rm %s'" % sampath(full)
+                print "I would remove location %s for %s" % (  dirname(full), file )
         else:
             if re.match(delete_match, full) or re.match(delete_match, spath):
                 if verbose: print "matches: " , delete_match
