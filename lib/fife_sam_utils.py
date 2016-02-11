@@ -131,9 +131,9 @@ class dataset:
         return locs
 
     def get_locmap(self, fulllocflag = False):
-        print "get_locmap: starting", time.ctime()
         if self.locmap != None:
             return
+        print "get_locmap: starting", time.ctime()
         flist = self.get_flist()
         self.locmap = {}
         while len(flist) > 0:
@@ -147,7 +147,7 @@ class dataset:
         return self._loc_iterator(self.locmap, fulllocflag)
 
 def sampath(dir):
-    if dir.find("("):
+    if dir.find("(") > 0:
        dir = dir[:dir.find("(")]
 
     if dir.find("s3://") == 0:
