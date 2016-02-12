@@ -133,14 +133,14 @@ class dataset:
     def get_locmap(self, fulllocflag = False):
         if self.locmap != None:
             return
-        print "get_locmap: starting", time.ctime()
+        #print "get_locmap: starting", time.ctime()
         flist = self.get_flist()
         self.locmap = {}
         while len(flist) > 0:
             first_k = flist[:500]
             flist = flist[500:]
             self.locmap.update(self.ifdh_handle.locateFiles(first_k))
-        print "get_locmap: finishing", time.ctime()
+        #print "get_locmap: finishing", time.ctime()
 
     def fullpath_iterator(self, fulllocflag = False):
         self.get_locmap(fulllocflag)
@@ -296,12 +296,15 @@ def dodir(ih, dir):
 
 def already_there( f, loclist, dest ):
     res = False
-    dest = dest + '/'
+    dest = dest 
+    if dest.startswith("s3:/") and dest[4] != '/':
+        dest="s3://"+dest[4:]
     for p in loclist:
 	if p.find(dest) != -1:
 	    print "Notice: file %s already has a copy at %s, skipping" % ( f, p)
 	    res = True
             break
+    # print "already_there:", f, loclist, dest
     return res
 
 def copy_and_declare(d, cpargs, locargs, dest, subdirf, samweb, just_say, verbose, paranoid ):
@@ -331,9 +334,10 @@ def copy_and_declare(d, cpargs, locargs, dest, subdirf, samweb, just_say, verbos
 	    for f in locargs:
                 try:
                     if paranoid:
-                         cpdest = f  
+                         cpdest = dest +subdirf(f) + f
                          if cpdest.find("s3:/") == 0 and cpdest.find("s3://") != 0:
                             cpdest="s3://"+cpdest[4:]
+
                          if len(d.ifdh_handle.ls(cpdest,1,'')) == 0:
                             print "unable to verify copy to ", cpdest, " not declaring."
                             continue
@@ -432,8 +436,8 @@ def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 1, verbose =
         loclist = d.get_paths_for(f)
 
         if already_there(f, loclist, dest):
-            d.ifdh_handle.updateFileStatus(purl, consumer_id,fname, 'transferred')
-            d.ifdh_handle.updateFileStatus(purl, consumer_id,fname, 'consumed')
+            d.ifdh_handle.updateFileStatus(purl, consumer_id,f, 'transferred')
+            d.ifdh_handle.updateFileStatus(purl, consumer_id,f, 'consumed')
             continue
                 
         if len(loclist) > 0:
