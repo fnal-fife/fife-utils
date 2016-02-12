@@ -351,6 +351,11 @@ def copy_and_declare(d, cpargs, locargs, dest, subdirf, samweb, just_say, verbos
     return res
 
 def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 1, verbose = False, experiment = None, ncopies=1, just_start_project = False, connect_project = False , projname = None, paranoid = False):
+  
+    # avoid dest//file syndrome...
+    if dest[-1] == '/':
+       dest = dest[:-1]
+
     # make gridftp tool add directories
     os.environ['IFDH_GRIDFTP_EXTRA'] = '-cd -sync'
     cpargs = []
@@ -438,6 +443,7 @@ def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 1, verbose =
         if already_there(f, loclist, dest):
             d.ifdh_handle.updateFileStatus(purl, consumer_id,f, 'transferred')
             d.ifdh_handle.updateFileStatus(purl, consumer_id,f, 'consumed')
+            furi = d.ifdh_handle.getNextFile(purl, consumer_id)
             continue
                 
         if len(loclist) > 0:
@@ -487,44 +493,44 @@ def unclone( d, just_say = False, delete_match = '.*', verbose = False, experime
         else:
             if re.match(delete_match, full) or re.match(delete_match, spath):
                 if verbose: print "matches: " , delete_match
-                if len(d.ifdh_handle.locateFile(file)) == 1:
+                if len(d.get_paths_for(file)) == 1:
                     print "NOT removing %s, it is the only location!"
                     continue
-                try:
-                    if verbose: print "removing: " , full
-                    if full.find("s3:/") == 0:
-                       path = full[0:4]+full[3:]
-                    else:
-                       path = sampath(full)
+		if verbose: print "removing: " , full
+		if full.find("s3:/") == 0:
+		   path = full[0:4]+full[3:]
+		else:
+		   path = sampath(full)
 
-                    # unlink in background, wait if we
-                    # have nparallel ones running.
+		# unlink in background, wait if we
+		# have nparallel ones running.
 
-                    pid = os.fork()
-                    if 0 == pid:
-                        d.ifdh_handle = ifdh.ifdh()
-                        d.ifdh_handle.rm(path, '')
-                        os.exit(0)
-                    elif -1 == pid:
-                        print "Cannot fork!"
-                        d.ifdh_handle.rm(path, '')
-                    else: 
-                        proccount = proccount + 1
-                        while proccount >= nparallel:
-                           os.wait()
-                           proccount = proccount - 1
-                except:
-                    traceback.print_stack()
-                    pass
-                loc = dirname(full)
-                if verbose: print "removing location: " , loc , " for " , file
-                try:
-                    samweb.removeFileLocation(file, loc)
-                except:
-                    traceback.print_stack()
-                    pass
-            else:
-                print "not matches: " , delete_match
+		pid = os.fork()
+		if 0 == pid:
+		    d.ifdh_handle = ifdh.ifdh()
+		    try:
+			d.ifdh_handle.rm(path, '')
+		    except:
+			traceback.print_exc()
+		    os._exit(0)
+		elif -1 == pid:
+		    print "Cannot fork!"
+		    d.ifdh_handle.rm(path, '')
+		else: 
+		    proccount = proccount + 1
+		    while proccount >= nparallel:
+		       os.wait()
+		       proccount = proccount - 1
+		    loc = dirname(full)
+		    if verbose: print "removing location: " , loc , " for " , file
+		    try:
+			samweb.removeFileLocation(file, loc)
+		    except:
+			traceback.print_exc()
+			pass
+    else:
+	pass
+	#print "not matches: " , delete_match
 
     # clean up rm threads
     while proccount > 0:
