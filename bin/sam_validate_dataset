@@ -20,9 +20,9 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
                 res = 1
                 if prune:
                     if just_say:
-                       print "I would remove location: %s for %s " % (samprefix(p)+dirname(p), basename(p))
+                       print "I would remove location: %s for %s " % (dirname(p), basename(p))
                     else:
-                        samweb.removeFileLocation(basename(p),  samprefix(p) + dirname(p))
+                        samweb.removeFileLocation(basename(p), dirname(p))
                         print "-- location removed"
             else:
                 if verbose: print "located: %s" % p

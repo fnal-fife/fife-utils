@@ -28,6 +28,7 @@ def audit( ds, dest,  verbose = False, experiment = None ):
     for f in ds.file_iterator():
         num_in_dataset += 1
         spl = ds.get_paths_for(f)
+        spl = ds.normalize_list(spl)
         found = 0
         for sp in spl:
             #print "checking %s startswith %s" % (sp, dest)

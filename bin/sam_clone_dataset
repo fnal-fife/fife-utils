@@ -12,7 +12,7 @@ import grp
 if __name__ == '__main__':
 
     parser = optparse.OptionParser(usage="usage: %prog [options] \n copy files in named dataset to destination and declare")
-    parser.add_option('-b','--batch_size',default = 20, type='int', help="copy then declare in batches of this size")
+    parser.add_option('-b','--batch_size',default = 1, type='int', help="copy then declare in batches of this size")
     parser.add_option('-d', '--dest',     help="destination for copy", )
     parser.add_option('-e','--experiment')
     parser.add_option('-j','--just_say',  action='store_true', help="do not actually copy, just say what you would do")
