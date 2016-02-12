@@ -1,0 +1,85 @@
+#!/usr/bin/env python
+
+from samweb_client import *
+from fife_sam_utils import *
+import sys
+import os
+import optparse
+
+
+def audit( ds, dest,  verbose = False, experiment = None ):
+    samweb = SAMWebClient(experiment=experiment)
+    res=0
+
+    num_in_dataset = 0
+    num_declared_at_dest = 0
+    num_present_declared_at_dest = 0
+    num_undeclared_at_dest = 0
+    num_present_undeclared_at_dest = 0
+    num_present_wrong_loc = 0
+    
+
+    full_list = ds.ifdh_handle.ls(dest,10,'')
+    full_list = ds.normalize_list(full_list)
+    full_set = set(full_list)
+    fnames = [os.path.basename(x) for x in full_list]
+    fnameset = set(fnames)
+
+    for f in ds.file_iterator():
+        num_in_dataset += 1
+        spl = ds.get_paths_for(f)
+        found = 0
+        for sp in spl:
+            #print "checking %s startswith %s" % (sp, dest)
+	    if sp.startswith(dest):
+                found = 1
+		num_declared_at_dest += 1
+		if  sp in full_set:
+		    num_present_declared_at_dest += 1
+		    if verbose: print "located: %s" % p
+		else:
+                    if f in fnameset:
+                        num_present_wrong_loc += 1
+                        for pp in full_list:
+                            if pp.find(f):
+                                if verbose: print "wrong path: %s at %s not %s" % ( f, pp, sp)
+		    if verbose: print "missing: %s" % sp
+		    res = 1
+        if found == 0:
+           num_undeclared_at_dest += 1
+           if f in fnameset:
+               num_present_undeclared_at_dest += 1
+        if len(spl) == 0:
+           num_no_locations += 1
+           if verbose: print "file %s has 0 locations"
+        
+    print "Dataset ", ds.name, "at location", dest, ":"
+    print "               Total Files:", num_in_dataset 
+    print "      Present and declared:", num_present_declared_at_dest
+    print "                  Declared:", num_declared_at_dest
+    print "              Not Declared:", num_undeclared_at_dest
+    print "  Present but not Declared:", num_present_undeclared_at_dest
+    print " Present at wrong location:", num_present_wrong_loc
+    
+
+if __name__ == '__main__':
+    
+    parser = optparse.OptionParser(usage="usage: %prog [options] dataset [dataset ...] \n make sure files in dataset actually exist")
+    parser.add_option('-v','--verbose',   action='count')
+    parser.add_option('-d','--dest',   help="location to audit")
+    parser.add_option('-e','--experiment')
+    parser.add_option('-n', '--name',     help="dataset name to audit", )
+
+    (o,a) = parser.parse_args()
+
+    if o.experiment:
+        os.environ['EXPERIMENT']= o.experiment
+        os.environ['IFDH_BASE_URI'] = "http://samweb.fnal.gov:8480/sam/%s/api" % o.experiment
+
+    if not o.name:
+        parser.error("expected --name dataset-name")
+        exit(1)
+
+    res = audit(dataset(o.name), dest = o.dest, verbose = o.verbose , experiment = o.experiment)
+
+    sys.exit(res)
