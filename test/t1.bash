@@ -26,8 +26,8 @@ setup_tests() {
    voms-proxy-init -rfc -noregen -debug -voms fermilab:/fermilab/nova/Role=Analysis
    export IFDH_NO_PROXY=1
    # now in table file...
-   # export X509_USER_PROXY=/tmp/x509up_u`id -u`
-   # export SSL_CERT_DIR=/etc/grid-security/certificates
+   export X509_USER_PROXY=/tmp/x509up_u`id -u`
+   export SSL_CERT_DIR=/etc/grid-security/certificates
    export CPN_DIR=/no/such/dir
 }
 
