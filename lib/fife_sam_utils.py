@@ -507,9 +507,20 @@ def unclone( d, just_say = False, delete_match = '.*', verbose = False, experime
 
 		pid = os.fork()
 		if 0 == pid:
-		    d.ifdh_handle = ifdh.ifdh()
+		    samweb = SAMWebClient(experiment = experiment)
+  		    res = -1
+                    # child
 		    try:
-			d.ifdh_handle.rm(path, '')
+			res = d.ifdh_handle.rm(path, '')
+		    except:
+			traceback.print_exc()
+		    try:
+		        loc = dirname(full)
+			if res == 0:
+		            if verbose: print "removing location: " , loc , " for " , file
+			    samweb.removeFileLocation(file, loc)
+		        else:
+			    print "Removing ", path, " failed."
 		    except:
 			traceback.print_exc()
 		    os._exit(0)
@@ -517,17 +528,11 @@ def unclone( d, just_say = False, delete_match = '.*', verbose = False, experime
 		    print "Cannot fork!"
 		    d.ifdh_handle.rm(path, '')
 		else: 
+                    # parent            
 		    proccount = proccount + 1
 		    while proccount >= nparallel:
 		       os.wait()
 		       proccount = proccount - 1
-		    loc = dirname(full)
-		    if verbose: print "removing location: " , loc , " for " , file
-		    try:
-			samweb.removeFileLocation(file, loc)
-		    except:
-			traceback.print_exc()
-			pass
     else:
 	pass
 	#print "not matches: " , delete_match
