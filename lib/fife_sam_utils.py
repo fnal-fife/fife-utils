@@ -201,7 +201,7 @@ def samprefix(dir):
        return 'enstore:'
 
     elif (dir.startswith('/grid/') or dir.startswith('/%s/'%os.environ.get('EXPERIMENT',None))):
-       print "saw grid or experiment..."
+       #print "saw grid or experiment..."
        if (os.environ.get('EXPERIMENT') in ['minerva',]):
            return os.environ.get('EXPERIMENT') + '_bluearc:'
        else:
@@ -410,7 +410,7 @@ def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 1, verbose =
 
     # rebuild our SAMWebClient and ifdh handle if we forked...
     # we've seen confusion in some cases, so just to be safe...
-    if ncopies > 0:
+    if int(ncopies) > 0:
         samweb = SAMWebClient(experiment = experiment)
         d.ifdh_handle = ifdh.ifdh()
        
@@ -530,8 +530,10 @@ def unclone( d, just_say = False, delete_match = '.*', verbose = False, experime
 		else: 
                     # parent            
 		    proccount = proccount + 1
+  		    #print "started child ", pid, "proccount",  proccount
 		    while proccount >= nparallel:
-		       os.wait()
+		       (wpid, wstat) = os.wait()
+		       #print "child ", wpid, " completed status ", wstat
 		       proccount = proccount - 1
     else:
 	pass
@@ -539,7 +541,8 @@ def unclone( d, just_say = False, delete_match = '.*', verbose = False, experime
 
     # clean up rm threads
     while proccount > 0:
-       os.wait()
+       (wpid, wstat) = os.wait()
+       #print "child ", wpid, " completed status ", wstat
        proccount = proccount - 1
 
 if __name__ == '__main__':
