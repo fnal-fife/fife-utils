@@ -66,8 +66,8 @@ class dataset:
     def location_has_file(self, fullpath):
         base = self.get_base_dir(fullpath)
         if not self.dircache.has_key(base):
-            fl = self.normalize_list(self.ifdh_handle.ls(base, 5, ''))
-            #print "got file list: ", fl
+            fl = self.normalize_list(self.ifdh_handle.ls(base, 10, ''))
+            print "got file list: ", fl
             self.dircache[base] = set(fl)
         return fullpath in self.dircache[base]
 
@@ -494,7 +494,7 @@ def unclone( d, just_say = False, delete_match = '.*', verbose = False, experime
             if re.match(delete_match, full) or re.match(delete_match, spath):
                 if verbose: print "matches: " , delete_match
                 if len(d.get_paths_for(file)) == 1:
-                    print "NOT removing %s, it is the only location!"
+                    print "NOT removing %s, it is the only location!" % full
                     continue
 		if verbose: print "removing: " , full
 		if full.find("s3:/") == 0:
