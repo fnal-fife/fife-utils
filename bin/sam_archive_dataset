@@ -87,6 +87,9 @@ if __name__ == '__main__':
         os.environ['SAM_EXPERIMENT']= o.experiment
         os.environ['IFDH_BASE_URI'] = "http://samweb.fnal.gov:8480/sam/%s/api" % o.experiment
 
+    cert = get_standard_certificate_path(options)
+    os.environ['X509_USER_PROXY'] = cert
+
     if (o.experiment == 'samdev'):
         edir = 'fermilab'
     else:

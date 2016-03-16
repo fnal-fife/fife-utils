@@ -139,6 +139,13 @@ if __name__ == '__main__':
 
     (o,a) = parser.parse_args()
 
+    if o.experiment:
+        os.environ['EXPERIMENT']= o.experiment
+        os.environ['SAM_EXPERIMENT']= o.experiment
+
+    cert = get_standard_certificate_path(options)
+    os.environ['X509_USER_PROXY'] = cert
+
     if not o.name:
        parser.error("expected --name dataset-name")
 

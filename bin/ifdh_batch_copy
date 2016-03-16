@@ -1,0 +1,70 @@
+#!/bin/sh
+
+ncopies=1
+experiment=${EXPERIMENT:-${SAM_EXPERIMENT:-samdev}}
+intermed=false
+verbose=false
+
+while [ $# -gt 0 ]
+do
+   case "x$1" in
+   x--intermed)    intermed=true; shift;;
+   x-v)            verbose=true; shift;;
+   x-N)            ncopies=$2; shift; shift;;
+   x--ncopies)     ncopies=$2; shift; shift;;
+   x--ncopies=*)   ncopies=`echo $1| sed -e 's/--ncopies=//'`; shift;;
+   x--src)         src=$2; shift; shift;;
+   x--src=*)       src=`echo $1| sed -e 's/--src=//'`; shift;;
+   x--dst)         dst=$2; shift; shift;;
+   x--dst=*)       dst=`echo $1| sed -e 's/--dst=//'`; shift;;
+   x--experiment)  experiment=$2; shift; shift;;
+   x--experiment=*)experiment=`echo $1| sed -e 's/--experiment=//'`; shift;;
+   *)  echo "unrecognized parameter: $1"; shift;;
+   esac
+done
+
+workdir="${TMPDIR:-/var/tmp}/ifdh_batch_copy_$$"
+mkdir -p "$workdir"
+
+ifdh ls "$dst" 10 | grep -v '/$' | xargs -n 1  basename >  "$workdir/have_files"
+
+$verbose && echo "already there: "
+$verbose && cat $workdir/have_files
+
+
+ifdh ls "$src" 10 | (
+  bgcount=1
+  while read srcfile 
+  do
+      case $srcfile in
+      */) continue;;
+      esac
+
+      if echo $srcfile | fgrep -f "$workdir/have_files" > /dev/null
+      then
+          continue
+      fi
+      bfile=`basename $srcfile`
+      ifile="$workdir/$bfile"
+      hash=$(echo $bfile | md5sum | cut -c 1-3)
+      $verbose && echo "Starting copy of $bfile..."
+      if $intermed
+      then 
+          (ifdh mkdir_p $dst/$hash 2>/dev/null; ifdh cp "$srcfile" "$ifile" ";" "$ifile" "$dst/$hash/$bfile"; rm "$ifile") &
+      else
+          (ifdh mkdir_p $dst/$hash 2>/dev/null; ifdh cp "$srcfile" "$dst/$hash/$bfile") &
+      fi
+      if ((bgcount++ > ncopies))
+      then
+         wait
+         ((bgcount--))
+         $verbose && echo "Completed."
+      fi
+  done
+  while ((bgcount > 0))
+  do
+     wait
+     ((bgcount--))
+     $verbose && echo "Completed."
+  done
+)
