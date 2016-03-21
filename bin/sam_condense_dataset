@@ -143,7 +143,7 @@ if __name__ == '__main__':
         os.environ['EXPERIMENT']= o.experiment
         os.environ['SAM_EXPERIMENT']= o.experiment
 
-    cert = get_standard_certificate_path(options)
+    cert = get_standard_certificate_path(o)
     os.environ['X509_USER_PROXY'] = cert
 
     if not o.name:
