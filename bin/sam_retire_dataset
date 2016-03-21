@@ -54,7 +54,7 @@ if __name__ == '__main__':
     parser.add_option('-m','--delete_match',   help="delete only files matching this regexp")
     parser.add_option('-e','--experiment')
     parser.add_option('-n', '--name',     help="dataset name to retire", )
-    parser.add_option('-A','--admin', action='store_true', help="use admin priveleges, i.e to delete someone elses dataset", default=false)
+    parser.add_option('-A','--admin', action='store_true', help="use admin priveleges, i.e to delete someone elses dataset", default=False)
 
     (o,a) = parser.parse_args()
 
@@ -63,7 +63,7 @@ if __name__ == '__main__':
         os.environ['SAM_EXPERIMENT']= o.experiment
         os.environ['IFDH_BASE_URI'] = "http://samweb.fnal.gov:8480/sam/%s/api" % o.experiment
 
-    cert = get_standard_certificate_path(options)
+    cert = get_standard_certificate_path(o)
     os.environ['X509_USER_PROXY'] = cert
 
 
