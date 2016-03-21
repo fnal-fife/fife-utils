@@ -4,29 +4,45 @@ ncopies=1
 experiment=${EXPERIMENT:-${SAM_EXPERIMENT:-samdev}}
 intermed=false
 verbose=false
+help() {
+ cat <<EOF
+   ifdh_batch_copy [flags] --src=path --dest=path
+     flags:
+       -e EXPERIMENT|--experiment=EXPERIMENT
+            set experiment
+       --intermed      
+            use a local intermediate file
+       -N|--ncopies    
+   	    keep ncopies copy programs running in parallel
+       -v|--verbose    
+            be more loquatious
+EOF
+}
 
 while [ $# -gt 0 ]
 do
    case "x$1" in
    x--intermed)    intermed=true; shift;;
    x-v)            verbose=true; shift;;
+   x--verbose)     verbose=true; shift;;
    x-N)            ncopies=$2; shift; shift;;
    x--ncopies)     ncopies=$2; shift; shift;;
    x--ncopies=*)   ncopies=`echo $1| sed -e 's/--ncopies=//'`; shift;;
    x--src)         src=$2; shift; shift;;
    x--src=*)       src=`echo $1| sed -e 's/--src=//'`; shift;;
-   x--dst)         dst=$2; shift; shift;;
-   x--dst=*)       dst=`echo $1| sed -e 's/--dst=//'`; shift;;
+   x--dest)        dest=$2; shift; shift;;
+   x--dest=*)      dest=`echo $1| sed -e 's/--dest=//'`; shift;;
+   x-e)            experiment=$2; shift; shift;;
    x--experiment)  experiment=$2; shift; shift;;
    x--experiment=*)experiment=`echo $1| sed -e 's/--experiment=//'`; shift;;
-   *)  echo "unrecognized parameter: $1"; shift;;
+   *)  echo "unrecognized parameter: $1"; help(); shift;;
    esac
 done
 
 workdir="${TMPDIR:-/var/tmp}/ifdh_batch_copy_$$"
 mkdir -p "$workdir"
 
-ifdh ls "$dst" 10 | grep -v '/$' | xargs -n 1  basename >  "$workdir/have_files"
+ifdh ls "$dest" 10 | grep -v '/$' | xargs -n 1  basename >  "$workdir/have_files"
 
 $verbose && echo "already there: "
 $verbose && cat $workdir/have_files
@@ -50,9 +66,9 @@ ifdh ls "$src" 10 | (
       $verbose && echo "Starting copy of $bfile..."
       if $intermed
       then 
-          (ifdh mkdir_p $dst/$hash 2>/dev/null; ifdh cp "$srcfile" "$ifile" ";" "$ifile" "$dst/$hash/$bfile"; rm "$ifile") &
+          (ifdh mkdir_p $dest/$hash 2>/dev/null; ifdh cp "$srcfile" "$ifile" ";" "$ifile" "$dest/$hash/$bfile"; rm "$ifile") &
       else
-          (ifdh mkdir_p $dst/$hash 2>/dev/null; ifdh cp "$srcfile" "$dst/$hash/$bfile") &
+          (ifdh mkdir_p $dest/$hash 2>/dev/null; ifdh cp "$srcfile" "$dest/$hash/$bfile") &
       fi
       if ((bgcount++ > ncopies))
       then

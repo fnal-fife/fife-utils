@@ -7,7 +7,7 @@ import os
 import optparse
 
 
-def audit( ds, dest,  verbose = False, experiment = None ):
+def audit( ds, dest,  verbose = False, experiment = None, keeplists=None ):
     samweb = SAMWebClient(experiment=experiment)
     res=0
 
@@ -18,6 +18,9 @@ def audit( ds, dest,  verbose = False, experiment = None ):
     num_present_undeclared_at_dest = 0
     num_present_wrong_loc = 0
     
+    if keeplists != None:
+        if not os.path.exists(keeplists):
+            os.mkdir(keeplists)
 
     full_list = ds.ifdh_handle.ls(dest,10,'')
     full_list = ds.normalize_list(full_list)
@@ -25,7 +28,23 @@ def audit( ds, dest,  verbose = False, experiment = None ):
     fnames = [os.path.basename(x) for x in full_list]
     fnameset = set(fnames)
 
+    if keeplists != None:
+        lslist=open("%s/ls_lR_out"%keeplists,"w")
+        for f in full_list:
+            lslist.write(f+"\n")
+        lslist.close()
+        lsfiles=open("%s/ls_basenames"%keeplists,"w")
+        for f in fnameset:
+            lsfiles.write(f+"\n")
+        lsfiles.close()
+        flistf=open("%s/files_in_dataset"%keeplists,"w")
+        loclist=open("%s/dataset_locations_matching"%keeplists,"w")
+        misslist=open("%s/dataset_files_missing"%keeplists, "w")
+        wronglist=open("%s/dataset_files_misfiled"%keeplists, "w")
+
     for f in ds.file_iterator():
+        if keeplists != None:
+            flistf.write(f+"\n")
         num_in_dataset += 1
         spl = ds.get_paths_for(f)
         spl = ds.normalize_list(spl)
@@ -33,6 +52,8 @@ def audit( ds, dest,  verbose = False, experiment = None ):
         for sp in spl:
             #print "checking %s startswith %s" % (sp, dest)
 	    if sp.startswith(dest):
+                if keeplists != None:
+                    loclist.write(sp+"\n")
                 found = 1
 		num_declared_at_dest += 1
 		if  sp in full_set:
@@ -43,10 +64,14 @@ def audit( ds, dest,  verbose = False, experiment = None ):
                         num_present_wrong_loc += 1
                         for pp in full_list:
                             if pp.find(f):
+                                if keeplists != None:
+                                    wronglist.write("wrong path: %s at %s not %s" % ( f, pp, sp))
                                 if verbose: print "wrong path: %s at %s not %s" % ( f, pp, sp)
 		    if verbose: print "missing: %s" % sp
 		    res = 1
         if found == 0:
+           if keeplists != None:
+               misslist.write(f+"\n")
            num_undeclared_at_dest += 1
            if f in fnameset:
                num_present_undeclared_at_dest += 1
@@ -61,14 +86,18 @@ def audit( ds, dest,  verbose = False, experiment = None ):
     print "              Not Declared:", num_undeclared_at_dest
     print "  Present but not Declared:", num_present_undeclared_at_dest
     print " Present at wrong location:", num_present_wrong_loc
-    
+    if keeplists != None:
+        flistf.close()
+        loclist.close()
+        misslist.close()
 
 if __name__ == '__main__':
     
     parser = optparse.OptionParser(usage="usage: %prog [options] dataset [dataset ...] \n make sure files in dataset actually exist")
     parser.add_option('-v','--verbose',   action='count')
     parser.add_option('-d','--dest',   help="location to audit")
-    parser.add_option('-e','--experiment')
+    parser.add_option('-e','--experiment', help="experiment name to use")
+    parser.add_option('-k','--keeplists', help="keep file lists in directory KEEPLISTS",default=None)
     parser.add_option('-n', '--name',     help="dataset name to audit", )
 
     (o,a) = parser.parse_args()
@@ -78,13 +107,13 @@ if __name__ == '__main__':
         os.environ['SAM_EXPERIMENT']= o.experiment
         os.environ['IFDH_BASE_URI'] = "http://samweb.fnal.gov:8480/sam/%s/api" % o.experiment
 
-    cert = get_standard_certificate_path(options)
+    cert = get_standard_certificate_path(o)
     os.environ['X509_USER_PROXY'] = cert
 
     if not o.name:
         parser.error("expected --name dataset-name")
         exit(1)
 
-    res = audit(dataset(o.name), dest = o.dest, verbose = o.verbose , experiment = o.experiment)
+    res = audit(dataset(o.name), dest = o.dest, verbose = o.verbose , experiment = o.experiment, keeplists= o.keeplists)
 
     sys.exit(res)

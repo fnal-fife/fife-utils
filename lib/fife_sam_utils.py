@@ -10,6 +10,7 @@ import subprocess
 import sys
 import time
 import traceback
+import logging
 
 import ifdh
 from samweb_client import *
@@ -25,7 +26,7 @@ except:
 def get_standard_certificate_path(options):
   logging.info('looking for cert')
 
-  if options.cert:
+  if hasattr(options,'cert') and options.cert:
     cert = options.cert
 
   else:
