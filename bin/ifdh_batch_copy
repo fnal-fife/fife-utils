@@ -13,6 +13,8 @@ help() {
             set experiment
        --intermed      
             use a local intermediate file
+       --hash
+            make hash directories at destination
        -N|--ncopies    
    	    keep ncopies copy programs running in parallel
        -v|--verbose    
@@ -37,7 +39,7 @@ do
    x-e)            experiment=$2; shift; shift;;
    x--experiment)  experiment=$2; shift; shift;;
    x--experiment=*)experiment=`echo $1| sed -e 's/--experiment=//'`; shift;;
-   *)  echo "unrecognized parameter: $1"; help(); shift;;
+   *)  echo "unrecognized parameter: $1"; help; exit; shift;;
    esac
 done
 
