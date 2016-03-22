@@ -65,7 +65,6 @@ else
     check="grep -vf $workdir/have_files"
 fi
 
-
 ifdh ls "$src" 10 | 
   $check | 
   (
@@ -89,9 +88,9 @@ ifdh ls "$src" 10 |
       then 
           if $justsay
           then
-              echo "(ifdh mkdir_p $dest/$hash 2>/dev/null; ifdh cp \"$srcfile\" \"$ifile\" \";\" \"$ifile\" \"$dest/$hash/$bfile\"; rm \"$ifile\")" &
+              echo "(ifdh mkdir_p $dest/$hash 2>/dev/null; ifdh cp \"$srcfile\" \"$ifile\" ; ifdh cp \"$ifile\" \"$dest/$hash/$bfile\"; rm \"$ifile\")" &
           else
-              (ifdh mkdir_p $dest/$hash 2>/dev/null; ifdh cp "$srcfile" "$ifile" ";" "$ifile" "$dest/$hash$bfile"; rm "$ifile") &
+              (ifdh mkdir_p $dest/$hash 2>/dev/null; ifdh cp "$srcfile" "$ifile" ; ifdh cp "$ifile" "$dest/$hash$bfile"; rm "$ifile") &
           fi
       else
           if $justsay
