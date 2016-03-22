@@ -12,18 +12,22 @@ help() {
             set experiment
        --intermed      
             use a local intermediate file
-       --hash
+       --hashes
             make hash directories at destination
        -N|--ncopies    
    	    keep ncopies copy programs running in parallel
        -v|--verbose    
             be more loquatious
+       -j|--justsay
+            just say what you would do but do not do it 
 EOF
 }
 
 while [ $# -gt 0 ]
 do
    case "x$1" in
+   x-j)            justsay=ture; shift;;
+   x--justsay)     justsay=ture; shift;;
    x--intermed)    intermed=true; shift;;
    x-v)            verbose=true; shift;;
    x--verbose)     verbose=true; shift;;
@@ -68,9 +72,19 @@ ifdh ls "$src" 10 | (
       $verbose && echo "Starting copy of $bfile..."
       if $intermed
       then 
-          (ifdh mkdir_p $dest/$hash 2>/dev/null; ifdh cp "$srcfile" "$ifile" ";" "$ifile" "$dest/$hash/$bfile"; rm "$ifile") &
+          if $justsay
+          then
+              echo "(ifdh mkdir_p $dest/$hash 2>/dev/null; ifdh cp \"$srcfile\" \"$ifile\" \";\" \"$ifile\" \"$dest/$hash/$bfile\"; rm \"$ifile\") " &
+          else
+              (ifdh mkdir_p $dest/$hash 2>/dev/null; ifdh cp "$srcfile" "$ifile" ";" "$ifile" "$dest/$hash/$bfile"; rm "$ifile") &
+          fi
       else
-          (ifdh mkdir_p $dest/$hash 2>/dev/null; ifdh cp "$srcfile" "$dest/$hash/$bfile") &
+          if $justsay
+          then
+             echo "(ifdh mkdir_p $dest/$hash 2>/dev/null; ifdh cp \"$srcfile\" \"$dest/$hash/$bfile\")" &
+          else
+             (ifdh mkdir_p $dest/$hash 2>/dev/null; ifdh cp "$srcfile" "$dest/$hash/$bfile") &
+          fi
       fi
       if ((bgcount++ > ncopies))
       then
