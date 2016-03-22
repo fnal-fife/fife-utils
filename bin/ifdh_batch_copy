@@ -4,6 +4,7 @@ ncopies=1
 experiment=${EXPERIMENT:-${SAM_EXPERIMENT:-samdev}}
 intermed=false
 verbose=false
+hashes=false
 help() {
  cat <<EOF
    ifdh_batch_copy [flags] --src=path --dest=path
@@ -29,6 +30,7 @@ do
    x-j)            justsay=ture; shift;;
    x--justsay)     justsay=ture; shift;;
    x--intermed)    intermed=true; shift;;
+   x--hashes)      hashes=true; shift;;
    x-v)            verbose=true; shift;;
    x--verbose)     verbose=true; shift;;
    x-N)            ncopies=$2; shift; shift;;
@@ -68,7 +70,12 @@ ifdh ls "$src" 10 | (
       fi
       bfile=`basename $srcfile`
       ifile="$workdir/$bfile"
-      hash=$(echo $bfile | md5sum | cut -c 1-3)
+      if $hashes
+      then
+         hash="$(printf "%s" "$bfile" | md5sum | cut -c 1-3|sed -e 's;.;&/;g')"
+      else
+         hash=""
+      fi
       $verbose && echo "Starting copy of $bfile..."
       if $intermed
       then 
@@ -76,14 +83,14 @@ ifdh ls "$src" 10 | (
           then
               echo "(ifdh mkdir_p $dest/$hash 2>/dev/null; ifdh cp \"$srcfile\" \"$ifile\" \";\" \"$ifile\" \"$dest/$hash/$bfile\"; rm \"$ifile\") " &
           else
-              (ifdh mkdir_p $dest/$hash 2>/dev/null; ifdh cp "$srcfile" "$ifile" ";" "$ifile" "$dest/$hash/$bfile"; rm "$ifile") &
+              (ifdh mkdir_p $dest/$hash 2>/dev/null; ifdh cp "$srcfile" "$ifile" ";" "$ifile" "$dest/$hash$bfile"; rm "$ifile") &
           fi
       else
           if $justsay
           then
-             echo "(ifdh mkdir_p $dest/$hash 2>/dev/null; ifdh cp \"$srcfile\" \"$dest/$hash/$bfile\")" &
+             echo "(ifdh mkdir_p $dest/$hash 2>/dev/null; ifdh cp \"$srcfile\" \"$dest/$hash$bfile\")" &
           else
-             (ifdh mkdir_p $dest/$hash 2>/dev/null; ifdh cp "$srcfile" "$dest/$hash/$bfile") &
+             (ifdh mkdir_p $dest/$hash 2>/dev/null; ifdh cp "$srcfile" "$dest/$hash$bfile") &
           fi
       fi
       if ((bgcount++ > ncopies))
