@@ -5,6 +5,7 @@ experiment=${EXPERIMENT:-${SAM_EXPERIMENT:-samdev}}
 intermed=false
 verbose=false
 hashes=false
+justsay=false
 help() {
  cat <<EOF
    ifdh_batch_copy [flags] --src=path --dest=path
@@ -27,7 +28,7 @@ EOF
 while [ $# -gt 0 ]
 do
    case "x$1" in
-   x-j)            justsay=ture; shift;;
+   x-j)            justsay=true; shift;;
    x--justsay)     justsay=ture; shift;;
    x--intermed)    intermed=true; shift;;
    x--hashes)      hashes=true; shift;;
