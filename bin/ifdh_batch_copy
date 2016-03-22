@@ -60,9 +60,9 @@ then
     check="cat"
 else
     ifdh ls "$dest" 10 | grep -v '/$' | xargs -n 1  basename | sed -e 's;^;/;' -e 's/$/$/'>  "$workdir/have_files"
-    check="grep -vf $workdir/have_files"
     $verbose && echo "already there: "
     $verbose && cat $workdir/have_files
+    check="grep -vf $workdir/have_files"
 fi
 
 
