@@ -1,116 +1,162 @@
-#!/bin/sh
+#!/usr/bin/env python
 
-ncopies=1
-experiment=${EXPERIMENT:-${SAM_EXPERIMENT:-samdev}}
-intermed=false
-verbose=false
-hashes=false
-justsay=false
-nocheck=false
-help() {
- cat <<EOF
-   ifdh_batch_copy [flags] --src=path --dest=path
-     flags:
-       -e EXPERIMENT|--experiment=EXPERIMENT
-            set experiment
-       --intermed      
-            use a local intermediate file
-       --hashes
-            make hash directories at destination
-       --nocheck
-            do not check if file already exists at destination
-       -N|--ncopies    
-   	    keep ncopies copy programs running in parallel
-       -v|--verbose    
-            be more loquatious
-       -j|--justsay
-            just say what you would do but do not do it 
-EOF
-}
+import os
+import sys
+import ifdh
+import optparse
+import grp
+import hashlib
+import traceback
+import signal
 
-while [ $# -gt 0 ]
-do
-   case "x$1" in
-   x--nocheck)     nocheck=true; shift;;
-   x-j)            justsay=true; shift;;
-   x--justsay)     justsay=true; shift;;
-   x--intermed)    intermed=true; shift;;
-   x--hashes)      hashes=true; shift;;
-   x-v)            verbose=true; shift;;
-   x--verbose)     verbose=true; shift;;
-   x-N)            ncopies=$2; shift; shift;;
-   x--ncopies)     ncopies=$2; shift; shift;;
-   x--ncopies=*)   ncopies=`echo $1| sed -e 's/--ncopies=//'`; shift;;
-   x--src)         src=$2; shift; shift;;
-   x--src=*)       src=`echo $1| sed -e 's/--src=//'`; shift;;
-   x--dest)        dest=$2; shift; shift;;
-   x--dest=*)      dest=`echo $1| sed -e 's/--dest=//'`; shift;;
-   x-e)            experiment=$2; shift; shift;;
-   x--experiment)  experiment=$2; shift; shift;;
-   x--experiment=*)experiment=`echo $1| sed -e 's/--experiment=//'`; shift;;
-   *)  echo "unrecognized parameter: $1"; help; exit; shift;;
-   esac
-done
+class batch_copier:
+    def __init__(self):
+        self.workdir="%s/ifdh_batch_copy_%d" % (os.environ.get("TMPDIR","/var/tmp") , os.getpid())
+        os.mkdir(self.workdir)
+        self.ih = ifdh.ifdh()
 
-workdir="${TMPDIR:-/var/tmp}/ifdh_batch_copy_$$"
-mkdir -p "$workdir"
+    def do_batch(self, src, dest, nocheck=False, justsay=False, intermed=False, hashes=False, ncopies=1, checklist=None):
+        ncopies = int(ncopies)
+        if nocheck:
+            dest_files = set([])
+        elif checklist:
+            f = open(checklist,"r")
+            dest_files = f.readlines()
+            dest_files = map(lambda x: x.strip() ,dest_files)
+            dest_files = set(dest_files)
+        else:
+            dest_files = self.ih.ls(dest, 10,"")
+            dest_files = map(os.path.basename, dest_files)
+            dest_files = set(dest_files)
 
-if $nocheck
-then
-    check="cat"
-else
-    ifdh ls "$dest" 10 | grep -v '/$' | xargs -n 1  basename | sed -e 's;^;/;' -e 's/$/$/'>  "$workdir/have_files"
-    $verbose && echo "already there: "
-    $verbose && cat $workdir/have_files
-    check="grep -vf $workdir/have_files"
-fi
+        firstlist = self.ih.ls(src, 10, '')
 
-ifdh ls "$src" 10 | 
-  $check | 
-  (
-  bgcount=1
-  while read srcfile 
-  do
-      case $srcfile in
-      */) continue;;
-      esac
+        #
+        # copy the initial list, getting list of files to redo, then
+        # try the redo ones again... (go for three strikes?)
+        #
+        redo = self.dofiles(firstlist ,dest, dest_files, nocheck = nocheck, justsay = justsay, intermed = intermed, hashes=hashes, ncopies=ncopies)
 
-      bfile=`basename $srcfile`
-      ifile="$workdir/$bfile"
-      if $hashes
-      then
-         hash="$(printf "%s" "$bfile" | md5sum | cut -c 1-3|sed -e 's;.;&/;g')"
-      else
-         hash=""
-      fi
-      $verbose && echo "Starting copy of $bfile..."
-      if $intermed
-      then 
-          if $justsay
-          then
-              echo "(ifdh mkdir_p $dest/$hash 2>/dev/null; ifdh cp \"$srcfile\" \"$ifile\" ; ifdh cp \"$ifile\" \"$dest/$hash/$bfile\"; rm \"$ifile\")" &
-          else
-              (ifdh mkdir_p $dest/$hash 2>/dev/null; ifdh cp "$srcfile" "$ifile" ; ifdh cp "$ifile" "$dest/$hash$bfile"; rm "$ifile") &
-          fi
-      else
-          if $justsay
-          then
-             echo "(ifdh mkdir_p $dest/$hash 2>/dev/null; ifdh cp \"$srcfile\" \"$dest/$hash$bfile\")" &
-          else
-             (ifdh mkdir_p $dest/$hash 2>/dev/null; ifdh cp "$srcfile" "$dest/$hash$bfile") &
-          fi
-      fi
-      if ((bgcount++ > ncopies))
-      then
-         wait
-         ((bgcount--))
-         $verbose && echo "Completed."
-      fi
-  done
-  while ((bgcount > 0))
-  do
-     wait
-     ((bgcount--))
-     $verbose && echo "Completed."
-  done
-)
+        redo = self.dofiles(redo ,dest, dest_files, nocheck = nocheck, justsay = justsay, intermed = intermed, hashes=hashes, ncopies=ncopies)
+
+        redo = self.dofiles(redo ,dest, dest_files, nocheck = nocheck, justsay = justsay, intermed = intermed, hashes=hashes, ncopies=ncopies)
+
+
+    def dofiles(self, srcfilelist, dest, dest_files,  nocheck=False, justsay=False, intermed=False, hashes=False, ncopies=1):
+        bgcount = 0
+        bgprocs = {}
+        redo = []
+        for srcfile in srcfilelist:
+            if srcfile[-1] == '/':
+                continue
+        
+            bfile = os.path.basename(srcfile)
+
+            if bfile in dest_files:
+                continue
+
+            ifile = "%s/%s" % (self.workdir, bfile)
+            if hashes:
+                d = hashlib.md5(bfile).hexdigest()
+                hashpath = "/%c/%c/%c" % (d[0], d[1], d[2])
+            else:
+                hashpath = ''
+         
+	    r = os.fork()
+	    if (r == 0):
+               try:
+		   # we're the child, do the copy
+                   #
+                   # give ourselves 15 minutes, maximum
+                   signal.alarm(15*60)
+		   if justsay:
+                      if intermed:
+                          via = " via " + ifile
+                      else:
+                          via = ""
+
+		      print "ifdh_batch_copy: I would copy %s to %s%s/%s %s" % (srcfile, dest, hashpath, bfile, via)
+		      res = 0
+		   else:
+		       print "ifdh_batch_copy: Starting copy of ", bfile
+		       self.ih = ifdh.ifdh()
+                       if hashes:
+		           self.ih.mkdir_p("%s%s"%( dest, hashpath))
+		       if intermed:
+                           # until we fix ifdh to not always use ->
+                           if srcfile.startswith("s3://"):
+                              os.system("aws s3 cp %s %s" % (srcfile, ifile))
+                           else:
+			      self.ih.cp([srcfile, ifile])
+			   res = self.ih.cp([ifile, "%s%s/%s"%(dest,hashpath,bfile)])
+			   os.unlink(ifile)
+		       else:
+			   res = self.ih.cp([srcfile, "%s%s/%s"%(dest,hashpath,bfile)])
+               except:
+                  print "ifdh_batch_copy: Exception in copy..."
+                  traceback.print_exc(file=sys.stdout)
+                  exit(1)
+
+               exit(res)
+
+	    elif (r > 0):
+               bgprocs[r] = srcfile
+	    else:
+	       print "ifdh_batch_copy: Ouch: fork failed!"
+
+            bgcount = bgcount + 1
+
+	    if (bgcount >= ncopies):
+	       pid,status = os.wait()
+	       bgcount = bgcount - 1
+               if os.WIFEXITED(status) and os.WEXITSTATUS(status) == 0:
+		   print "ifdh_batch_copy: Completed %s" % bgprocs[pid]
+	       else:
+		   print "ifdh_batch_copy: Failed %s" % bgprocs[pid]
+                   redo.append(bgprocs[pid])
+               del bgprocs[pid]
+
+        while (bgcount > 0):
+            pid, status = os.wait()
+	    bgcount = bgcount - 1
+            if os.WIFEXITED(status) and os.WEXITSTATUS(status) == 0:
+	        print "ifdh_batch_copy: Completed %s" % bgprocs[pid]
+            else:
+	        print "ifdh_batch_copy: Failed %s" % bgprocs[pid]
+                redo.append(bgprocs[pid])
+            del bgprocs[pid]
+
+        return redo
+
+if __name__=='__main__':
+    parser = optparse.OptionParser(description='bulkd copy files from src to dest',
+                            prog='sam_add_dataset',
+                            version='sam_add_dataset 0.9',
+                            usage='%prog <-f file | -d directory> [options]')
+
+
+    parser.add_option('-s', '--src',     help="source for copy", )
+    parser.add_option('-d', '--dest',    help="destination for copy", )
+    parser.add_option('-e','--experiment')
+    parser.add_option('-j','--justsay',  action='store_true', help="do not actually copy, just say what you would do", default=False)
+    parser.add_option('-N','--ncopies',   help="number of copies to run in parallel", default=1)
+    parser.add_option('-n','--nocheck',  action='store_true', help="do not get listing of destination to check for existing files", default=False)
+    parser.add_option('--checklist',  help="premade list  of previously copied files")
+    parser.add_option('-i','--intermed',  action='store_true', help="Copy via an intermediate file", default=False)
+    parser.add_option('--hashes',  action='store_true', help="Copy via an intermediate file", default=False)
+    parser.add_option('-v','--verbose',   action='count')
+    
+    (o,a) = parser.parse_args()
+
+    if not o.experiment:
+        o.experiment = os.environ.get('EXPERIMENT',os.environ.get('SAM_EXPERIMENT',grp.getgrgid(os.getgid())[0]))
+
+    if o.experiment:
+
+        os.environ['EXPERIMENT']= o.experiment
+        os.environ['SAM_EXPERIMENT']= o.experiment
+        os.environ['IFDH_BASE_URI'] = "http://samweb.fnal.gov:8480/sam/%s/api" % o.experiment
+
+    bc = batch_copier()
+    
+    bc.do_batch(o.src, o.dest, nocheck = o.nocheck, justsay = o.justsay, intermed=o.intermed, hashes=o.hashes, ncopies = o.ncopies, checklist = o.checklist)
