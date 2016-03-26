@@ -79,13 +79,14 @@ class batch_copier:
 		      res = 0
 		   else:
 		       print "ifdh_batch_copy: Starting copy of ", bfile
+                       sys.stdout.flush()
 		       self.ih = ifdh.ifdh()
                        if hashes:
 		           self.ih.mkdir_p("%s%s"%( dest, hashpath))
 		       if intermed:
                            # until we fix ifdh to not always use ->
                            if srcfile.startswith("s3://"):
-                              os.system("aws s3 cp %s %s" % (srcfile, ifile))
+                              os.system("aws s3 cp --quiet %s %s || aws s3 cp --quiet %s %s" % (srcfile, ifile, srcfile, ifile))
                            else:
 			      self.ih.cp([srcfile, ifile])
 			   res = self.ih.cp([ifile, "%s%s/%s"%(dest,hashpath,bfile)])
@@ -95,6 +96,7 @@ class batch_copier:
                except:
                   print "ifdh_batch_copy: Exception in copy..."
                   traceback.print_exc(file=sys.stdout)
+	          sys.stdout.flush()
                   exit(1)
 
                exit(res)
@@ -103,6 +105,7 @@ class batch_copier:
                bgprocs[r] = srcfile
 	    else:
 	       print "ifdh_batch_copy: Ouch: fork failed!"
+	       sys.stdout.flush()
 
             bgcount = bgcount + 1
 
@@ -110,9 +113,11 @@ class batch_copier:
 	       pid,status = os.wait()
 	       bgcount = bgcount - 1
                if os.WIFEXITED(status) and os.WEXITSTATUS(status) == 0:
-		   print "ifdh_batch_copy: Completed %s" % bgprocs[pid]
+		   print "ifdh_batch_copy: Finished %s" % bgprocs[pid]
+	           sys.stdout.flush()
 	       else:
 		   print "ifdh_batch_copy: Failed %s" % bgprocs[pid]
+	           sys.stdout.flush()
                    redo.append(bgprocs[pid])
                del bgprocs[pid]
 
@@ -120,9 +125,11 @@ class batch_copier:
             pid, status = os.wait()
 	    bgcount = bgcount - 1
             if os.WIFEXITED(status) and os.WEXITSTATUS(status) == 0:
-	        print "ifdh_batch_copy: Completed %s" % bgprocs[pid]
+	        print "ifdh_batch_copy: Finished %s" % bgprocs[pid]
+	        sys.stdout.flush()
             else:
 	        print "ifdh_batch_copy: Failed %s" % bgprocs[pid]
+	        sys.stdout.flush()
                 redo.append(bgprocs[pid])
             del bgprocs[pid]
 
