@@ -237,6 +237,7 @@ def do_getawscreds():
     f = open(fname,"r")
     for line in f:
         var,val= line.strip().split('=',1)
+        var = var.replace("export ","")
         val=val.strip('"')
         os.environ[var] = val
     f.close()
