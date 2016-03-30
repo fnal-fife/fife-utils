@@ -12,6 +12,7 @@ class batch_copier:
     def __init__(self):
         self.workdir="%s/ifdh_batch_copy_%d" % (os.environ.get("TMPDIR","/var/tmp") , os.getpid())
         os.mkdir(self.workdir)
+        os.chmod(self.workdir,0o755)
         self.wpipes = []
         self.jobcount = 0
         self.ih = ifdh.ifdh()
@@ -63,7 +64,7 @@ class batch_copier:
 
         self.ih.cp([ flistfname, flistscratchfname])
 
-        cmd = "jobsub_submit --group=%s --resource-provides=usage_model=OPPORTUNISTIC,DEDICATED -f %s file://%s/bin/ifdh_batch_copy --setup '%s' --experiment=%s -f \$CONDOR_DIR_INPUT/%s --dest=%s %s %s %s %s %s %s" % (
+        cmd = "jobsub_submit -e IFDH_DEBUG=1 --group=%s --resource-provides=usage_model=OPPORTUNISTIC,DEDICATED -f %s file://%s/bin/ifdh_batch_copy --setup '%s' --experiment=%s -f \$CONDOR_DIR_INPUT/%s --dest=%s %s %s %s %s %s %s" % (
           os.environ['EXPERIMENT'],
           flistscratchfname, 
           os.environ['FIFE_UTILS_DIR'],
@@ -175,11 +176,18 @@ class batch_copier:
 		       if intermed:
                            # until we fix ifdh to not always use ->
                            if srcfile.startswith("s3://"):
-                              os.system("aws s3 cp --quiet %s %s || aws s3 cp --quiet %s %s" % (srcfile, ifile, srcfile, ifile))
+                              cmd ="exec aws s3 cp %s %s" % (srcfile, ifile)
+                              print "Running: " , cmd
+                              sys.stdout.flush()
+                              r1 = os.system(cmd)
                            else:
-			      self.ih.cp([srcfile, ifile])
-			   res = self.ih.cp([ifile, "%s%s/%s"%(dest,hashpath,bfile)])
-			   os.unlink(ifile)
+			      r1 = self.ih.cp([srcfile, ifile])
+
+                           if os.WIFEXITED(r1) and os.WEXITSTATUS(r1) == 0:
+			       res = self.ih.cp([ifile, "%s%s/%s"%(dest,hashpath,bfile)])
+			       os.unlink(ifile)
+                           else:
+                               raise Exception("copy to intermediate failed.")
 		       else:
 			   res = self.ih.cp([srcfile, "%s%s/%s"%(dest,hashpath,bfile)])
                except:
@@ -279,6 +287,7 @@ if __name__=='__main__':
         sys.stdout.flush()
         ups.setup("-j " + o.setup.replace('@',' '))
         ups.setup("ifdhc v1_8_10")
+        ups.setup("awscli")
         print "IFDHC_DIR is ", os.environ["IFDHC_DIR"]
         sys.stdout.flush()
         sys.path.insert(0,os.environ['IFDHC_DIR']+'/lib/python')
