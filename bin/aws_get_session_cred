@@ -8,7 +8,7 @@ else
 fi
 
 (
-    aws sts get-session-token | 
+    aws sts get-session-token --duration-seconds 129600 | 
         egrep 'Key|Session' | 
         sed -e 's/^ *"//' -e 's/": *"/="/' -e 's/, *$//' \
             -e 's/SecretAccessKey/export AWS_SECRET_ACCESS_KEY/' \
