@@ -114,13 +114,13 @@ class batch_copier:
             n = len(hostlist)
             nfiles = (len(firstlist) / n) + 1
             for h in hostlist:
-                self.sshto(h, firstlist[:nfiles], dest, nocheck = nocheck, justsay = justsay, intermed = intermed, hashes = hashes, ncopies = ncopies )
+                self.sshto(h, firstlist[:nfiles], dest, nocheck = nocheck, justsay = justsay, intermed = intermed, hashes = hashes, ncopies = ncopies , getawscreds = getawscreds)
                 firstlist = firstlist[nfiles:]
             self.sshwait()
         elif njobs > 0:
             nfiles = (len(firstlist) / njobs) + 1
             for i in range(njobs):
-                self.jobstart( firstlist[:nfiles], dest, nocheck = nocheck, justsay = justsay, intermed = intermed, hashes = hashes, ncopies = ncopies )
+                self.jobstart( firstlist[:nfiles], dest, nocheck = nocheck, justsay = justsay, intermed = intermed, hashes = hashes, ncopies = ncopies , getawscreds = getawscreds)
                 firstlist = firstlist[nfiles:]
         else:
             redo = firstlist
@@ -248,6 +248,7 @@ def do_getawscreds():
         var = var.replace("export ","")
         val=val.strip('"')
         os.environ[var] = val
+        print "Setting os.environ[%s]=%s" % (var, val)
     f.close()
     os.unlink(fname)
 
@@ -287,7 +288,8 @@ if __name__=='__main__':
         sys.stdout.flush()
         ups.setup("-j " + o.setup.replace('@',' '))
         ups.setup("ifdhc v1_8_10")
-        ups.setup("awscli")
+        ups.setup("awscli v1_10_17")
+        os.environ['PATH'] = "%s/bin:%s" % (os.environ['AWSCLI_DIR'], os.environ['PATH'])
         print "IFDHC_DIR is ", os.environ["IFDHC_DIR"]
         sys.stdout.flush()
         sys.path.insert(0,os.environ['IFDHC_DIR']+'/lib/python')
