@@ -274,7 +274,7 @@ if __name__=='__main__':
     parser.add_option('--hashes',  action='store_true', help="Copy via an intermediate file", default=False)
     parser.add_option('-v','--verbose',   action='count')
     parser.add_option('--host', action='append', default=[], help="run copies via ssh on multiple hosts")
-    parser.add_option('--getawscreds', action='store_true', help="get AWS S3 credentials from /pnfs file")
+    parser.add_option('--getawscreds', action='store_true', help="get AWS S3 credentials from /pnfs file", default = False)
     parser.add_option('-S','--setup',  help="set up products", default = None)
     parser.add_option('--debug',  action='store_true',    help="turn on debugging", default=False )
     
