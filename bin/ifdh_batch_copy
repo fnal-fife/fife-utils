@@ -37,7 +37,7 @@ class batch_copier:
           "--intermed" if intermed else "",
           "--hashes" if hashes else "",
           "--getawscreds" if getawscreds else "",
-          "-N %d" % ncopies if ncopies > 1 else ""
+          "-N %d" % ncopies if ncopies > 1 else "",
           "--debug" if debug else "",
         ))
         self.wpipes.append(wfl)
@@ -46,7 +46,7 @@ class batch_copier:
         for wfl in self.wpipes:
             wfl.close()
 
-    def jobstart(self, flist, dest, nocheck = False, justsay = False, intermed = False, hashes = False, ncopies = False, getawscreds = False ):
+    def jobstart(self, flist, dest, nocheck = False, justsay = False, intermed = False, hashes = False, ncopies = False, getawscreds = False , debug = False):
         if len(flist) == 0:
            return
         pid = os.getpid()
@@ -78,7 +78,7 @@ class batch_copier:
           "--intermed" if intermed else "",
           "--hashes" if hashes else "",
           "-N %d" % ncopies if ncopies > 1 else "",
-          "--getawscreds" if getawscreds else ""
+          "--getawscreds" if getawscreds else "",
           "--debug" if debug else ""
         )
         if debug: print "running: " , cmd
