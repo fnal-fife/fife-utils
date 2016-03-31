@@ -7,6 +7,7 @@ import grp
 import hashlib
 import traceback
 import signal
+from fife_sam_utils import do_setup, do_getawscreds
 
 class batch_copier:
     def __init__(self):
@@ -234,26 +235,6 @@ class batch_copier:
 
         return redo
 
-def do_getawscreds(debug = False):
-    ih = ifdh.ifdh()
-    uname = os.environ.get('GRID_USER',os.environ.get('USER','unknown'))
-    fname= ih.localPath("awst")
-    open(fname,"w").close()
-    os.chmod(fname,0o600)
-    fname=ih.fetchInput("/pnfs/%s/scratch/users/%s/awst" % (
-       os.environ['EXPERIMENT'],
-       uname
-    ))
-    f = open(fname,"r")
-    for line in f:
-        var,val= line.strip().split('=',1)
-        var = var.replace("export ","")
-        val=val.strip('"')
-        os.environ[var] = val
-        if debug: print "Setting os.environ[%s]=%s" % (var, val)
-    f.close()
-    os.unlink(fname)
-
 if __name__=='__main__':
     parser = optparse.OptionParser(description='bulkd copy files from src to dest',
                             prog='ifdh_batch_copy',
@@ -275,27 +256,13 @@ if __name__=='__main__':
     parser.add_option('-v','--verbose',   action='count')
     parser.add_option('--host', action='append', default=[], help="run copies via ssh on multiple hosts")
     parser.add_option('--getawscreds', action='store_true', help="get AWS S3 credentials from /pnfs file", default = False)
-    parser.add_option('-S','--setup',  help="set up products", default = None)
+    parser.add_option('--setup',  help="set up products", default = None)
     parser.add_option('--debug',  action='store_true',    help="turn on debugging", default=False )
     
     (o,a) = parser.parse_args()
 
     if o.setup:
-        sys.path.insert(0,'/cvmfs/fermilab.opensciencegrid.org/products/common/etc')
-        sys.path.insert(0,'/grid/fermiapp/products/common/etc')
-        import setups
-        ups = setups.setups()
-        if o.debug: print "found: UPS_DIR:", os.environ['UPS_DIR']
-        os.environ['PATH'] = "%s/bin:%s" % (os.environ['UPS_DIR'], os.environ['PATH'])
-        if o.debug: print "setting up:", o.setup
-        sys.stdout.flush()
-        ups.setup("-j " + o.setup.replace('@',' '))
-        ups.setup("ifdhc v1_8_10")
-        ups.setup("awscli v1_10_17")
-        os.environ['PATH'] = "%s/bin:%s" % (os.environ['AWSCLI_DIR'], os.environ['PATH'])
-        if o.debug: print "IFDHC_DIR is ", os.environ["IFDHC_DIR"]
-        sys.stdout.flush()
-        sys.path.insert(0,os.environ['IFDHC_DIR']+'/lib/python')
+        do_setup(o.setup)
 
     import ifdh
 

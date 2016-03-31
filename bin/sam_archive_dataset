@@ -68,7 +68,12 @@ if __name__ == '__main__':
     parser.add_option('-N', '--ncopies',  help="number of copy threads", default=1)
     parser.add_option('-P', '--paranoid', action='store_const', const=True, default = False, help ="Do not believe copy status, check for existence before declaring a location")
     parser.add_option('-k', '--keep',     help="keep existing copies", action='store_true' )
+    parser.add_option('--getawscreds', action='store_true', help="get AWS S3 credentials from /pnfs file", default = False)
+    parser.add_option('--intermed', action='store_true', help="use intermediate file and not pipe", default = False)
+    parser.add_option('--setup',  help="set up products", default = None)
 
+    if o.setup:
+        do_setup(o.setup)
     #
     # rough guess at dest, for usage message..
     #
@@ -111,7 +116,7 @@ if __name__ == '__main__':
     check_dest(o.dest, dest)
     d = dataset(o.name)
         
-    clone(d, o.dest, subdirf = o.dirfunc, just_say = o.just_say, batch_size = o.batch_size, verbose = o.verbose, experiment=o.experiment, ncopies = o.ncopies, paranoid = o.paranoid)
+    clone(d, o.dest, subdirf = o.dirfunc, just_say = o.just_say, batch_size = o.batch_size, verbose = o.verbose, experiment=o.experiment, ncopies = o.ncopies, paranoid = o.paranoid, getawscreds = o.getawscreds, intermed = o.intermed)
 
     if clean_others:
         unclone(d, delete_match = '(?!%s)' % o.dest, verbose = o.verbose, experiment = o.experiment) 

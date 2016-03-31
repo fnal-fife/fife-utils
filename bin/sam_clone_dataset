@@ -8,6 +8,38 @@ import optparse
 import time
 import grp
 
+def startjobs(o):
+
+    if o.projname:
+        os.environ['SAM_PROJECT']= o.projname
+    else:
+        # pick one...
+        uname = os.environ.get('GRID_USER',os.environ.get('USER','unknown'))
+        hostname = socket.gethostname()
+        ds = time.strftime('%Y-%m-%dT%H-%M-%S')
+        os.environ['SAM_PROJECT']=os.environ.get('SAM_PROJECT',"clone-%s-%s-%s-%d"%
+	    uname, hostname, ds, os.getpid())
+        o.connect_project = os.environ['SAM_PROJECT']
+
+    if not o.connect_project:
+         clone(dataset(o.name), o.dest, subdirf = o.dirfunc, just_say = o.just_say, batch_size = o.batch_size, verbose = o.verbose, experiment=o.experiment, ncopies=o.ncopies, just_start_project = True, connect_project=o.connect_project, , projname = o.project, paranoid = o.paranoid, intermed = o.intermed, getawscreds = o.getawscreds)
+
+    cmd = "jobsub_submit --group=%s --resource-provides=usage_model=OPPORTUNISTIC,DEDICATED file://%s/bin/sam_clone_dataset --setup '%s' --experiment=%s --name=%s --project=%s --connect-project --dest=%s %s %s %s %s %s %s %s" % (
+      os.environ['EXPERIMENT'],
+      os.environ['FIFE_UTILS_DIR'],
+      os.environ['SETUP_FIFE_UTILS'].replace(' ','@'),
+      os.environ['EXPERIMENT'],
+      o.name,
+      o.project,
+      o.dest, 
+      "--intermed" if intermed else "",
+      "--twodeep" if o.dirfunc == twodeep else "", ## fix me
+      "-N %d" % ncopies if o.ncopies > 1 else "",
+      "--getawscreds" if o.getawscreds else "",
+      "--verbose" if o.verbose else ""
+    )
+    if debug: print "running: " , cmd
+    os.system(cmd)
 
 if __name__ == '__main__':
 
@@ -24,13 +56,21 @@ if __name__ == '__main__':
     parser.add_option('-3','--threedeep',   dest='dirfunc', action='store_const', const=threedeep, help = "make subdirectories two deep in destination")
     parser.add_option('-4','--fourdeep',   dest='dirfunc', action='store_const', const=fourdeep, help = "make subdirectories two deep in destination")
     parser.add_option('-p', '--project', default=None, help = "SAM project name to use"  )
+    parser.add_option('--njobs', default=None, help="Launch njobs jobs to help do the cloning")
     parser.add_option('-C', '--connect-project', action='store_const', const=True)
     parser.add_option('-N', '--ncopies',  default=1, help="number of copies to run in parallel")
     parser.add_option('-S', '--just-start-project', action='store_const', const=True)
     parser.add_option('-P', '--paranoid', action='store_const', const=True, default = False, help = "do not believe copy status, check existence before declaring a location")
+    parser.add_option('--getawscreds', action='store_true', help="get AWS S3 credentials from /pnfs file", default = False)
+    parser.add_option('--intermed', action='store_true', help="use intermediate file and not pipe", default = False)
+    parser.add_option('--setup',  help="set up products", default = None)
+
     parser.set_defaults(dirfunc = twodeep)
 
     (o,a) = parser.parse_args()
+
+    if o.setup:
+        do_setup(o.setup)
 
     if not o.experiment:
         o.experiment = os.environ.get('EXPERIMENT',os.environ.get('SAM_EXPERIMENT',grp.getgrgid(os.getgid())[0]))
@@ -54,4 +94,7 @@ if __name__ == '__main__':
 
     o.dest = canonical(o.dest)
 
-    clone(dataset(o.name), o.dest, subdirf = o.dirfunc, just_say = o.just_say, batch_size = o.batch_size, verbose = o.verbose, experiment=o.experiment, ncopies=o.ncopies, just_start_project = o.just_start_project, connect_project=o.connect_project , projname = o.project, paranoid = o.paranoid)
+    if o.njobs:
+        self.start_jobs(o)
+    else:
+        clone(dataset(o.name), o.dest, subdirf = o.dirfunc, just_say = o.just_say, batch_size = o.batch_size, verbose = o.verbose, experiment=o.experiment, ncopies=o.ncopies, just_start_project = o.just_start_project, connect_project=o.connect_project , projname = o.project, paranoid = o.paranoid, intermed = o.intermed, getawscreds = o.getawscreds)
