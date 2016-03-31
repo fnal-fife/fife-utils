@@ -17,7 +17,7 @@ class batch_copier:
         self.jobcount = 0
         self.ih = ifdh.ifdh()
 
-    def sshto(self, host, flist, dest, nocheck = False, justsay = False, intermed = False, hashes = False, ncopies = 1, getawscreds = False ):
+    def sshto(self, host, flist, dest, nocheck = False, justsay = False, intermed = False, hashes = False, ncopies = 1, getawscreds = False, debug = False ):
         if len(flist) == 0:
            return
         pid = os.getpid()
@@ -26,7 +26,7 @@ class batch_copier:
         wfl.write("cat > /tmp/flist%d << EOF\n" % pid)
         wfl.write("\n".join(flist))
         wfl.write("\nEOF\n")
-        wfl.write("%s/bin/ifdh_batch_copy --setup '%s' --experiment=%s --filesrc=/tmp/flist%d --dest=%s %s %s %s %s %s %s" % (
+        wfl.write("%s/bin/ifdh_batch_copy --setup '%s' --experiment=%s --filesrc=/tmp/flist%d --dest=%s %s %s %s %s %s %s %s" % (
           os.environ['FIFE_UTILS_DIR'],
           os.environ['SETUP_FIFE_UTILS'].replace(' ','@'),
           os.environ['EXPERIMENT'],
@@ -38,6 +38,7 @@ class batch_copier:
           "--hashes" if hashes else "",
           "--getawscreds" if getawscreds else "",
           "-N %d" % ncopies if ncopies > 1 else ""
+          "--debug" if debug else "",
         ))
         self.wpipes.append(wfl)
 
@@ -64,7 +65,7 @@ class batch_copier:
 
         self.ih.cp([ flistfname, flistscratchfname])
 
-        cmd = "jobsub_submit -e IFDH_DEBUG=1 --group=%s --resource-provides=usage_model=OPPORTUNISTIC,DEDICATED -f %s file://%s/bin/ifdh_batch_copy --setup '%s' --experiment=%s -f \$CONDOR_DIR_INPUT/%s --dest=%s %s %s %s %s %s %s" % (
+        cmd = "jobsub_submit --group=%s --resource-provides=usage_model=OPPORTUNISTIC,DEDICATED -f %s file://%s/bin/ifdh_batch_copy --setup '%s' --experiment=%s -f \$CONDOR_DIR_INPUT/%s --dest=%s %s %s %s %s %s %s %s" % (
           os.environ['EXPERIMENT'],
           flistscratchfname, 
           os.environ['FIFE_UTILS_DIR'],
@@ -78,11 +79,12 @@ class batch_copier:
           "--hashes" if hashes else "",
           "-N %d" % ncopies if ncopies > 1 else "",
           "--getawscreds" if getawscreds else ""
+          "--debug" if debug else ""
         )
-        print "running: " , cmd
+        if debug: print "running: " , cmd
         os.system(cmd)
 
-    def do_batch(self, src, dest, nocheck=False, justsay=False, intermed=False, hashes=False, ncopies=1, checklist=None, hostlist = [], filesrc = None, njobs = 0, getawscreds = False):
+    def do_batch(self, src, dest, nocheck=False, justsay=False, intermed=False, hashes=False, ncopies=1, checklist=None, hostlist = [], filesrc = None, njobs = 0, getawscreds = False, debug = False):
         ncopies = int(ncopies)
 
         if nocheck:
@@ -114,20 +116,20 @@ class batch_copier:
             n = len(hostlist)
             nfiles = (len(firstlist) / n) + 1
             for h in hostlist:
-                self.sshto(h, firstlist[:nfiles], dest, nocheck = nocheck, justsay = justsay, intermed = intermed, hashes = hashes, ncopies = ncopies , getawscreds = getawscreds)
+                self.sshto(h, firstlist[:nfiles], dest, nocheck = nocheck, justsay = justsay, intermed = intermed, hashes = hashes, ncopies = ncopies , getawscreds = getawscreds, debug = debug)
                 firstlist = firstlist[nfiles:]
             self.sshwait()
         elif njobs > 0:
             nfiles = (len(firstlist) / njobs) + 1
             for i in range(njobs):
-                self.jobstart( firstlist[:nfiles], dest, nocheck = nocheck, justsay = justsay, intermed = intermed, hashes = hashes, ncopies = ncopies , getawscreds = getawscreds)
+                self.jobstart( firstlist[:nfiles], dest, nocheck = nocheck, justsay = justsay, intermed = intermed, hashes = hashes, ncopies = ncopies , getawscreds = getawscreds, debug = debug)
                 firstlist = firstlist[nfiles:]
         else:
             redo = firstlist
             for i in range(3):
-                 redo = self.dofiles(redo ,dest, dest_files, nocheck = nocheck, justsay = justsay, intermed = intermed, hashes=hashes, ncopies=ncopies, getawscreds = getawscreds)
+                 redo = self.dofiles(redo ,dest, dest_files, nocheck = nocheck, justsay = justsay, intermed = intermed, hashes=hashes, ncopies=ncopies, getawscreds = getawscreds, debug = debug)
 
-    def dofiles(self, srcfilelist, dest, dest_files,  nocheck=False, justsay=False, intermed=False, hashes=False, ncopies=1, getawscreds = False):
+    def dofiles(self, srcfilelist, dest, dest_files,  nocheck=False, justsay=False, intermed=False, hashes=False, ncopies=1, getawscreds = False, debug = False):
         bgcount = 0
         bgprocs = {}
         redo = []
@@ -138,7 +140,7 @@ class batch_copier:
         
             fcount = fcount + 1
             if getawscreds and fcount % 10000 == 0:
-                do_getawscreds()
+                do_getawscreds(debug = debug)
 
             bfile = os.path.basename(srcfile)
 
@@ -177,7 +179,7 @@ class batch_copier:
                            # until we fix ifdh to not always use ->
                            if srcfile.startswith("s3://"):
                               cmd ="exec aws s3 cp %s %s" % (srcfile, ifile)
-                              print "Running: " , cmd
+                              if debug: print "Running: " , cmd
                               sys.stdout.flush()
                               r1 = os.system(cmd)
                            else:
@@ -232,7 +234,7 @@ class batch_copier:
 
         return redo
 
-def do_getawscreds():
+def do_getawscreds(debug = False):
     ih = ifdh.ifdh()
     uname = os.environ.get('GRID_USER',os.environ.get('USER','unknown'))
     fname= ih.localPath("awst")
@@ -248,7 +250,7 @@ def do_getawscreds():
         var = var.replace("export ","")
         val=val.strip('"')
         os.environ[var] = val
-        print "Setting os.environ[%s]=%s" % (var, val)
+        if debug: print "Setting os.environ[%s]=%s" % (var, val)
     f.close()
     os.unlink(fname)
 
@@ -274,6 +276,7 @@ if __name__=='__main__':
     parser.add_option('--host', action='append', default=[], help="run copies via ssh on multiple hosts")
     parser.add_option('--getawscreds', action='store_true', help="get AWS S3 credentials from /pnfs file")
     parser.add_option('-S','--setup',  help="set up products", default = None)
+    parser.add_option('--debug',  action='store_true',    help="turn on debugging", default=False )
     
     (o,a) = parser.parse_args()
 
@@ -282,20 +285,22 @@ if __name__=='__main__':
         sys.path.insert(0,'/grid/fermiapp/products/common/etc')
         import setups
         ups = setups.setups()
-        print "found: UPS_DIR:", os.environ['UPS_DIR']
+        if o.debug: print "found: UPS_DIR:", os.environ['UPS_DIR']
         os.environ['PATH'] = "%s/bin:%s" % (os.environ['UPS_DIR'], os.environ['PATH'])
-        print "setting up:", o.setup
+        if o.debug: print "setting up:", o.setup
         sys.stdout.flush()
         ups.setup("-j " + o.setup.replace('@',' '))
         ups.setup("ifdhc v1_8_10")
         ups.setup("awscli v1_10_17")
         os.environ['PATH'] = "%s/bin:%s" % (os.environ['AWSCLI_DIR'], os.environ['PATH'])
-        print "IFDHC_DIR is ", os.environ["IFDHC_DIR"]
+        if o.debug: print "IFDHC_DIR is ", os.environ["IFDHC_DIR"]
         sys.stdout.flush()
         sys.path.insert(0,os.environ['IFDHC_DIR']+'/lib/python')
 
     import ifdh
 
+    if o.debug:
+       os.environ["IFDH_DEBUG"] = "1"
 
     if not o.experiment:
         o.experiment = os.environ.get('EXPERIMENT',os.environ.get('SAM_EXPERIMENT',grp.getgrgid(os.getgid())[0]))
@@ -309,6 +314,6 @@ if __name__=='__main__':
     bc = batch_copier()
 
     if o.getawscreds:
-        do_getawscreds()
+        do_getawscreds(debug = o.debug)
     
-    bc.do_batch(o.src, o.dest, nocheck = o.nocheck, justsay = o.justsay, intermed=o.intermed, hashes=o.hashes, ncopies = o.ncopies, checklist = o.checklist, filesrc = o.filesrc, hostlist= o.host, njobs = o.njobs, getawscreds = o.getawscreds)
+    bc.do_batch(o.src, o.dest, nocheck = o.nocheck, justsay = o.justsay, intermed=o.intermed, hashes=o.hashes, ncopies = o.ncopies, checklist = o.checklist, filesrc = o.filesrc, hostlist= o.host, njobs = o.njobs, getawscreds = o.getawscreds, debug = o.debug)
