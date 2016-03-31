@@ -22,7 +22,7 @@ def startjobs(o):
         o.connect_project = os.environ['SAM_PROJECT']
 
     if not o.connect_project:
-         clone(dataset(o.name), o.dest, subdirf = o.dirfunc, just_say = o.just_say, batch_size = o.batch_size, verbose = o.verbose, experiment=o.experiment, ncopies=o.ncopies, just_start_project = True, connect_project=o.connect_project, , projname = o.project, paranoid = o.paranoid, intermed = o.intermed, getawscreds = o.getawscreds)
+         clone(dataset(o.name), o.dest, subdirf = o.dirfunc, just_say = o.just_say, batch_size = o.batch_size, verbose = o.verbose, experiment=o.experiment, ncopies=o.ncopies, just_start_project = True, connect_project=o.connect_project, projname = o.project, paranoid = o.paranoid, intermed = o.intermed, getawscreds = o.getawscreds)
 
     cmd = "jobsub_submit --group=%s --resource-provides=usage_model=OPPORTUNISTIC,DEDICATED file://%s/bin/sam_clone_dataset --setup '%s' --experiment=%s --name=%s --project=%s --connect-project --dest=%s %s %s %s %s %s %s %s" % (
       os.environ['EXPERIMENT'],
