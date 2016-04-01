@@ -29,7 +29,7 @@ try:
 except:
    pass
 
-def do_setup(s, debug=false):
+def do_setup(s, debug=False):
     sys.path.insert(0,'/cvmfs/fermilab.opensciencegrid.org/products/common/etc')
     sys.path.insert(0,'/grid/fermiapp/products/common/etc')
     import setups
@@ -396,7 +396,7 @@ def already_there( f, loclist, dest ):
     # print "already_there:", f, loclist, dest
     return res
 
-def copy_and_declare(d, cpargs, locargs, dest, subdirf, samweb, just_say, verbose, paranoid , intermed = false):
+def copy_and_declare(d, cpargs, locargs, dest, subdirf, samweb, just_say, verbose, paranoid , intermed = False):
     res = 0
 
     if len(cpargs) == 0:
@@ -414,7 +414,7 @@ def copy_and_declare(d, cpargs, locargs, dest, subdirf, samweb, just_say, verbos
     else: 
         if verbose: print "doing ifdh cp %s" % cpargs
         if intermed:
-            make two commandlines, src to intermed, intermed to dest
+            # make two commandlines, src to intermed, intermed to dest
             l1 = []
             l2 = []
             first = True
@@ -425,13 +425,13 @@ def copy_and_declare(d, cpargs, locargs, dest, subdirf, samweb, just_say, verbos
                     first = True;
                     continue
                 b = os.path.basename(a)
-                if = "%s/%s" % workdir, b
+                i_f = "%s/%s" % workdir, b
                 if first:
                     l1.append(f)
-                    l1.append(if)
+                    l1.append(i_f)
                     first=False
                 else:
-                    l2.append(if)
+                    l2.append(i_f)
                     l2.append(f)
                
             if len(l1) == 2 and l1[0].find("s3://") == 0:

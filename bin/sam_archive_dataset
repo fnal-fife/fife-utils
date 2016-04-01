@@ -72,8 +72,6 @@ if __name__ == '__main__':
     parser.add_option('--intermed', action='store_true', help="use intermediate file and not pipe", default = False)
     parser.add_option('--setup',  help="set up products", default = None)
 
-    if o.setup:
-        do_setup(o.setup)
     #
     # rough guess at dest, for usage message..
     #
@@ -86,6 +84,9 @@ if __name__ == '__main__':
         parser.add_option('-d', '--dest',     help="override destination to archive to, default is %s" % dest)
 
     (o,a) = parser.parse_args()
+
+    if o.setup:
+        do_setup(o.setup)
 
     if o.experiment:
         os.environ['EXPERIMENT']= o.experiment
