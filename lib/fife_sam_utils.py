@@ -23,6 +23,12 @@ except:
      pass
   hashlib.md5 = md5.md5
 
+try:
+   import urllib3
+   urllib3.disable_warnings()
+except:
+   pass
+
 def get_standard_certificate_path(options):
   logging.info('looking for cert')
 
@@ -114,7 +120,7 @@ class dataset:
         base = self.get_base_dir(fullpath)
         if not self.dircache.has_key(base):
             fl = self.normalize_list(self.ifdh_handle.ls(base, 10, ''))
-            print "got file list: ", fl
+            #print "got file list: ", fl
             self.dircache[base] = set(fl)
         return fullpath in self.dircache[base]
 
