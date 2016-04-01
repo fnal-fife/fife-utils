@@ -1,86 +1,286 @@
-#!/bin/sh
+#!/usr/bin/env python
 
-ncopies=1
-experiment=${EXPERIMENT:-${SAM_EXPERIMENT:-samdev}}
-intermed=false
-verbose=false
-help() {
- cat <<EOF
-   ifdh_batch_copy [flags] --src=path --dest=path
-     flags:
-       -e EXPERIMENT|--experiment=EXPERIMENT
-            set experiment
-       --intermed      
-            use a local intermediate file
-       -N|--ncopies    
-   	    keep ncopies copy programs running in parallel
-       -v|--verbose    
-            be more loquatious
-EOF
-}
+import os
+import sys
+import optparse
+import grp
+import hashlib
+import traceback
+import signal
+from fife_sam_utils import do_setup, do_getawscreds
 
-while [ $# -gt 0 ]
-do
-   case "x$1" in
-   x--intermed)    intermed=true; shift;;
-   x-v)            verbose=true; shift;;
-   x--verbose)     verbose=true; shift;;
-   x-N)            ncopies=$2; shift; shift;;
-   x--ncopies)     ncopies=$2; shift; shift;;
-   x--ncopies=*)   ncopies=`echo $1| sed -e 's/--ncopies=//'`; shift;;
-   x--src)         src=$2; shift; shift;;
-   x--src=*)       src=`echo $1| sed -e 's/--src=//'`; shift;;
-   x--dest)        dest=$2; shift; shift;;
-   x--dest=*)      dest=`echo $1| sed -e 's/--dest=//'`; shift;;
-   x-e)            experiment=$2; shift; shift;;
-   x--experiment)  experiment=$2; shift; shift;;
-   x--experiment=*)experiment=`echo $1| sed -e 's/--experiment=//'`; shift;;
-   *)  echo "unrecognized parameter: $1"; help(); shift;;
-   esac
-done
+class batch_copier:
+    def __init__(self):
+        self.workdir="%s/ifdh_batch_copy_%d" % (os.environ.get("TMPDIR","/var/tmp") , os.getpid())
+        os.mkdir(self.workdir)
+        os.chmod(self.workdir,0o755)
+        self.wpipes = []
+        self.jobcount = 0
+        self.ih = ifdh.ifdh()
 
-workdir="${TMPDIR:-/var/tmp}/ifdh_batch_copy_$$"
-mkdir -p "$workdir"
+    def sshto(self, host, flist, dest, nocheck = False, justsay = False, intermed = False, hashes = False, ncopies = 1, getawscreds = False, debug = False ):
+        if len(flist) == 0:
+           return
+        pid = os.getpid()
+        wfl = os.popen("ssh -t %s" % host, "w")
+        wfl.write("set -x\n")
+        wfl.write("cat > /tmp/flist%d << EOF\n" % pid)
+        wfl.write("\n".join(flist))
+        wfl.write("\nEOF\n")
+        wfl.write("%s/bin/ifdh_batch_copy --setup '%s' --experiment=%s --filesrc=/tmp/flist%d --dest=%s %s %s %s %s %s %s %s" % (
+          os.environ['FIFE_UTILS_DIR'],
+          os.environ['SETUP_FIFE_UTILS'].replace(' ','@'),
+          os.environ['EXPERIMENT'],
+          pid, 
+          dest, 
+          "--nocheck" if nocheck else "",
+          "--justsay" if justsay else "",
+          "--intermed" if intermed else "",
+          "--hashes" if hashes else "",
+          "--getawscreds" if getawscreds else "",
+          "-N %d" % ncopies if ncopies > 1 else "",
+          "--debug" if debug else "",
+        ))
+        self.wpipes.append(wfl)
 
-ifdh ls "$dest" 10 | grep -v '/$' | xargs -n 1  basename >  "$workdir/have_files"
+    def sshwait(self):
+        for wfl in self.wpipes:
+            wfl.close()
 
-$verbose && echo "already there: "
-$verbose && cat $workdir/have_files
+    def jobstart(self, flist, dest, nocheck = False, justsay = False, intermed = False, hashes = False, ncopies = False, getawscreds = False , debug = False):
+        if len(flist) == 0:
+           return
+        pid = os.getpid()
+        self.jobcount = self.jobcount+1
+        flistfname = "%s/flist%d.%d" % (os.environ.get("TMPDIR","/var/tmp"), os.getpid(),self.jobcount)
+        flistf = open(flistfname, "w")
+        flistf.write("\n".join(flist))
+        flistf.write("\n")
+        flistf.close()
+        uname = os.environ.get('GRID_USER',os.environ.get('USER','unknown'))
+
+        flistscratchfname = "/pnfs/%s/scratch/users/%s/%s" % (
+           os.environ["EXPERIMENT"],
+           uname,
+           os.path.basename(flistfname))
+
+        self.ih.cp([ flistfname, flistscratchfname])
+
+        cmd = "jobsub_submit --group=%s --resource-provides=usage_model=OPPORTUNISTIC,DEDICATED -f %s file://%s/bin/ifdh_batch_copy --setup '%s' --experiment=%s -f \$CONDOR_DIR_INPUT/%s --dest=%s %s %s %s %s %s %s %s" % (
+          os.environ['EXPERIMENT'],
+          flistscratchfname, 
+          os.environ['FIFE_UTILS_DIR'],
+          os.environ['SETUP_FIFE_UTILS'].replace(' ','@'),
+          os.environ['EXPERIMENT'],
+          os.path.basename(flistfname),
+          dest, 
+          "--nocheck" if nocheck else "",
+          "--justsay" if justsay else "",
+          "--intermed" if intermed else "",
+          "--hashes" if hashes else "",
+          "-N %d" % ncopies if ncopies > 1 else "",
+          "--getawscreds" if getawscreds else "",
+          "--debug" if debug else ""
+        )
+        if debug: print "running: " , cmd
+        os.system(cmd)
+
+    def do_batch(self, src, dest, nocheck=False, justsay=False, intermed=False, hashes=False, ncopies=1, checklist=None, hostlist = [], filesrc = None, njobs = 0, getawscreds = False, debug = False):
+        ncopies = int(ncopies)
+
+        if nocheck:
+            dest_files = set([])
+        elif checklist:
+            f = open(checklist,"r")
+            dest_files = f.readlines()
+            dest_files = map(lambda x: x.strip() ,dest_files)
+            dest_files = set(dest_files)
+        else:
+            dest_files = self.ih.ls(dest, 10,"")
+            dest_files = map(os.path.basename, dest_files)
+            dest_files = set(dest_files)
+
+        if filesrc:
+            firstlist = open(filesrc,"r").readlines()
+            firstlist = map(lambda x: x.strip() ,firstlist)
+        else:
+            firstlist = self.ih.ls(src, 10, '')
+
+        njobs = int(njobs)
+
+        #
+        # copy the initial list, getting list of files to redo, then
+        # try the redo ones again... (go for three strikes?)
+        #
+
+        if hostlist != []:
+            n = len(hostlist)
+            nfiles = (len(firstlist) / n) + 1
+            for h in hostlist:
+                self.sshto(h, firstlist[:nfiles], dest, nocheck = nocheck, justsay = justsay, intermed = intermed, hashes = hashes, ncopies = ncopies , getawscreds = getawscreds, debug = debug)
+                firstlist = firstlist[nfiles:]
+            self.sshwait()
+        elif njobs > 0:
+            nfiles = (len(firstlist) / njobs) + 1
+            for i in range(njobs):
+                self.jobstart( firstlist[:nfiles], dest, nocheck = nocheck, justsay = justsay, intermed = intermed, hashes = hashes, ncopies = ncopies , getawscreds = getawscreds, debug = debug)
+                firstlist = firstlist[nfiles:]
+        else:
+            redo = firstlist
+            for i in range(3):
+                 redo = self.dofiles(redo ,dest, dest_files, nocheck = nocheck, justsay = justsay, intermed = intermed, hashes=hashes, ncopies=ncopies, getawscreds = getawscreds, debug = debug)
+
+    def dofiles(self, srcfilelist, dest, dest_files,  nocheck=False, justsay=False, intermed=False, hashes=False, ncopies=1, getawscreds = False, debug = False):
+        bgcount = 0
+        bgprocs = {}
+        redo = []
+        fcount = 0
+        for srcfile in srcfilelist:
+            if srcfile[-1] == '/':
+                continue
+        
+            fcount = fcount + 1
+            if getawscreds and fcount % 10000 == 0:
+                do_getawscreds(debug = debug)
+
+            bfile = os.path.basename(srcfile)
+
+            if bfile in dest_files:
+                continue
+
+            ifile = "%s/%s" % (self.workdir, bfile)
+            if hashes:
+                d = hashlib.md5(bfile).hexdigest()
+                hashpath = "/%c/%c/%c" % (d[0], d[1], d[2])
+            else:
+                hashpath = ''
+         
+	    r = os.fork()
+	    if (r == 0):
+               try:
+		   # we're the child, do the copy
+                   #
+                   # give ourselves 15 minutes, maximum
+                   signal.alarm(15*60)
+		   if justsay:
+                      if intermed:
+                          via = " via " + ifile
+                      else:
+                          via = ""
+
+		      print "ifdh_batch_copy: I would copy %s to %s%s/%s %s" % (srcfile, dest, hashpath, bfile, via)
+		      res = 0
+		   else:
+		       print "ifdh_batch_copy: Starting copy of ", bfile
+                       sys.stdout.flush()
+		       self.ih = ifdh.ifdh()
+                       if hashes:
+		           self.ih.mkdir_p("%s%s"%( dest, hashpath))
+		       if intermed:
+                           # until we fix ifdh to not always use ->
+                           if srcfile.startswith("s3://"):
+                              cmd ="exec aws s3 cp %s %s" % (srcfile, ifile)
+                              if debug: print "Running: " , cmd
+                              sys.stdout.flush()
+                              r1 = os.system(cmd)
+                           else:
+			      r1 = self.ih.cp([srcfile, ifile])
+
+                           if os.WIFEXITED(r1) and os.WEXITSTATUS(r1) == 0:
+			       res = self.ih.cp([ifile, "%s%s/%s"%(dest,hashpath,bfile)])
+			       os.unlink(ifile)
+                           else:
+                               raise Exception("copy to intermediate failed.")
+		       else:
+			   res = self.ih.cp([srcfile, "%s%s/%s"%(dest,hashpath,bfile)])
+               except:
+                  print "ifdh_batch_copy: Exception in copy..."
+                  traceback.print_exc(file=sys.stdout)
+	          sys.stdout.flush()
+                  exit(1)
+
+               exit(res)
+
+	    elif (r > 0):
+               bgprocs[r] = srcfile
+	    else:
+	       print "ifdh_batch_copy: Ouch: fork failed!"
+	       sys.stdout.flush()
+
+            bgcount = bgcount + 1
+
+	    if (bgcount >= ncopies):
+	       pid,status = os.wait()
+	       bgcount = bgcount - 1
+               if os.WIFEXITED(status) and os.WEXITSTATUS(status) == 0:
+		   print "ifdh_batch_copy: Finished %s" % bgprocs[pid]
+	           sys.stdout.flush()
+	       else:
+		   print "ifdh_batch_copy: Failed %s" % bgprocs[pid]
+	           sys.stdout.flush()
+                   redo.append(bgprocs[pid])
+               del bgprocs[pid]
+
+        while (bgcount > 0):
+            pid, status = os.wait()
+	    bgcount = bgcount - 1
+            if os.WIFEXITED(status) and os.WEXITSTATUS(status) == 0:
+	        print "ifdh_batch_copy: Finished %s" % bgprocs[pid]
+	        sys.stdout.flush()
+            else:
+	        print "ifdh_batch_copy: Failed %s" % bgprocs[pid]
+	        sys.stdout.flush()
+                redo.append(bgprocs[pid])
+            del bgprocs[pid]
+
+        return redo
+
+if __name__=='__main__':
+    parser = optparse.OptionParser(description='bulkd copy files from src to dest',
+                            prog='ifdh_batch_copy',
+                            version='ifdh_batch_copy 0.9',
+                            usage='%prog --dest=path [--src=path|--filesrc=file] [options]')
 
 
-ifdh ls "$src" 10 | (
-  bgcount=1
-  while read srcfile 
-  do
-      case $srcfile in
-      */) continue;;
-      esac
+    parser.add_option('-s', '--src',     help="source for copy", default=None )
+    parser.add_option('-f', '--filesrc', help="file with list of files to copy")
+    parser.add_option('-d', '--dest',    help="destination for copy", )
+    parser.add_option('-e','--experiment')
+    parser.add_option('-j','--justsay',  action='store_true', help="do not actually copy, just say what you would do", default=False)
+    parser.add_option('-N','--ncopies',   help="number of copies to run in parallel", default=1)
+    parser.add_option('--njobs',   help="number of jobs to run in parallel", default=0)
+    parser.add_option('-n','--nocheck',  action='store_true', help="do not get listing of destination to check for existing files", default=False)
+    parser.add_option('--checklist',  help="premade list  of previously copied files")
+    parser.add_option('-i','--intermed',  action='store_true', help="Copy via an intermediate file", default=False)
+    parser.add_option('--hashes',  action='store_true', help="Copy via an intermediate file", default=False)
+    parser.add_option('-v','--verbose',   action='count')
+    parser.add_option('--host', action='append', default=[], help="run copies via ssh on multiple hosts")
+    parser.add_option('--getawscreds', action='store_true', help="get AWS S3 credentials from /pnfs file", default = False)
+    parser.add_option('--setup',  help="set up products", default = None)
+    parser.add_option('--debug',  action='store_true',    help="turn on debugging", default=False )
+    
+    (o,a) = parser.parse_args()
 
-      if echo $srcfile | fgrep -f "$workdir/have_files" > /dev/null
-      then
-          continue
-      fi
-      bfile=`basename $srcfile`
-      ifile="$workdir/$bfile"
-      hash=$(echo $bfile | md5sum | cut -c 1-3)
-      $verbose && echo "Starting copy of $bfile..."
-      if $intermed
-      then 
-          (ifdh mkdir_p $dest/$hash 2>/dev/null; ifdh cp "$srcfile" "$ifile" ";" "$ifile" "$dest/$hash/$bfile"; rm "$ifile") &
-      else
-          (ifdh mkdir_p $dest/$hash 2>/dev/null; ifdh cp "$srcfile" "$dest/$hash/$bfile") &
-      fi
-      if ((bgcount++ > ncopies))
-      then
-         wait
-         ((bgcount--))
-         $verbose && echo "Completed."
-      fi
-  done
-  while ((bgcount > 0))
-  do
-     wait
-     ((bgcount--))
-     $verbose && echo "Completed."
-  done
-)
+    if o.setup:
+        do_setup(o.setup)
+
+    import ifdh
+
+    if o.debug:
+       os.environ["IFDH_DEBUG"] = "1"
+
+    if not o.experiment:
+        o.experiment = os.environ.get('EXPERIMENT',os.environ.get('SAM_EXPERIMENT',grp.getgrgid(os.getgid())[0]))
+
+    if o.experiment:
+
+        os.environ['EXPERIMENT']= o.experiment
+        os.environ['SAM_EXPERIMENT']= o.experiment
+        os.environ['IFDH_BASE_URI'] = "http://samweb.fnal.gov:8480/sam/%s/api" % o.experiment
+
+    bc = batch_copier()
+
+    if o.getawscreds:
+        do_getawscreds(debug = o.debug)
+    
+    bc.do_batch(o.src, o.dest, nocheck = o.nocheck, justsay = o.justsay, intermed=o.intermed, hashes=o.hashes, ncopies = o.ncopies, checklist = o.checklist, filesrc = o.filesrc, hostlist= o.host, njobs = o.njobs, getawscreds = o.getawscreds, debug = o.debug)

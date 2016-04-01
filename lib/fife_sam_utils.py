@@ -29,6 +29,42 @@ try:
 except:
    pass
 
+def do_setup(s, debug=false):
+    sys.path.insert(0,'/cvmfs/fermilab.opensciencegrid.org/products/common/etc')
+    sys.path.insert(0,'/grid/fermiapp/products/common/etc')
+    import setups
+    ups = setups.setups()
+    if debug: print "found: UPS_DIR:", os.environ['UPS_DIR']
+    os.environ['PATH'] = "%s/bin:%s" % (os.environ['UPS_DIR'], os.environ['PATH'])
+    if debug: print "setting up:", o.setup
+    sys.stdout.flush()
+    ups.setup("-R " + o.setup.replace('@',' '))
+    # make sure stuff gets in our PATH...
+    os.environ['PATH'] = "%s/bin:%s" % (os.environ['AWSCLI_DIR'], os.environ['PATH'])
+    sys.path.insert(0,os.environ['IFDHC_DIR']+'/lib/python')
+    if debug: print "IFDHC_DIR is ", os.environ["IFDHC_DIR"]
+    sys.stdout.flush()
+
+def do_getawscreds(debug = False):
+    ih = ifdh.ifdh()
+    uname = os.environ.get('GRID_USER',os.environ.get('USER','unknown'))
+    fname= ih.localPath("awst")
+    open(fname,"w").close()
+    os.chmod(fname,0o600)
+    fname=ih.fetchInput("/pnfs/%s/scratch/users/%s/awst" % (
+       os.environ['EXPERIMENT'],
+       uname
+    ))
+    f = open(fname,"r")
+    for line in f:
+        var,val= line.strip().split('=',1)
+        var = var.replace("export ","")
+        val=val.strip('"')
+        os.environ[var] = val
+        if debug: print "Setting os.environ[%s]=%s" % (var, val)
+    f.close()
+    os.unlink(fname)
+
 def get_standard_certificate_path(options):
   logging.info('looking for cert')
 
@@ -360,7 +396,7 @@ def already_there( f, loclist, dest ):
     # print "already_there:", f, loclist, dest
     return res
 
-def copy_and_declare(d, cpargs, locargs, dest, subdirf, samweb, just_say, verbose, paranoid ):
+def copy_and_declare(d, cpargs, locargs, dest, subdirf, samweb, just_say, verbose, paranoid , intermed = false):
     res = 0
 
     if len(cpargs) == 0:
@@ -377,7 +413,34 @@ def copy_and_declare(d, cpargs, locargs, dest, subdirf, samweb, just_say, verbos
 	    print "I would declare location for %s of %s" % (f, dest+subdirf(f))
     else: 
         if verbose: print "doing ifdh cp %s" % cpargs
-	res = d.ifdh_handle.cp(cpargs)
+        if intermed:
+            make two commandlines, src to intermed, intermed to dest
+            l1 = []
+            l2 = []
+            first = True
+            for a in cpargs:
+                if ( a == ';' ):
+                    l1.append(a)
+                    l2.append(a)
+                    first = True;
+                    continue
+                b = os.path.basename(a)
+                if = "%s/%s" % workdir, b
+                if first:
+                    l1.append(f)
+                    l1.append(if)
+                    first=False
+                else:
+                    l2.append(if)
+                    l2.append(f)
+               
+            if len(l1) == 2 and l1[0].find("s3://") == 0:
+	        res = os.system("aws s3 cp %s %s" % (l1[0], l1[1]))
+            else:
+	        res = d.ifdh_handle.cp(l1)
+	    res = d.ifdh_handle.cp(l2)
+        else:
+	    res = d.ifdh_handle.cp(cpargs)
         if verbose: print "ifdh cp returns %d" % res
         # XXX note this is arguably incorrect, we only declare locations if
         #     *all* the copies in the batch succeed; but if *some* of them
@@ -403,8 +466,10 @@ def copy_and_declare(d, cpargs, locargs, dest, subdirf, samweb, just_say, verbos
                     res = 1
     return res
 
-def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 1, verbose = False, experiment = None, ncopies=1, just_start_project = False, connect_project = False , projname = None, paranoid = False):
+def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 1, verbose = False, experiment = None, ncopies=1, just_start_project = False, connect_project = False , projname = None, paranoid = False, intermed = False, getawscreds = False):
   
+    if getawscreds:
+        do_getawscreds()
     # avoid dest//file syndrome...
     if dest[-1] == '/':
        dest = dest[:-1]
@@ -512,15 +577,18 @@ def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 1, verbose =
         if count % batch_size == 0:
 
 	    # above loop leaves a trailng ';', which confuses things.
-            copy_and_declare(d, cpargs, locargs, dest, subdirf, samweb, just_say, verbose, paranoid)
+            copy_and_declare(d, cpargs, locargs, dest, subdirf, samweb, just_say, verbose, paranoid, intermed)
             cpargs = []
             locargs = []
+
+        if getawscreds and  count % 10000 == 0:
+            do_getawscreds()
 
         d.ifdh_handle.updateFileStatus(purl, consumer_id,f, 'transferred')
         d.ifdh_handle.updateFileStatus(purl, consumer_id,f, 'consumed')
         furi = d.ifdh_handle.getNextFile(purl, consumer_id)
 
-    copy_and_declare(d, cpargs, locargs, dest, subdirf, samweb, just_say, verbose, paranoid)
+    copy_and_declare(d, cpargs, locargs, dest, subdirf, samweb, just_say, verbose, paranoid, intermed)
     d.ifdh_handle.setStatus( purl, consumer_id, "completed")
 
     if len(kidlist) > 1:
