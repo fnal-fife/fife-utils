@@ -49,7 +49,7 @@ class batch_copier:
 
     def jobstart(self, flist, dest, nocheck = False, justsay = False, intermed = False, hashes = False, ncopies = False, getawscreds = False , debug = False):
         if len(flist) == 0:
-           return
+            return
         pid = os.getpid()
         self.jobcount = self.jobcount+1
         flistfname = "%s/flist%d.%d" % (os.environ.get("TMPDIR","/var/tmp"), os.getpid(),self.jobcount)
@@ -106,6 +106,12 @@ class batch_copier:
         else:
             firstlist = self.ih.ls(src, 10, '')
 
+        trimlist = []
+        for f in firstlist:
+             if not f in dest_files:
+                  trimlist.append(f)
+        firstlist = trimlist
+
         njobs = int(njobs)
 
         #
@@ -128,9 +134,9 @@ class batch_copier:
         else:
             redo = firstlist
             for i in range(3):
-                 redo = self.dofiles(redo ,dest, dest_files, nocheck = nocheck, justsay = justsay, intermed = intermed, hashes=hashes, ncopies=ncopies, getawscreds = getawscreds, debug = debug)
+                 redo = self.dofiles(redo ,dest,  nocheck = nocheck, justsay = justsay, intermed = intermed, hashes=hashes, ncopies=ncopies, getawscreds = getawscreds, debug = debug)
 
-    def dofiles(self, srcfilelist, dest, dest_files,  nocheck=False, justsay=False, intermed=False, hashes=False, ncopies=1, getawscreds = False, debug = False):
+    def dofiles(self, srcfilelist, dest,   nocheck=False, justsay=False, intermed=False, hashes=False, ncopies=1, getawscreds = False, debug = False):
         bgcount = 0
         bgprocs = {}
         redo = []
@@ -144,9 +150,6 @@ class batch_copier:
                 do_getawscreds(debug = debug)
 
             bfile = os.path.basename(srcfile)
-
-            if bfile in dest_files:
-                continue
 
             ifile = "%s/%s" % (self.workdir, bfile)
             if hashes:
