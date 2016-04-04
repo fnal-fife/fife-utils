@@ -7,8 +7,26 @@ import grp
 import hashlib
 import traceback
 import signal
-from fife_sam_utils import do_setup, do_getawscreds
+try:
+   from fife_sam_utils import *
+except:
+   pass
 
+def do_setup(s, debug=False):
+    sys.path.insert(0,'/cvmfs/fermilab.opensciencegrid.org/products/common/etc')
+    sys.path.insert(0,'/grid/fermiapp/products/common/etc')
+    import setups
+    ups = setups.setups()
+    if debug: print "found: UPS_DIR:", os.environ['UPS_DIR']
+    os.environ['PATH'] = "%s/bin:%s" % (os.environ['UPS_DIR'], os.environ['PATH'])
+    if debug: print "setting up:", o.setup
+    sys.stdout.flush()
+    ups.setup("-R " + o.setup.replace('@',' '))
+    # make sure stuff gets in our PATH...
+    os.environ['PATH'] = "%s/bin:%s" % (os.environ['AWSCLI_DIR'], os.environ['PATH'])
+    sys.path.insert(0,os.environ['IFDHC_DIR']+'/lib/python')
+    if debug: print "IFDHC_DIR is ", os.environ["IFDHC_DIR"]
+    sys.stdout.flush()
 class batch_copier:
     def __init__(self):
         self.workdir="%s/ifdh_batch_copy_%d" % (os.environ.get("TMPDIR","/var/tmp") , os.getpid())
@@ -66,7 +84,7 @@ class batch_copier:
 
         self.ih.cp([ flistfname, flistscratchfname])
 
-        cmd = "jobsub_submit --group=%s --resource-provides=usage_model=OPPORTUNISTIC,DEDICATED -f %s file://%s/bin/ifdh_batch_copy --setup '%s' --experiment=%s -f \$CONDOR_DIR_INPUT/%s --dest=%s %s %s %s %s %s %s %s" % (
+        cmd = "jobsub_submit --memory=3500MB --group=%s --resource-provides=usage_model=OPPORTUNISTIC,DEDICATED -f %s file://%s/bin/ifdh_batch_copy --setup '%s' --experiment=%s -f \$CONDOR_DIR_INPUT/%s --dest=%s %s %s %s %s %s %s %s" % (
           os.environ['EXPERIMENT'],
           flistscratchfname, 
           os.environ['FIFE_UTILS_DIR'],
@@ -108,7 +126,7 @@ class batch_copier:
 
         trimlist = []
         for f in firstlist:
-             if not f in dest_files:
+             if not os.path.basename(f) in dest_files:
                   trimlist.append(f)
         firstlist = trimlist
 

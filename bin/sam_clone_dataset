@@ -1,5 +1,8 @@
 #!/usr/bin/env python
-from fife_sam_utils import *
+try:
+   from fife_sam_utils import *
+except:
+   pass
 import sys
 import os
 from samweb_client import *
@@ -7,6 +10,22 @@ import socket
 import optparse
 import time
 import grp
+
+def do_setup(s, debug=False):
+    sys.path.insert(0,'/cvmfs/fermilab.opensciencegrid.org/products/common/etc')
+    sys.path.insert(0,'/grid/fermiapp/products/common/etc')
+    import setups
+    ups = setups.setups()
+    if debug: print "found: UPS_DIR:", os.environ['UPS_DIR']
+    os.environ['PATH'] = "%s/bin:%s" % (os.environ['UPS_DIR'], os.environ['PATH'])
+    if debug: print "setting up:", o.setup
+    sys.stdout.flush()
+    ups.setup("-R " + o.setup.replace('@',' '))
+    # make sure stuff gets in our PATH...
+    os.environ['PATH'] = "%s/bin:%s" % (os.environ['AWSCLI_DIR'], os.environ['PATH'])
+    sys.path.insert(0,os.environ['IFDHC_DIR']+'/lib/python')
+    if debug: print "IFDHC_DIR is ", os.environ["IFDHC_DIR"]
+    sys.stdout.flush()
 
 def startjobs(o):
 

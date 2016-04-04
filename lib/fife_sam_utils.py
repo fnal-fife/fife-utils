@@ -29,21 +29,6 @@ try:
 except:
    pass
 
-def do_setup(s, debug=False):
-    sys.path.insert(0,'/cvmfs/fermilab.opensciencegrid.org/products/common/etc')
-    sys.path.insert(0,'/grid/fermiapp/products/common/etc')
-    import setups
-    ups = setups.setups()
-    if debug: print "found: UPS_DIR:", os.environ['UPS_DIR']
-    os.environ['PATH'] = "%s/bin:%s" % (os.environ['UPS_DIR'], os.environ['PATH'])
-    if debug: print "setting up:", o.setup
-    sys.stdout.flush()
-    ups.setup("-R " + o.setup.replace('@',' '))
-    # make sure stuff gets in our PATH...
-    os.environ['PATH'] = "%s/bin:%s" % (os.environ['AWSCLI_DIR'], os.environ['PATH'])
-    sys.path.insert(0,os.environ['IFDHC_DIR']+'/lib/python')
-    if debug: print "IFDHC_DIR is ", os.environ["IFDHC_DIR"]
-    sys.stdout.flush()
 
 def do_getawscreds(debug = False):
     ih = ifdh.ifdh()
@@ -349,19 +334,19 @@ def zerodeep(f):
 
 def onedeep(f):
     h = hashlib.md5(f).hexdigest()
-    return "/%s/" % h[0:4]
+    return "/%s/" % h[0]
 
 def twodeep(f):
     h = hashlib.md5(f).hexdigest()
-    return "/%s/%s/" % (h[0:4], h[4:8])
+    return "/%s/%s/" % (h[0], h[1])
 
 def threedeep(f):
     h = hashlib.md5(f).hexdigest()
-    return "/%s/%s/%s/" % (h[0:4], h[4:8], h[8:12])
+    return "/%s/%s/%s/" % (h[0], h[1], h[2])
 
 def fourdeep(f):
     h = hashlib.md5(f).hexdigest()
-    return "/%s/%s/%s/%s/" % (h[0:4], h[4:8], h[8:12], h[12:16])
+    return "/%s/%s/%s/%s/" % (h[0], h[1], h[2], h[3])
 
 notmade = {}
 def dodir(ih, dir):
