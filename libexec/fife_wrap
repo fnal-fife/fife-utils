@@ -78,10 +78,10 @@ class Wrapper:
 	parser.add_option("--inputlist", action="append", help="ifdh cp -f file to run to fetch inputs")
 	parser.add_option("--outputlist", action="append", help="ifdh cp -f file to run to copy out outputs")
 	parser.add_option("-O","--addoutput",action="append",  help="glob pattern to match and call addOutputFile on")
-	parser.add_option("--export",action="append",  help="export environment variable before running")
-	parser.add_option("--export-unquote",action="append",  help="export environment variable before running")
-	parser.add_option("--setup",action="append",  help="setup product before running")
-	parser.add_option("--source",action="append",  help="source setup file before running")
+	parser.add_option("--export",action="append",  help="export environment variable before running", default= [])
+	parser.add_option("--export-unquote",action="append",  help="export environment variable before running", default= [])
+	parser.add_option("--setup",action="append",  help="setup product before running", default=[])
+	parser.add_option("--source",action="append",  help="source setup file before running", default = [])
 	parser.add_option("--self_destruct_timer", type="int", help="After this many seconds, suicide the job so we get output back")
 	parser.add_option("--prescript", help="script to run before Art executable")
 	parser.add_option("--postscript", help="script to run after Art executable")
@@ -115,17 +115,21 @@ class Wrapper:
         if self.options.find_setups:
             scriptlist.append("for p in %s ; do if [ -r $p ]; then . $p; break; fi; done" % ' '.join(self.setupslist))
 
-        for e in self.options.export:
-            scriptlist.append("export %s" % e)
+        if self.options.export:
+            for e in self.options.export:
+                scriptlist.append("export %s" % e)
 
-        for e in self.options.export_unquote:
-            scriptlist.append("export %s" % urllib.unquote(e))
+        if self.options.export_unquote:
+            for e in self.options.export_unquote:
+                scriptlist.append("export %s" % urllib.unquote(e))
 
-        for s in self.options.source:
-            scriptlist.append("source %s" % s)
+        if self.options.source:
+            for s in self.options.source:
+                scriptlist.append("source %s" % s)
 
-        for s in self.options.setup:
-            scriptlist.append("setup %s" % s)
+        if self.options.setup:
+            for s in self.options.setup:
+                scriptlist.append("setup %s" % s)
 
         cuthere="--------------cut here-------------"
         scriptlist.append("""
@@ -368,7 +372,7 @@ if __name__ == '__main__' :
     try:
 	w.parse_arguments()
 	w.do_setup()
-        if w.options.start_project:
+        if w.options.start_project_on:
              w.start_project()
 	w.start_self_destruct()
         w.fetch_inputs()
