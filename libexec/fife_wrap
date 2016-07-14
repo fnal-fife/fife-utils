@@ -23,6 +23,7 @@ class Wrapper:
         self.cpurl = None
         self.consumerid = None
         self.timeoutproc = None
+        self.rres = 0
 
     def start_self_destruct(self):
         if self.options.self_destruct_timer == None:
@@ -341,7 +342,7 @@ exit
   
     def cleanup(self):
         print "Entering cleanup:"
-        if self.ih:
+        if self.ih and self.cpurl and self.consumerid:
 	    self.ih.setStatus(self.cpurl, self.consumerid, "ok" if 0 == self.rres else "bad")
 	    self.ih.cleanup()
         if self.timeoutproc:
