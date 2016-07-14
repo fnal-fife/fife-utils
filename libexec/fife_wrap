@@ -110,8 +110,10 @@ class Wrapper:
         #
 
         if self.options.nosetup:
+             print "running with nosetup"
              try:
                  import ifdh
+                 print "imported ifdh"
              except:
                  pass
              return
@@ -338,6 +340,10 @@ exit
         print "Entering copy_back:"
 
         if self.ih == None:
+            try:
+                import ifdh
+            except:
+                pass
             self.ih = ifdh.ifdh()
 
 	if self.options.dest and self.options.addoutput:
@@ -345,8 +351,8 @@ exit
 		for f in glob.glob(g):
 		    self.ih.addOutputFile(f)
 
-            if self.options.renameoutput:
-	        for r in self.options.renameoutput:
+            if self.options.rename:
+	        for r in self.options.rename:
 		    self.ih.renameOutput(r)
 
 	    self.ih.copyBackOutput(self.options.dest)
