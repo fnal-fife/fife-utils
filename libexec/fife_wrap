@@ -80,6 +80,7 @@ class Wrapper:
 	parser.add_option("-O","--addoutput",action="append",  help="glob pattern to match and call addOutputFile on")
 	parser.add_option("--export",action="append",  help="export environment variable before running")
 	parser.add_option("--export-unquote",action="append",  help="export environment variable before running")
+	parser.add_option("--setup",action="append",  help="setup product before running")
 	parser.add_option("--source",action="append",  help="source setup file before running")
 	parser.add_option("--self_destruct_timer", type="int", help="After this many seconds, suicide the job so we get output back")
 	parser.add_option("--prescript", help="script to run before Art executable")
@@ -122,6 +123,9 @@ class Wrapper:
 
         for s in self.options.source:
             scriptlist.append("source %s" % s)
+
+        for s in self.options.setup:
+            scriptlist.append("setup %s" % s)
 
         cuthere="--------------cut here-------------"
         scriptlist.append("""

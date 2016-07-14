@@ -585,7 +585,7 @@ def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 1, verbose =
        d.ifdh_handle.endProject(purl)
 
 
-def unclone( d, just_say = False, delete_match = '.*', verbose = False, experiment = '', nparallel = 1 ):
+def unclone( d, just_say = False, delete_match = '.*', verbose = False, experiment = '', nparallel = 1 , keep = False):
     proccount = 0
     samweb = SAMWebClient(experiment = experiment)
     for full in d.fullpath_iterator(True):
@@ -617,7 +617,10 @@ def unclone( d, just_say = False, delete_match = '.*', verbose = False, experime
   		    res = -1
                     # child
 		    try:
-			res = d.ifdh_handle.rm(path, '')
+                        if keep:
+                            res = 0
+                        else:
+			    res = d.ifdh_handle.rm(path, '')
 		    except:
 			traceback.print_exc()
 		    try:
