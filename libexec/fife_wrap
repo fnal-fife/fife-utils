@@ -7,6 +7,7 @@ import subprocess
 import signal
 import grp
 import urllib
+import glob
 
 class Wrapper:
     def __init__(self):
@@ -109,6 +110,10 @@ class Wrapper:
         #
 
         if self.options.nosetup:
+             try:
+                 import ifdh
+             except:
+                 pass
              return
 
         scriptlist = ['set -x\n']
@@ -131,6 +136,8 @@ class Wrapper:
         if self.options.setup:
             for s in self.options.setup:
                 scriptlist.append("setup %s" % s)
+
+        scriptlist.append('[ -z "$IFDHC_DIR" ] || setup ifdhc')
 
         cuthere="--------------cut here-------------"
         scriptlist.append("""
@@ -275,9 +282,16 @@ exit
 	    res = os.system(" ".join(cmdlist))
 	    self.rres = res
 
-	else:
-	    # what to do?
-	    pass
+	else: 
+            # just run the exe..
+	    cmdlist = [ self.options.exe ]
+	    cmdlist.extend(self.args)
+	    if self.options.with_gdb:
+		 f = open('.gdbcmds')
+		 f.write('run\nwhere\nquit\n')
+		 cmdlist = ['gdb', '-x', '.gdbcmds', '--args' ] + cmdlist
+	    res = os.system(" ".join(cmdlist))
+	    self.rres = res
 
         print "leaving file loop:"
 
@@ -286,11 +300,13 @@ exit
         cplist = ['-D']
         if self.options.inputtar == None:
             self.options.inputtar = []
+        if self.options.inputfile == None:
+            self.options.inputfile= []
         if self.options.inputlist == None:
             self.options.inputlist= []
         if self.options.outputlist == None:
             self.options.outputlist= []
-        for it in self.options.inputtar + self.options.inputlist + self.options.outputlist:
+        for it in self.options.inputfile + self.options.inputtar + self.options.inputlist + self.options.outputlist:
             cplist.append(it)
         cplist.append('.')
         if len(cplist) > 2:
@@ -298,6 +314,7 @@ exit
 
         # then do the copies in any of the input lists
         cplist = []
+
         for it in self.options.inputlist:
             cplist.append('-f')
             cplist.append(it)
@@ -319,6 +336,9 @@ exit
 
     def copy_back(self):
         print "Entering copy_back:"
+
+        if self.ih == None:
+            self.ih = ifdh.ifdh()
 
 	if self.options.dest and self.options.addoutput:
 	    for g in self.options.addoutput:
@@ -377,7 +397,8 @@ if __name__ == '__main__' :
              w.start_project()
 	w.start_self_destruct()
         w.fetch_inputs()
-	w.start_client()
+        if w.options.ifdh_art or  w.options.multifile or w.options.getconfig:
+	    w.start_client()
 	w.file_loop()   
         w.userscripts()
 	w.copy_back()
