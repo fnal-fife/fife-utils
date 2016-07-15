@@ -372,7 +372,7 @@ exit
 	    self.ih.setStatus(self.cpurl, self.consumerid, "ok" if 0 == self.rres else "bad")
 	    self.ih.cleanup()
         if self.timeoutproc:
-            os.kill(self.timeoutproc)
+            os.kill(self.timeoutproc, 9)
 
     def start_project(self):
         if self.ih == None:
