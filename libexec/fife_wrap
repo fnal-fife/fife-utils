@@ -240,9 +240,12 @@ exit
 		    cmdlist.append('-c')
 		    cmdlist.append(fname)
 		    cmdlist.extend(self.args)
-		else:
+		elif self.options.config:
 		    cmdlist.append('-c')
 		    cmdlist.append(self.options.config)
+		    cmdlist.extend(self.args)
+		    cmdlist.append(fname)
+                else:
 		    cmdlist.extend(self.args)
 		    cmdlist.append(fname)
 
@@ -353,6 +356,7 @@ exit
 
             if self.options.rename:
 	        for r in self.options.rename:
+                    print "calling renameOuput: ", r
 		    self.ih.renameOutput(r)
 
 	    self.ih.copyBackOutput(self.options.dest)
@@ -369,7 +373,7 @@ exit
     def cleanup(self):
         print "Entering cleanup:"
         if self.ih and self.cpurl and self.consumerid:
-	    self.ih.setStatus(self.cpurl, self.consumerid, "ok" if 0 == self.rres else "bad")
+	    self.ih.setStatus(self.cpurl, self.consumerid, "completed" if 0 == self.rres else "bad")
 	    self.ih.cleanup()
         if self.timeoutproc:
             os.kill(self.timeoutproc, 9)
