@@ -13,7 +13,7 @@ import subprocess
 import re
 import time
 import socket
-
+import exceptions
 #
 # old python compatability hacks
 #
@@ -262,16 +262,19 @@ class Sam_Metadata_Dumper_Parser:
  
   SAM_METADATA = None
  
-  def __init__(self, file, samweb):
+  def __init__(self, file, samweb, progname):
     self.file = file
     self.samweb = samweb
+    if not progname in ['sam_metadata_dumper', 'extractCAFMetadata' ]:
+        raise KeyError("unknown metadata tool %s" % progname)
+    self.progname = progname
     
     
   def get_json(self):
     logging.info('trying to create subprocess for sam_metadata_dumper')     
    
     try:
-      a = json.loads( subprocess.Popen(["sam_metadata_dumper", self.file],stdout=subprocess.PIPE).stdout.read() )
+      a = json.loads( subprocess.Popen([self.progname, self.file],stdout=subprocess.PIPE).stdout.read() )
     except Exception, e:
       sys.exit('oops: %s' % e)
 
@@ -448,7 +451,7 @@ def main():
       fileMD = {}
       
       if options.subprocess:
-        dumperObject = Sam_Metadata_Dumper_Parser(file, samweb)
+        dumperObject = Sam_Metadata_Dumper_Parser(file, samweb, options.subprocess)
         dumperObject.get_json()
         sam_metadata_dumper_metadata = dumperObject.format_json()
         fileMD.update(sam_metadata_dumper_metadata) 
