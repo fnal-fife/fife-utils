@@ -10,7 +10,7 @@ setup_tests() {
    export IFDH_BASE_URI="http://samweb.fnal.gov:8480/sam/samdev/api"
    export IFDH_CP_MAXRETRIES=0
 
-   workdir=/grid/data/mengel/work.$$
+   workdir=/nova/data/$USER/work.$$
    if [ ! -r $workdir ]
    then
        mkdir $workdir
