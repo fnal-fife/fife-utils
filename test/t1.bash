@@ -10,7 +10,7 @@ setup_tests() {
    export IFDH_BASE_URI="http://samweb.fnal.gov:8480/sam/samdev/api"
    export IFDH_CP_MAXRETRIES=0
 
-   workdir=/grid/data/mengel/work.$$
+   workdir=/nova/data/users/mengel/work.$$
    if [ ! -r $workdir ]
    then
        mkdir $workdir
@@ -20,8 +20,12 @@ setup_tests() {
    then
        echo "testds_`hostname --fqdn`_`date +%s`_$$" > dataset
    fi
+   pnfs_dir=/pnfs/nova/scratch/users/$USER/fife_util_test 
+   ifdh ls $pnfs_dir || ifdh mkdir $pnfs_dir || true
    read dataset < dataset
    export dataset
+   export X509_USER_PROXY=/tmp/x509up_u`id -u`
+   rm -f $X509_USER_PROXY
    kx509
    voms-proxy-init -rfc -noregen -debug -voms fermilab:/fermilab/nova/Role=Analysis
    export IFDH_NO_PROXY=1
@@ -99,6 +103,10 @@ EOF
 #
 
 add_dataset() {
+
+   echo "workdir is $workdir, in:"
+   pwd
+
    for i in 1 2 3 4 5 6 7 8 9
    do
        fname="${dataset}_f${i}"
@@ -129,7 +137,7 @@ EOF
        case `pwd` in
        /pnfs/*) location="enstore:`pwd`";;
        /grid/*) location="${EXPERIMENT}data:`pwd`";;
-       /nova/*) location="novadata:`pwd`";;
+       /nova/*) location="samdevdata:`pwd`";;
        esac
 
        samweb declare-file $fname.json
@@ -162,9 +170,8 @@ test_clone() {
     echo "before:"
     sam_validate_dataset -v --name $dataset 2>/dev/null
     locs1=`sam_validate_dataset -v --name  $dataset 2>/dev/null | wc -l`
-    ifdh mkdir /pnfs/nova/scratch/users/$USER/fife_util_test || true
     echo "----------------------------------"
-    sam_clone_dataset -v -b 2 --name $dataset --dest /pnfs/nova/scratch/users/$USER/fife_util_test
+    sam_clone_dataset -v -b 2 --name $dataset --dest $pnfs_dir
     echo "----------------------------------"
     echo "after:"
     sam_validate_dataset -v --name $dataset 2>/dev/null
@@ -176,9 +183,8 @@ test_clone_n() {
     echo "before:"
     sam_validate_dataset -v --name $dataset 2>/dev/null
     locs1=`sam_validate_dataset -v --name  $dataset 2>/dev/null | wc -l`
-    ifdh mkdir /pnfs/nova/scratch/users/$USER/fife_util_test || true
     echo "----------------------------------"
-    sam_clone_dataset -v -N 3 -b 2 --name $dataset --dest /pnfs/nova/scratch/users/$USER/fife_util_test
+    sam_clone_dataset -v -N 3 -b 2 --name $dataset --dest $pnfs_dir
     echo "----------------------------------"
     echo "after:"
     sam_validate_dataset -v --name $dataset 2>/dev/null
@@ -190,7 +196,7 @@ test_copy2scratch_dataset() {
     echo "before:"
     sam_validate_dataset -v --name $dataset
     locs1=`sam_validate_dataset -v --name  $dataset | wc -l`
-    sam_copy2scratch_dataset -v --name $dataset --dest /pnfs/nova/scratch/users/$USER/fife_util_test
+    sam_copy2scratch_dataset -v --name $dataset --dest $pnfs_dir
     echo "after:"
     sam_validate_dataset -v --name $dataset
     locs2=`sam_validate_dataset -v --name $dataset | wc -l`
@@ -201,22 +207,22 @@ test_move2archive() {
     echo "before:"
     sam_validate_dataset -v --name $dataset
     locs1=`sam_validate_dataset -v --name  $dataset | wc -l`
-    sam_move2archive_dataset -v --name $dataset --dest /pnfs/nova/scratch/users/$USER/fife_util_test
+    sam_move2archive_dataset -v --name $dataset --dest $pnfs_dir
     echo "after:"
     sam_validate_dataset -v --name $dataset
     locs2=`sam_validate_dataset -v --name $dataset | wc -l`
-    [ "$locs2" -eq "$locs1" ]
+    [ "$locs2" -gt "$locs1" ]
 }
 
 test_move2persistent() {
     echo "before:"
     sam_validate_dataset -v --name $dataset
     locs1=`sam_validate_dataset -v --name  $dataset | wc -l`
-    sam_move2persistent_dataset -v --name $dataset --dest /pnfs/nova/scratch/users/$USER/fife_util_test
+    sam_move2persistent_dataset -v --name $dataset --dest $pnfs_dir
     echo "after:"
     sam_validate_dataset -v --name $dataset
     locs2=`sam_validate_dataset -v --name $dataset | wc -l`
-    [ "$locs2" -eq "$locs1" ]
+    [ "$locs2" -gt "$locs1" ]
 }
 
 test_archive_dataset() {
@@ -224,23 +230,22 @@ test_archive_dataset() {
     sam_validate_dataset -v --name $dataset
     locs1=`sam_validate_dataset -v --name  $dataset | wc -l`
     # use a non-archving location for testing!
-    sam_archive_dataset -v --name $dataset --dest /pnfs/nova/scratch/users/$USER/fife_util_test
+    sam_archive_dataset -v --name $dataset --dest $pnfs_dir
     echo "after:"
     sam_validate_dataset -v --name $dataset
     locs2=`sam_validate_dataset -v --name $dataset | wc -l`
-    [ "$locs2" -eq "$locs1" ]
+    [ "$locs2" -gt "$locs1" ]
 }
 
 test_unclone() {
     echo "before:"
     sam_validate_dataset -v --name $dataset
     locs1=`sam_validate_dataset -v --name $dataset 2>/dev/null | wc -l`
-    ifdh mkdir /pnfs/nova/scratch/users/$USER/fife_util_test || true
-    sam_clone_dataset -v --name $dataset --dest /pnfs/nova/scratch/users/$USER/fife_util_test
+    sam_clone_dataset -v --name $dataset --dest $pnfs_dir
     echo "after:"
     sam_validate_dataset -v --name $dataset
     locs2=`sam_validate_dataset -v --name $dataset 2>/dev/null | wc -l`
-    sam_unclone_dataset -v --name $dataset --dest /pnfs/nova/scratch/users/$USER/fife_util_test/
+    sam_unclone_dataset -v --name $dataset --dest $pnfs_dir/
     echo "after unclone:"
     sam_validate_dataset -v --name $dataset
     locs3=`sam_validate_dataset -v --name $dataset 2>/dev/null | wc -l`
@@ -251,8 +256,7 @@ test_unclone_slashes() {
     echo "before:"
     sam_validate_dataset -v --name $dataset
     locs1=`sam_validate_dataset -v --name $dataset | wc -l`
-    ifdh mkdir /pnfs/nova/scratch/users/$USER/fife_util_test || true
-    sam_clone_dataset -v --name $dataset --dest /pnfs/nova/scratch/users/$USER/fife_util_test
+    sam_clone_dataset -v --name $dataset --dest $pnfs_dir
     echo "after:"
     sam_validate_dataset -v --name $dataset
     locs2=`sam_validate_dataset -v --name $dataset | wc -l`
@@ -283,11 +287,10 @@ test_split_clone() {
     echo "before:"
     sam_validate_dataset -v --name $dataset 2>/dev/null
     locs1=`sam_validate_dataset -v --name  $dataset 2>/dev/null | wc -l`
-    ifdh mkdir /pnfs/nova/scratch/users/$USER/fife_util_test || true
     echo "----------------------------------"
-    sam_clone_dataset -v --project=${proj} --just-start-project -b 2 --name $dataset --dest /pnfs/nova/scratch/users/$USER/fife_util_test
+    sam_clone_dataset -v --project=${proj} --just-start-project -b 2 --name $dataset --dest $pnfs_dir
     echo "----------------------------------"
-    sam_clone_dataset -v --project=${proj} --connect-project    -b 2 --name $dataset --dest /pnfs/nova/scratch/users/$USER/fife_util_test
+    sam_clone_dataset -v --project=${proj} --connect-project    -b 2 --name $dataset --dest $pnfs_dir
     echo "----------------------------------"
     echo "after:"
     sam_validate_dataset -v --name $dataset 2>/dev/null
