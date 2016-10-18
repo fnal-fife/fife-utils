@@ -28,7 +28,7 @@ class Wrapper:
 
     def start_self_destruct(self):
         if self.options.self_destruct_timer == None:
-             print "no self destruct..."
+             if self.options.debug: sys.stderr.write("no self destruct...\n")
              return
         timeout = self.options.self_destruct_timer 
         watchpid=os.getpid()
@@ -55,7 +55,7 @@ class Wrapper:
             # we forked a job, make a note
             self.timeoutproc = res
         else:
-            print "Unable to fork timeout process, something is probably wrong"
+            sys.stderr.write( "fife_wrap: Unable to fork timeout process, something is probably wrong")
         return
 
     def parse_arguments(self):
@@ -100,8 +100,10 @@ class Wrapper:
 	parser.add_option("--nosetup", action="store_true", help="do not run setup actions (used internally)")
 
 	(self.options, self.args) = parser.parse_args()
-        print "Options: ", self.options
-        print "Args: ", self.args
+
+        if self.options.debug:
+            sys.stderr.write( "Options: %s" % self.options)
+            sys.stderr.write( "Args: %s" % self.args)
 
     def do_setup(self):
         #
@@ -110,15 +112,18 @@ class Wrapper:
         #
 
         if self.options.nosetup:
-             print "running with nosetup"
+             if self.options.debug: sys.stderr.write("running with nosetup")
              try:
                  import ifdh
                  print "imported ifdh"
              except:
+                 sys.stderr.write("fife_wrap: import ifdh failed\n")
                  pass
              return
 
-        scriptlist = ['set -x\n']
+        scriptlist = []
+        if self.options.debug:
+            scriptlist.append('set -x\n')
 
         if self.options.find_setups:
             scriptlist.append("for p in %s ; do if [ -r $p ]; then . $p; break; fi; done" % ' '.join(self.setupslist))
@@ -161,25 +166,26 @@ exit
         found = False
         evallist = []
         for l in p.stdout.readlines():
-             print "read: " , l
              if found:
-                 print "appending"
                  evallist.append(l)
              if l.rstrip() == cuthere:
-                 print "found cut here"
                  found = True
         p.stdin.close()
         p.stdout.close()
         exec ''.join(evallist)
         # just assume the setup stuff made a different python environment(?)
         sys.argv = [ 'python' , sys.argv[0] , '--nosetup' ] + sys.argv[1:]
-        print "about to exec, args: ", sys.argv
+        if self.options.debug: sys.stderr.write( "about to exec, args: %s" % sys.argv)
         os.execvpe( 'python', sys.argv, os.environ)
         raise(Exception("Could not restart under new python"))
 
     def start_client(self):
-        print "entering start_client"
-        import ifdh
+        if self.options.debug: sys.stderr.write( "entering start_client\n" )
+        try:
+            import ifdh
+        except:
+            sys.stderr.write("fife_wrap: import ifdh failed\n")
+
         import socket
 
         hostname = socket.getfqdn()
@@ -201,7 +207,7 @@ exit
 
         for i in range(0,1):
             try:
-                print "trying to establish consumer process"
+                if self.options.debug: sys.stderr.write( "trying to establish consumer process\n")
                 self.consumerid = self.ih.establishProcess( 
 		   self.cpurl, 
 		   self.options.appname, 
@@ -213,37 +219,35 @@ exit
 		   self.options.limit,
                    ""
                 )
-                print "Got consumerid of: " , self.consumerid
+                if self.options.debug: sys.stderr.write( "Got consumerid of: %d" % self.consumerid)
 
             except Exception as e:
-                print "Got exception: ", e
+                sys.stderr.write("fife_wrap: Got exception: %s while trying to establish consumer\n" % e)
 
             if self.consumerid:
                 break
 
     def file_loop(self):
-        print "Entering file loop:"
+
+        if self.options.debug: sys.stderr.write("Entering file loop:\n")
+
         self.rres = 0
 
         if self.options.multifile or self.options.getconfig:
             furi=self.ih.getNextFile(self.cpurl,self.consumerid)
 	    while furi:
-                # do not unneccesarily go through bestman...
-                if furi.startswith("gsiftp://fg-bestman1.fnal.gov:2811"):
-                    uri = "file://" + furi[34:]
-                    print "de-bestman-ified path: ", furi
                 fname=self.ih.fetchInput(furi)
-                print "Fetching: %s gave: %s" % (furi, fname)
+                if self.options.debug: sys.stderr.write( "Fetching: %s gave: %s\n" % (furi, fname))
                 self.ih.updateFileStatus(self.cpurl, self.consumerid, fname, 'transferred')
 		cmdlist = [ self.options.exe ]
 		if self.options.getconfig:
+		    cmdlist.extend(self.args)
 		    cmdlist.append('-c')
 		    cmdlist.append(fname)
-		    cmdlist.extend(self.args)
 		elif self.options.config:
+		    cmdlist.extend(self.args)
 		    cmdlist.append('-c')
 		    cmdlist.append(self.options.config)
-		    cmdlist.extend(self.args)
 		    cmdlist.append(fname)
                 else:
 		    cmdlist.extend(self.args)
@@ -255,13 +259,15 @@ exit
 		    cmdlist = ['gdb', '-x', '.gdbcmds', '--args' ] + cmdlist
 
                 cmd = " ".join(cmdlist)
-                print "Running: ", cmd
+
+                if self.options.debug: sys.stderr.write("Running: %s\n" % cmd)
+
 		res = os.system(cmd)
 		if 0 == res:
-                    print "Success, marking consumed"
+                    if self.options.debug: sys.stderr.write( "Success, marking consumed\n")
 		    self.ih.updateFileStatus(self.cpurl, self.consumerid, fname, 'consumed')
 		else:
-                    print "Failed, marking skipped"
+                    if self.options.debug: sys.stderr.write( "Failed, marking skipped\n")
 		    self.ih.updateFileStatus(self.cpurl, self.consumerid, fname, 'skipped')
 		    self.rres = res
 		furi=self.ih.getNextFile(self.cpurl,self.consumerid)
@@ -289,6 +295,9 @@ exit
 
 	else: 
             # just run the exe..
+            if self.options.exe == None:
+                 sys.stderr.write("No executable specified to run...\n")
+                 return
 	    cmdlist = [ self.options.exe ]
 	    cmdlist.extend(self.args)
 	    if self.options.with_gdb:
@@ -298,7 +307,7 @@ exit
 	    res = os.system(" ".join(cmdlist))
 	    self.rres = res
 
-        print "leaving file loop:"
+        if self.options.debug: sys.stderr.write("leaving file loop:\n")
 
     def fetch_inputs(self):
         # first copy any tarfiles,inputlists, and outputlists here
@@ -340,25 +349,27 @@ exit
             os.system(s)
 
     def copy_back(self):
-        print "Entering copy_back:"
+        if self.options.debug: sys.stderr.write( "Entering copy_back:\n")
 
         if self.ih == None:
             try:
                 import ifdh
+                self.ih = ifdh.ifdh()
             except:
                 pass
-            self.ih = ifdh.ifdh()
 
 	if self.options.dest and self.options.addoutput:
 	    for g in self.options.addoutput:
 		for f in glob.glob(g):
+                    if self.options.debug: sys.stderr.write( "addoutput: %s\n", f)
 		    self.ih.addOutputFile(f)
 
             if self.options.rename:
+                if self.options.debug: sys.stderr.write( "rename: %s\n", self.options.rename)
 	        for r in self.options.rename:
-                    print "calling renameOuput: ", r
 		    self.ih.renameOutput(r)
 
+	    if self.options.debug: sys.stderr.write( "copybackoutput: %s\n", self.options.dest)
 	    self.ih.copyBackOutput(self.options.dest)
 
         # handle any touput file lists
@@ -371,7 +382,7 @@ exit
            self.ih.cp(cplist)
   
     def cleanup(self):
-        print "Entering cleanup:"
+        if self.options.debug: sys.stderr.write("Entering cleanup:\n")
         if self.ih and self.cpurl and self.consumerid:
 	    self.ih.setStatus(self.cpurl, self.consumerid, "completed" if 0 == self.rres else "bad")
 	    self.ih.cleanup()
@@ -398,7 +409,6 @@ exit
 # end Wrapper
 
 if __name__ == '__main__' :
-    print "Starting up..."
     w = Wrapper()
     try:
 	w.parse_arguments()
