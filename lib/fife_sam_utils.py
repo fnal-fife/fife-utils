@@ -578,7 +578,7 @@ def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 1, verbose =
 
     if len(kidlist) > 1:
        # we're the parent, and there are kids
-       for i in range(0,kidlist-1):
+       for i in range(0,len(kidlist)-1):
            os.wait()
 
     if len(kidlist) > 1 or int(ncopies) == 1:

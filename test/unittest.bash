@@ -61,7 +61,7 @@ testsuite() {
                    else
                        printf F
                    fi
-                   n_fails=\$(( $n_fails + 1 ))
+                   n_fails=\$(( n_fails + 1 ))
                    echo ============================== >> ${TMPDIR:-/tmp}/test_out_$$
                    echo FAIL: \$_t >>  ${TMPDIR:-/tmp}/test_out_$$
                    echo ---------------- >> ${TMPDIR:-/tmp}/test_out_$$
