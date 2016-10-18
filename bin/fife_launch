@@ -30,7 +30,7 @@ class launcher:
 
         res.append("set -x")
 
-	res.append( "GROUP=%s; export GROUP" % self.cfg.get('global','group'))
+	res.append( "GROUP=%s; export GROUP" % self.cfg.get('global','group', vars = globals))
 
 	#for k,v in self.cfg.items("env_pass", raw = 1):
 	#    v = self.cfg.get("env_pass",k,vars = globals)
@@ -41,7 +41,8 @@ class launcher:
 	    res.append("jobsub_submit \\")
 
 	    for k,v in self.cfg.items("env_pass", raw = 1):
-		 res.append( "  -e %s='%s' \\" % (k,v) )
+		v = self.cfg.get("env_pass",k,vars = globals)
+		res.append( "  -e %s='%s' \\" % (k,v) )
 
 	    for k,v in self.cfg.items("submit", raw = 1):
 		v = self.cfg.get("submit",k,vars = globals)
@@ -52,7 +53,7 @@ class launcher:
 		else:
 		    res.append("  --%s='%s'  \\" %( k,v))
 
-	    res.append("  %s \\" % os.path.expandvars(self.cfg.get('global','wrapper')))
+	    res.append("  %s \\" % os.path.expandvars(self.cfg.get('global','wrapper',vars = globals)))
 
 	    for k,v in self.cfg.items("job_setup", raw=1):
 		v = self.cfg.get("job_setup",k,vars = globals)
@@ -74,7 +75,7 @@ class launcher:
 		v = self.cfg.get("sam_consumer",k,vars = globals)
 		res.append("    --%s '%s' \\" % (k,v))   
 
-	    res.append("  --exe  %s \\" % self.cfg.get('executable','name'))
+	    res.append("  --exe  %s \\" % self.cfg.get('executable','name', vars = globals))
 	    for k,v in self.cfg.items("executable", raw=1):
 		v = self.cfg.get("executable",k,vars = globals)
 		if k.startswith('arg_'):
