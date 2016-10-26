@@ -22,7 +22,7 @@ class launcher:
 		self.cfg.set(s,n,v)
 
     def do_cfg_includes(self, cffile):
-        print "do_cfg_includes:" , cffile
+        #print "do_cfg_includes:" , cffile
         for d in self.searchpath:
             if os.path.exists("%s/%s" % (d,cffile)):
                 cffile = "%s/%s" % (d,cffile)
@@ -31,11 +31,12 @@ class launcher:
             return
         self.included[cffile] = 1
         self.cfg.read(cffile)
-        cfls = self.cfg.get('global', 'includes')
-        for cf in cfls.split(" "): 
-            if cf: 
-                 self.do_cfg_includes(cf)
-        print "after includes: ", self.cfg.items('global')
+        if self.cfg.has_option('global','includes'):
+            cfls = self.cfg.get('global', 'includes')
+            for cf in cfls.split(" "): 
+                if cf: 
+                     self.do_cfg_includes(cf)
+        #print "after includes: ", self.cfg.items('global')
 
     def launch(self):
         cmd = self.build_launch()
