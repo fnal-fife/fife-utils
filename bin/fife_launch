@@ -5,6 +5,10 @@ import sys
 import os
 import optparse
 import urllib
+try:
+    import poms_client
+except:
+    pass
 
 class launcher:
  
@@ -49,6 +53,14 @@ class launcher:
 
         res.append("set -x")
 
+        #
+        # if we are doing our own POMS stuff, hide poms_jobsub_wrapper's 
+        # version of jobsub_submit, by pushing jobsub_client's bin
+        # back on the front of the path.
+        #
+	if self.cfg.has_section("poms_get_task_id"):
+            res.append( "PATH=$JOBSUB_CLIENT_DIR:$PATH")
+
 	res.append( "GROUP=%s; export GROUP" % self.cfg.get('global','group', vars = globals))
 
 	#for k,v in self.cfg.items("env_pass", raw = 1):
@@ -62,6 +74,23 @@ class launcher:
 	    for k,v in self.cfg.items("env_pass", raw = 1):
 		v = self.cfg.get("env_pass",k,vars = globals)
 		res.append( "  -e %s='%s' \\" % (k,v) )
+
+            if self.cfg.has_section("poms_campaign_layer"):
+                #
+                # do the full poms_client game:
+                # -- register the campaign
+                # -- request a task_id
+                #
+                campaign_kwargs = {}
+                for k,v in self.cfg.items("poms_campaign_layer", raw = 1):
+	 	     v = self.cfg.get("poms_campaign_layer",k,vars = globals)
+                     campaign_kwargs[k] = v
+
+                campaign_id = poms_client.register_poms_campaign(**campaign_kwargs)
+                poms_get_id_kwargs = {'campaign': campaign_id }
+            else:
+                poms_get_id_kwargs = {}
+                
 
 	    for k,v in self.cfg.items("submit", raw = 1):
 		v = self.cfg.get("submit",k,vars = globals)
@@ -100,7 +129,39 @@ class launcher:
 		if k.startswith('arg_'):
 		    res.append("      %s \\" % v)
 
-            res.append("")
+
+            if self.cfg.has_section("poms_get_task_id"):
+
+                if os.environ.get("POMS_TEST","") != "":
+                    poms_get_id_kwargs['test'] = os.environ["POMS_TEST"]
+
+                if os.environ.get("POMS_PARENT_TASK_ID","") != "":
+                    poms_get_id_kwargs['parent_task_id'] = os.environ["POMS_PARENT_TASK_ID"]
+                poms_get_id_kwargs['command_executed'] = '\n'.join(res)
+
+                for k,v in self.cfg.items("poms_get_task_id", raw = 1):
+		    v = self.cfg.get("poms_get_task_id",k,vars = globals)
+                    poms_get_id_kwargs[k] = v
+
+                #
+                # looks redundant, allows override from config file
+                # or value from register_poms_campaign
+                #
+                campaign_id = poms_get_id_kwargs['campaign']
+
+                task_id = poms_client.get_task_id_for(**poms_get_id_kwargs)
+
+                n = res.index("jobsub_submit \\") + 1
+                
+                res.insert(n,' -e POMS_CAMPAIGN_ID=%s \\' % campaign_id)
+                res.insert(n,' -e POMS_TASK_ID=%s \\' % task_id)
+                res.insert(n,''' -l "+FIFE_CATEGORIES='\\"POMS_TASK_ID_%s,POMS_CAMPAIGN_ID_%s,%s\\"'"  \\''' % (
+			task_id, campaign_id, os.environ.get("POMS_CAMPAIGN_TAGS","")
+                   ))
+                res.insert(n,' -l "+POMS_TASK_ID=%s"  \\' % task_id)
+                res.insert(n,' -l "+POMS_CAMPAIGN_ID=%s"  \\' % campaign_id)
+
+	    res.append("")
 
 	elif self.cfg.has_section("submit_dag"):
 	    # XXX not doing dags -- yet
@@ -108,6 +169,7 @@ class launcher:
 	    pass
 	else:
 	    raise KeyError("Need [submit] or [submit_dag] sections...")
+
 
 	return "\n".join(res)
 
