@@ -83,7 +83,9 @@ class Wrapper:
 	parser.add_option("--export",action="append",  help="export environment variable before running", default= [])
 	parser.add_option("--export-unquote",action="append",  help="export environment variable before running", default= [])
 	parser.add_option("--setup",action="append",  help="setup product before running", default=[])
+	parser.add_option("--setup-unquote",action="append",  help="setup product before running", default=[])
 	parser.add_option("--source",action="append",  help="source setup file before running", default = [])
+	parser.add_option("--source-unquote",action="append",  help="source setup file before running", default = [])
 	parser.add_option("--self_destruct_timer", type="int", help="After this many seconds, suicide the job so we get output back")
 	parser.add_option("--prescript", help="script to run before Art executable")
 	parser.add_option("--postscript", help="script to run after Art executable")
@@ -140,9 +142,17 @@ class Wrapper:
             for s in self.options.source:
                 scriptlist.append("source %s" % s)
 
+        if self.options.source_unquote:
+            for s in self.options.source:
+                scriptlist.append("source %s" % urllib.unquote(s))
+
         if self.options.setup:
             for s in self.options.setup:
                 scriptlist.append("setup %s" % s)
+
+        if self.options.setup:
+            for s in self.options.setup_unquote:
+                scriptlist.append("setup %s" % urllib.unquote(s))
 
         scriptlist.append('[ -z "$IFDHC_DIR" ] || setup ifdhc')
 

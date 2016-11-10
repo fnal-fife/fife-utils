@@ -5,6 +5,7 @@ import sys
 import os
 import optparse
 import urllib
+import shutil
 try:
     import poms_client
 except:
@@ -12,10 +13,11 @@ except:
 
 class launcher:
  
-    def __init__(self, cfgfilename, overrides ):
+    def __init__(self, cfgfilename, overrides, jobname = None ):
 	self.cfg = ConfigParser.SafeConfigParser()
         self.cfg.optionxform = str
         self.included = {}
+        self.jobname = jobname
         self.searchpath = os.environ.get("FIFE_LAUNCH_PATH","").split(":")
         self.do_cfg_includes(cfgfilename)
         if overrides:
@@ -101,7 +103,17 @@ class launcher:
 		else:
 		    res.append("  --%s='%s'  \\" %( k,v))
 
-	    res.append("  %s \\" % os.path.expandvars(self.cfg.get('global','wrapper',vars = globals)))
+            wrapfile = os.path.expandvars(self.cfg.get('global','wrapper',vars = globals))
+            if wrapfile.startswith("file:///"):
+                wrapfile=wrapfile[7:]
+
+            if self.jobname != None:
+                jobwrapfile = "/tmp/%s_%d" % (jobname, getpid())
+                shutil.copy(wrapfile, jobfile)
+            else:  
+	        jobwrapfile = wrapfile
+
+	    res.append("  file://%s \\" % jobwrapfile)
 
 	    for k,v in self.cfg.items("job_setup", raw=1):
 		v = self.cfg.get("job_setup",k,vars = globals)
@@ -110,8 +122,8 @@ class launcher:
 		else:
 		    if k[-2] == '_' and k[-1] in "0123456789":
 			 k = k[:-2]
-                    if k == 'export' and urllib.quote(v) != v:
-                         k = 'export-unquote'
+                    if k in ['export','source','setup'] and urllib.quote(v) != v:
+                         k = '%s-unquote' % k
                          v = urllib.quote(v)
 		    res.append("    --%s '%s' \\" % (k,v))   
 
@@ -163,6 +175,9 @@ class launcher:
 
 	    res.append("")
 
+            if self.jobname != None:
+                res.append("rm %s" % jobwrapfile)
+
 	elif self.cfg.has_section("submit_dag"):
 	    # XXX not doing dags -- yet
             print "submit_dag not yet implemented..."
@@ -183,8 +198,9 @@ if __name__ == '__main__':
 
     p.add_option('-c', '--config', help='config file describing job')
     p.add_option('-O', '--override',  help='override config file values', action='append' )
+    p.add_option('--jobname', help='job name for launching', default=None)
 
     options, args = p.parse_args()
    
-    l = launcher(options.config, options.override)
+    l = launcher(options.config, options.override, options.jobname)
     l.launch()
