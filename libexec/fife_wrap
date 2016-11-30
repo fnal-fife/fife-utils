@@ -116,7 +116,8 @@ class Wrapper:
         #
 
         if self.options.nosetup:
-             if self.options.debug: sys.stderr.write("running with nosetup")
+             if self.options.debug: sys.stderr.write("running with nosetup\n")
+             if self.options.debug: sys.stderr.write("path is: %s\n" % os.environ['PATH'])
              try:
                  import ifdh
                  print "imported ifdh"
@@ -185,11 +186,13 @@ exit
                  found = True
         p.stdin.close()
         p.stdout.close()
-        exec ';'.join(evallist)
+        if self.options.debug: sys.stderr.write('inhaled environment: %s' % repr(evallist))
+        exec '\n'.join(evallist)
         # just assume the setup stuff made a different python environment(?)
         sys.argv = [ 'python' , sys.argv[0] , '--nosetup' ] + sys.argv[1:]
         if self.options.debug: sys.stderr.write( "about to exec, args: %s" % sys.argv)
-        os.execvpe( 'python', sys.argv, os.environ)
+        #os.execvpe( 'python', sys.argv, os.environ)
+        os.execvp( 'python', sys.argv)
         raise(Exception("Could not restart under new python"))
 
     def start_client(self):
