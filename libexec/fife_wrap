@@ -88,7 +88,9 @@ class Wrapper:
 	parser.add_option("--source-unquote",action="append",  help="source setup file before running", default = [])
 	parser.add_option("--self_destruct_timer", type="int", help="After this many seconds, suicide the job so we get output back")
 	parser.add_option("--prescript", help="script to run before Art executable")
+	parser.add_option("--prescript-quote", help="script to run before Art executable")
 	parser.add_option("--postscript", help="script to run after Art executable")
+	parser.add_option("--postscript-quote", help="script to run after Art executable")
 	parser.add_option("--debug", action="count", help="Turn on debugging")
 	parser.add_option("--ifdh_art", action="store_true", help="executable can run the ifdh_art getNextFile loop ")
          
@@ -150,9 +152,10 @@ class Wrapper:
             for s in self.options.setup:
                 scriptlist.append("setup %s" % s)
 
-        if self.options.setup:
+        if self.options.setup_unquote:
             for s in self.options.setup_unquote:
                 scriptlist.append("setup %s" % urllib.unquote(s))
+
 
         scriptlist.append('[ -z "$IFDHC_DIR" ] || setup ifdhc')
 
@@ -243,6 +246,22 @@ exit
 
         self.rres = 0
 
+        if self.options.prescript:
+            if self.options.debug: sys.stderr.write("prescripts:\n")
+            for s in self.options.prescript:
+                if self.options.debug: sys.stderr.write("prescript: %s\n" % s)
+                cmdlist.append(s)
+	    cmd = "\n".join(cmdlist)
+	    res = os.system(cmd)
+
+        if self.options.prescript_quote:
+            if self.options.debug: sys.stderr.write("prescripts:\n")
+            for s in self.options.prescript:
+                if self.options.debug: sys.stderr.write("prescript: %s\n" % s)
+                cmdlist.append(urllib.unquote(s))
+	    cmd = "\n".join(cmdlist)
+	    res = os.system(cmd)
+
         if self.options.multifile or self.options.getconfig:
             furi=self.ih.getNextFile(self.cpurl,self.consumerid)
 	    while furi:
@@ -318,6 +337,22 @@ exit
 	    self.rres = res
 
         if self.options.debug: sys.stderr.write("leaving file loop:\n")
+
+        if self.options.postscript:
+            if self.options.debug: sys.stderr.write("postscripts:\n")
+            for s in self.options.postscript:
+                if self.options.debug: sys.stderr.write("postscript: %s\n" % s)
+                cmdlist.append(urllib.unquote(s))
+	    cmd = "\n".join(cmdlist)
+	    res = os.system(cmd)
+
+        if self.options.postscript_quote:
+            if self.options.debug: sys.stderr.write("postscripts:\n")
+            for s in self.options.postscript_quote:
+                if self.options.debug: sys.stderr.write("postscript: %s\n" % s)
+                cmdlist.append(urllib.unquote(s))
+	    cmd = "\n".join(cmdlist)
+	    res = os.system(cmd)
 
     def fetch_inputs(self):
         # first copy any tarfiles,inputlists, and outputlists here

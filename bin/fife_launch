@@ -122,7 +122,7 @@ class launcher:
 		else:
 		    if k[-2] == '_' and k[-1] in "0123456789":
 			 k = k[:-2]
-                    if k in ['export','source','setup'] and urllib.quote(v) != v:
+                    if k in ['export','source','setup','prescript','postscript'] and urllib.quote(v) != v:
                          k = '%s-unquote' % k
                          v = urllib.quote(v)
 		    res.append("    --%s '%s' \\" % (k,v))   
