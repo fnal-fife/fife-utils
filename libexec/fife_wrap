@@ -157,7 +157,7 @@ class Wrapper:
                 scriptlist.append("setup %s" % urllib.unquote(s))
 
 
-        scriptlist.append('[ -z "$IFDHC_DIR" ] || setup ifdhc')
+        scriptlist.append('[ -z "$IFDHC_DIR" ] && setup ifdhc')
 
         cuthere="--------------cut here-------------"
         scriptlist.append("""
@@ -185,7 +185,7 @@ exit
                  found = True
         p.stdin.close()
         p.stdout.close()
-        exec ''.join(evallist)
+        exec ';'.join(evallist)
         # just assume the setup stuff made a different python environment(?)
         sys.argv = [ 'python' , sys.argv[0] , '--nosetup' ] + sys.argv[1:]
         if self.options.debug: sys.stderr.write( "about to exec, args: %s" % sys.argv)
