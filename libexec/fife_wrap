@@ -88,9 +88,9 @@ class Wrapper:
 	parser.add_option("--source-unquote",action="append",  help="source setup file before running", default = [])
 	parser.add_option("--self_destruct_timer", type="int", help="After this many seconds, suicide the job so we get output back")
 	parser.add_option("--prescript", help="script to run before Art executable")
-	parser.add_option("--prescript-quote", help="script to run before Art executable")
+	parser.add_option("--prescript-unquote", help="script to run before Art executable")
 	parser.add_option("--postscript", help="script to run after Art executable")
-	parser.add_option("--postscript-quote", help="script to run after Art executable")
+	parser.add_option("--postscript-unquote", help="script to run after Art executable")
 	parser.add_option("--debug", action="count", help="Turn on debugging")
 	parser.add_option("--ifdh_art", action="store_true", help="executable can run the ifdh_art getNextFile loop ")
          
@@ -257,9 +257,9 @@ exit
 	    cmd = "\n".join(cmdlist)
 	    res = os.system(cmd)
 
-        if self.options.prescript_quote:
+        if self.options.prescript_unquote:
             if self.options.debug: sys.stderr.write("prescripts:\n")
-            for s in self.options.prescript:
+            for s in self.options.prescript_unquote:
                 if self.options.debug: sys.stderr.write("prescript: %s\n" % s)
                 cmdlist.append(urllib.unquote(s))
 	    cmd = "\n".join(cmdlist)
@@ -349,9 +349,9 @@ exit
 	    cmd = "\n".join(cmdlist)
 	    res = os.system(cmd)
 
-        if self.options.postscript_quote:
+        if self.options.postscript_unquote:
             if self.options.debug: sys.stderr.write("postscripts:\n")
-            for s in self.options.postscript_quote:
+            for s in self.options.postscript_unquote:
                 if self.options.debug: sys.stderr.write("postscript: %s\n" % s)
                 cmdlist.append(urllib.unquote(s))
 	    cmd = "\n".join(cmdlist)
