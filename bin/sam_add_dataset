@@ -144,9 +144,12 @@ def declareFile(samweb, metadata):
   try:
     samweb.declareFile( metadata )
   except Exception, e:
-    logging.info(str(e))
+    logging.error(str(e))
+    return 0
   else:
     logging.info('the metadata was declared to sam')
+   
+  return 1
 
 
 
@@ -220,7 +223,6 @@ def declareFileLocation(samweb, fileName, location):
   logging.info('file location was declared to sam')
 
 
-
 def get_tag(options, datasetName):
   logging.info('trying to resolve a tag')
   
@@ -246,14 +248,14 @@ def get_dataset_name(options, user):
   return datasetName
 
 
-
 def createDefinition(samweb, definitionName, dimensions):
   logging.info('trying to create definition %s with dimensions %s to sam' % (definitionName, dimensions))
   
   try:
     samweb.createDefinition(definitionName, dimensions)
   except Exception, e:
-    sys.exit('oops: %s' % e)
+    logging.error('oops: %s' % e)
+    sys.exit(1)
   logging.info('dataset definition created')
 
 
@@ -463,8 +465,9 @@ def main():
       fileMD.update(renamedFile)
       fileMD.update(universalMD)
     
-      declareFile(samweb, fileMD)
-      declareFileLocation(samweb, fileMD["file_name"], fileLocation)
+      if declareFile(samweb, fileMD):
+          # don't try to declare the location if you could not declare the file
+          declareFileLocation(samweb, fileMD["file_name"], fileLocation)
 
     logging.info('for loop is done')
     
