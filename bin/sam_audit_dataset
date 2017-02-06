@@ -5,6 +5,7 @@ from fife_sam_utils import *
 import sys
 import os
 import optparse
+from fife_sam_utils import log_startup, log_finish
 
 
 def audit( ds, dest,  verbose = False, experiment = None, keeplists=None ):
@@ -93,6 +94,7 @@ def audit( ds, dest,  verbose = False, experiment = None, keeplists=None ):
 
 if __name__ == '__main__':
     
+    log_startup()
     parser = optparse.OptionParser(usage="usage: %prog [options] dataset [dataset ...] \n make sure files in dataset actually exist")
     parser.add_option('-v','--verbose',   action='count')
     parser.add_option('-d','--dest',   help="location to audit")
@@ -115,5 +117,10 @@ if __name__ == '__main__':
         exit(1)
 
     res = audit(dataset(o.name), dest = o.dest, verbose = o.verbose , experiment = o.experiment, keeplists= o.keeplists)
+
+    if res == 0:
+        log_finish("Success")
+    else:
+        log_finish("Fail")
 
     sys.exit(res)

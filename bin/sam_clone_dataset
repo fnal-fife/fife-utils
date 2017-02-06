@@ -61,6 +61,7 @@ def startjobs(o):
     os.system(cmd)
 
 if __name__ == '__main__':
+    log_startup()
 
     parser = optparse.OptionParser(usage="usage: %prog [options] \n copy files in named dataset to destination and declare")
     parser.add_option('-b','--batch_size',default = 1, type='int', help="copy then declare in batches of this size")
@@ -118,3 +119,5 @@ if __name__ == '__main__':
         startjobs(o)
     else:
         clone(dataset(o.name), o.dest, subdirf = o.dirfunc, just_say = o.just_say, batch_size = o.batch_size, verbose = o.verbose, experiment=o.experiment, ncopies=o.ncopies, just_start_project = o.just_start_project, connect_project=o.connect_project , projname = o.project, paranoid = o.paranoid, intermed = o.intermed, getawscreds = o.getawscreds)
+
+    log_finish("Success")

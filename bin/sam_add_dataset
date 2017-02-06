@@ -38,6 +38,7 @@ except:
           
 #from fife_sam_utils import samprefix, is_cert_valid, has_uuid_prefix
 from fife_sam_utils import samprefix, has_uuid_prefix, get_standard_certificate_path
+from fife_sam_utils import log_startup, log_finish
 
 
 
@@ -487,4 +488,6 @@ def main():
 
 
 if __name__ == '__main__':
+  log_startup()
   main()
+  log_finish("Success")

@@ -7,6 +7,7 @@ import time
 import ifdh
 import samweb_client
 from fife_sam_utils import dataset, sampath
+from fife_sam_utils import log_startup, log_finish
 import subprocess
 
 
@@ -63,6 +64,8 @@ class restorer:
 
 if __name__ == '__main__':
 
+    log_startup()
+
     parser = optparse.OptionParser(usage="usage: %prog [options] \n restore files from dcache archviver area.\n  (Use %prog --help for full options list)")
     experiment = os.environ.get('EXPERIMENT',os.environ.get('SAM_EXPERIMENT',grp.getgrgid(os.getgid())[0]))
     dname = os.environ.get('USER',os.environ.get('GRID_USER'))
@@ -96,3 +99,4 @@ if __name__ == '__main__':
     else:
         r.restore(o)
 
+    log_finish("Success")

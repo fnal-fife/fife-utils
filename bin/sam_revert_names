@@ -8,6 +8,7 @@ import sys
 import logging
 import re
 from fife_sam_utils import has_uuid_prefix
+from fife_sam_utils import log_startup, log_finish
 import fnmatch
 
 
@@ -192,4 +193,6 @@ def main():
 
 
 if __name__ == '__main__':
+  log_startup()
   main()
+  log_finish("Success")

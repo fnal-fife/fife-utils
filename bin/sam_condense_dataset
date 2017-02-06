@@ -3,6 +3,8 @@
 import os
 import socket
 
+from fife_sam_utils import log_startup, log_finish
+
 try:
    import uuid
 except:
@@ -126,6 +128,8 @@ if __name__ == '__main__':
     import optparse
     import time
 
+    log_startup()
+
     parser = optparse.OptionParser(usage="usage: %prog [options] \n slurp dataset through program and generate summed files")
     parser.add_option('-p','--projname', default='condense-%s'%uuid.uuid4())
     parser.add_option('-v','--verbose',   action='count')
@@ -157,3 +161,5 @@ if __name__ == '__main__':
 
     c = condenser(o)
     c.condense_it()
+
+    log_finish("Success")

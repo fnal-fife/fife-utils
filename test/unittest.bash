@@ -55,13 +55,13 @@ testsuite() {
 		       echo ---------------- >> ${TMPDIR:-/tmp}/test_out_$$
                    fi
                else
+                   n_fails=\$(( \$n_fails + 1 ))
                    if [ x\$verbose = "x-v" -o x\$verbose = "x-vv" ]
                    then
                        echo FAIL
                    else
                        printf F
                    fi
-                   n_fails=\$(( n_fails + 1 ))
                    echo ============================== >> ${TMPDIR:-/tmp}/test_out_$$
                    echo FAIL: \$_t >>  ${TMPDIR:-/tmp}/test_out_$$
                    echo ---------------- >> ${TMPDIR:-/tmp}/test_out_$$

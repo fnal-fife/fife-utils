@@ -260,7 +260,8 @@ test_unclone_slashes() {
     echo "after:"
     sam_validate_dataset -v --name $dataset
     locs2=`sam_validate_dataset -v --name $dataset | wc -l`
-    sam_unclone_dataset --name $dataset --dest /pnfs/nova//scratch//users/$USER/fife_util_test/
+    sdest=`echo $pnfs_dir | sed -e 's|nova/|nova//|'`
+    sam_unclone_dataset --name $dataset --dest $sdest
     echo "after unclone:"
     sam_validate_dataset -v --name $dataset
     locs3=`sam_validate_dataset -v --name $dataset | wc -l`
@@ -300,7 +301,21 @@ test_split_clone() {
 
 
 test_retire() {
-    sam_retire_dataset --name $dataset
+    list=`sam_validate_dataset -v --name $dataset | grep located`
+    sam_retire_dataset -v --name $dataset
+    echo "$list" | (
+        fails=0
+        while read loc path
+        do
+            path=`echo $path | sed -e 's/[a-z]*://'`
+            if [ -r $path ] 
+            then
+                echo Ouch -- $path still there
+                fails=$(( $fails + 1))
+            fi
+        done
+        [ $fails = 0 ]
+        )
 }
 
 testsuite test_utils \
