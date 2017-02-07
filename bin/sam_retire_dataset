@@ -82,4 +82,4 @@ if __name__ == '__main__':
     retire(dataset(o.name), just_say = o.just_say, keep_files = o.keep_files, delete_match = o.delete_match, experiment = o.experiment, admin = o.admin, verbose = o.verbose)
 
 
-    log_finish()
+    log_finish("Success")

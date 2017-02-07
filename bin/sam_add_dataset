@@ -4,6 +4,7 @@ import optparse
 import getpass
 import os
 import sys
+import glob
 
 import pprint
 import samweb_client
@@ -446,6 +447,12 @@ def main():
     else:
       fileList = getFileList(options.file)
 
+    # expand globs
+    gflist = []
+    for filename in fileList:
+        for f2 in glob.glob(filename):
+            gflist.append(f2)
+    fileList = gflist
 
     logging.info('entering for loop to process all the files to create the dataset')
     for filename in fileList:
@@ -462,7 +469,7 @@ def main():
       fileMD.update( statBuildMetaData(filename) )
 
       if options.no_rename:
-         renamedFile = filename
+          renamedFile =  {"file_name": os.path.basename(filename), "location":os.path.dirname(filename)} 
       else:
           renamedFile = renameFile(filename)
 

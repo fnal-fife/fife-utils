@@ -35,7 +35,40 @@ setup_tests() {
    export CPN_DIR=/no/such/dir
 }
 
+test_add_dataset_flist_norename() {
+   rm -rf data
+   mkdir data
+   : > file_list
+   for i in 1 2 3 
+   do
+       fname="f${i}_$$.txt"
+       echo "file $i" > data/$fname
+       echo `pwd`/data/$fname >> file_list
+   done
+
+   cat > meta.json <<EOF
+{
+ "file_type": "test", 
+ "file_format": "data", 
+ "content_status": "good", 
+ "group": "samdev", 
+ "data_tier": "log", 
+ "application": {
+  "family": "test", 
+  "name": "test", 
+  "version": "1"
+ } 
+}
+EOF
+
+   sam_add_dataset --no-rename --cert=/tmp/x509up_u`id -u` -e $EXPERIMENT --file file_list --metadata meta.json --name ${dataset}
+
+   echo "dataset $dataset contains:" 
+   ifdh translateConstraints "defname: $dataset" 
+}
+
 test_add_dataset_flist() {
+   rm -rf data
    mkdir data
    : > file_list
    for i in 1 2 3 
@@ -60,14 +93,14 @@ test_add_dataset_flist() {
 }
 EOF
 
-   sam_add_dataset --cert=/tmp/x509up_u`id -u` -e $EXPERIMENT --directory `pwd`/data --metadata meta.json --name ${dataset}
-   #sam_add_dataset --cert=/tmp/x509up_u`id -u` -e $EXPERIMENT `pwd`/data meta.json ${dataset}
+   sam_add_dataset --cert=/tmp/x509up_u`id -u` -e $EXPERIMENT --file file_list --metadata meta.json --name ${dataset}
 
    echo "dataset $dataset contains:" 
    ifdh translateConstraints "defname: $dataset" 
 }
 
 test_add_dataset_directory() {
+   rm -rf data
    mkdir data
    for i in 1 2 3 
    do
@@ -90,8 +123,7 @@ test_add_dataset_directory() {
 }
 EOF
 
-   sam_add_dataset --cert=/tmp/x509up_u`id -u` -e $EXPERIMENT -f file_list --metadata meta.json --name ${dataset}
-   #sam_add_dataset --cert=/tmp/x509up_u`id -u` -e $EXPERIMENT  file_list meta.json ${dataset}
+   sam_add_dataset --cert=/tmp/x509up_u`id -u` -e $EXPERIMENT --directory `pwd`/data --metadata meta.json --name ${dataset}
 
    echo "dataset $dataset contains:" 
    ifdh translateConstraints "defname: $dataset" 
@@ -335,6 +367,9 @@ testsuite test_utils \
 	test_clone_n  \
         test_retire \
         test_add_dataset_flist \
+	test_validate_1 \
+        test_retire \
+        test_add_dataset_flist_norename \
 	test_validate_1 \
         test_retire \
         test_add_dataset_directory \

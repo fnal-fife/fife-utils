@@ -35,7 +35,41 @@ setup_tests() {
    export CPN_DIR=/no/such/dir
 }
 
+test_add_dataset_flist_norename() {
+   rm -rf data
+   mkdir data
+   : > file_list
+   for i in 1 2 3 
+   do
+       fname="f${i}_$$.txt"
+       echo "file $i" > data/$fname
+       echo `pwd`/data/$fname >> file_list
+   done
+
+   cat > meta.json <<EOF
+{
+ "file_type": "test", 
+ "file_format": "data", 
+ "content_status": "good", 
+ "group": "samdev", 
+ "data_tier": "log", 
+ "application": {
+  "family": "test", 
+  "name": "test", 
+  "version": "1"
+ } 
+}
+EOF
+
+   sam_add_dataset --no-rename --cert=/tmp/x509up_u`id -u` -e $EXPERIMENT --directory `pwd`/data --metadata meta.json --name ${dataset}
+   #sam_add_dataset --cert=/tmp/x509up_u`id -u` -e $EXPERIMENT `pwd`/data meta.json ${dataset}
+
+   echo "dataset $dataset contains:" 
+   ifdh translateConstraints "defname: $dataset" 
+}
+
 test_add_dataset_flist() {
+   rm -rf data
    mkdir data
    : > file_list
    for i in 1 2 3 
@@ -68,6 +102,7 @@ EOF
 }
 
 test_add_dataset_directory() {
+   rm -rf data
    mkdir data
    for i in 1 2 3 
    do
@@ -90,8 +125,7 @@ test_add_dataset_directory() {
 }
 EOF
 
-   sam_add_dataset --cert=/tmp/x509up_u`id -u` -e $EXPERIMENT -f file_list --metadata meta.json --name ${dataset}
-   #sam_add_dataset --cert=/tmp/x509up_u`id -u` -e $EXPERIMENT  file_list meta.json ${dataset}
+   sam_add_dataset --cert=/tmp/x509up_u`id -u` -e $EXPERIMENT -d data --metadata meta.json --name ${dataset}
 
    echo "dataset $dataset contains:" 
    ifdh translateConstraints "defname: $dataset" 
@@ -260,7 +294,8 @@ test_unclone_slashes() {
     echo "after:"
     sam_validate_dataset -v --name $dataset
     locs2=`sam_validate_dataset -v --name $dataset | wc -l`
-    sam_unclone_dataset --name $dataset --dest /pnfs/nova//scratch//users/$USER/fife_util_test/
+    sdest=`echo $pnfs_dir | sed -e 's|nova/|nova//|'`
+    sam_unclone_dataset --name $dataset --dest $sdest
     echo "after unclone:"
     sam_validate_dataset -v --name $dataset
     locs3=`sam_validate_dataset -v --name $dataset | wc -l`
@@ -300,41 +335,28 @@ test_split_clone() {
 
 
 test_retire() {
-    sam_retire_dataset --name $dataset
+    list=`sam_validate_dataset -v --name $dataset | grep located`
+    sam_retire_dataset -v --name $dataset
+    echo "$list" | (
+        fails=0
+        while read loc path
+        do
+            path=`echo $path | sed -e 's/[a-z]*://'`
+            if [ -r $path ] 
+            then
+                echo Ouch -- $path still there
+                fails=$(( $fails + 1))
+            fi
+        done
+        [ $fails = 0 ]
+        )
 }
 
 testsuite test_utils \
 	-s setup_tests \
-        add_dataset \
-	test_validate_1 \
-	test_validate_2 \
-        test_modify \
-	test_clone  \
-        test_retire \
-        add_dataset \
-        test_unclone \
-        test_unclone_slashes \
-        test_pin \
-        test_retire \
-        add_dataset \
-	test_clone_n  \
-        test_retire \
-        test_add_dataset_flist \
-	test_validate_1 \
-        test_retire \
         test_add_dataset_directory \
 	test_validate_1 \
         test_retire  \
-        add_dataset \
-        test_copy2scratch_dataset \
-        test_retire \
-        add_dataset \
-        test_archive_dataset \
-        test_retire \
-        add_dataset \
-        test_move2persistent \
-        test_retire \
-        add_dataset \
-        test_move2archive \
-        test_retire \
+
          
+test_utils "$@"
