@@ -391,6 +391,7 @@ def main():
   p.add_option('-m', '--metadata', help='json file of metadata you would like added to all files')
   p.add_option('-s',  '--subprocess', help='execute a child program in a new process to extract metadata only sam_metadata_dumper currently supported')
   p.add_option('-c', '--cert', help='x509 certificate for authentication. If not specified, use $X509_USER_PROXY, $X509_USER_CERT/$X509_USER_KEY or standard grid proxy location')
+  p.add_option('--no-rename', action='store_true', default = False, help = 'Do not rename files to ensure uniqueness')
   p.add_option('-v', '--verbose', action ='store_true', help='returns verbose output')
   
   
@@ -419,7 +420,6 @@ def main():
 
   samweb = samweb_client.SAMWebClient(experiment=experiment, cert=cert)
 
- 
   jsonFile = options.metadata
   
   datasetName = get_dataset_name(options, user)
@@ -448,26 +448,31 @@ def main():
 
 
     logging.info('entering for loop to process all the files to create the dataset')
-    for file in fileList:
-      logging.info('processing %s' % file)
+    for filename in fileList:
+      logging.info('processing %s' % filename)
       
       fileMD = {}
       
       if options.subprocess:
-        dumperObject = Sam_Metadata_Dumper_Parser(file, samweb, options.subprocess)
+        dumperObject = Sam_Metadata_Dumper_Parser(filename, samweb, options.subprocess)
         dumperObject.get_json()
         sam_metadata_dumper_metadata = dumperObject.format_json()
         fileMD.update(sam_metadata_dumper_metadata) 
         
-      fileMD.update( statBuildMetaData(file) )
-      renamedFile = renameFile(file)
+      fileMD.update( statBuildMetaData(filename) )
+
+      if options.no_rename:
+         renamedFile = filename
+      else:
+          renamedFile = renameFile(filename)
+
       fileLocation = renamedFile.pop("location")
             
       fileMD.update(renamedFile)
       fileMD.update(universalMD)
     
       if declareFile(samweb, fileMD):
-          # don't try to declare the location if you could not declare the file
+          # don't try to declare the location if you could not declare the filename
           declareFileLocation(samweb, fileMD["file_name"], fileLocation)
 
     logging.info('for loop is done')
