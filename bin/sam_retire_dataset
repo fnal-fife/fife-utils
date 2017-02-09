@@ -6,8 +6,9 @@ from samweb_client import *
 import sys
 import os
 import re
+import traceback
 
-def retire( d, just_say = False, keep_files = False, delete_match = '.*', experiment = '', admin = False ):
+def retire( d, just_say = False, keep_files = False, delete_match = '.*', experiment = '', admin = False , verbose = 0):
     samweb = SAMWebClient(experiment = experiment)
 
     if admin:
@@ -24,9 +25,12 @@ def retire( d, just_say = False, keep_files = False, delete_match = '.*', experi
 	    if not keep_files:
 		try:
                     if re.match(delete_match, full): 
+                        if verbose: print "removing: ", full
 		        d.ifdh_handle.rm(full, '')
-		except:
+		except: 
+                    if verbose: print "excpetion in remove", traceback.format_exc()
 		    pass
+	    if verbose: print "removing location:", samprefix(full), full 
 	    samweb.removeFileLocation(file, samprefix(full) + dirname(full))
 
     for file in d.file_iterator():
@@ -34,6 +38,7 @@ def retire( d, just_say = False, keep_files = False, delete_match = '.*', experi
             print "I would retire file: %s" %  file
         else:
             try:
+	        if verbose: print "retiring file", file
                 samweb.retireFile(file)
             except:
                 print "Ouch! retriring %s" % file
@@ -42,10 +47,13 @@ def retire( d, just_say = False, keep_files = False, delete_match = '.*', experi
     if just_say:
          print "I would deleteDefinition( %s ) " % ds.name
     else:
+	 if verbose: print "deleting definition: " , d.name
          samweb.deleteDefinition(d.name)
 
 
 if __name__ == '__main__':
+
+    log_startup()
     
     parser = optparse.OptionParser(usage="usage: %prog [options] dataset [dataset ...]\n delete files, undeclare locations, and delete dataset")
     parser.add_option('-v','--verbose',   action='count')
@@ -71,5 +79,7 @@ if __name__ == '__main__':
         parser.error("expected --name dataset-name")
         exit(1)
 
-    retire(dataset(o.name), just_say = o.just_say, keep_files = o.keep_files, delete_match = o.delete_match, experiment = o.experiment, admin = o.admin)
+    retire(dataset(o.name), just_say = o.just_say, keep_files = o.keep_files, delete_match = o.delete_match, experiment = o.experiment, admin = o.admin, verbose = o.verbose)
 
+
+    log_finish("Success")

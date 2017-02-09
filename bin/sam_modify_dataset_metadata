@@ -7,6 +7,7 @@ from samweb_client import *
 import socket
 import optparse
 
+from fife_sam_utils import log_startup, log_finish
 
 
 def modify_dataset_metadata( d, mdfilename,  just_say = False, verbose = False, experiment = None ):
@@ -26,6 +27,8 @@ def modify_dataset_metadata( d, mdfilename,  just_say = False, verbose = False, 
 
 
 if __name__ == '__main__':
+
+    log_startup()
 
     parser = optparse.OptionParser(usage="usage: %prog [options] \n modify metadata on all files in dataset")
     parser.add_option('-v','--verbose',   action='count')
@@ -53,3 +56,5 @@ if __name__ == '__main__':
         exit(1)
 
     modify_dataset_metadata(dataset(o.name), o.metadata,  just_say = o.just_say,  verbose = o.verbose, experiment=o.experiment)
+
+    log_finish("Success")

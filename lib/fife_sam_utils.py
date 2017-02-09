@@ -25,10 +25,23 @@ except:
 
 try:
    import urllib3
-   urllib3.disable_warnings()
 except:
    pass
 
+try:
+   urllib3.disable_warnings(category=urllib3.exceptions.InsecureRequestWarning)
+except:
+   pass
+
+
+def log_startup():
+    ih = ifdh.ifdh()
+    ih.log("Starting: %s" % " ".join(sys.argv))
+    
+
+def log_finish(success):
+    ih = ifdh.ifdh()
+    ih.log("%s: %s" % (success ," ".join(sys.argv)))
 
 def do_getawscreds(debug = False):
     ih = ifdh.ifdh()

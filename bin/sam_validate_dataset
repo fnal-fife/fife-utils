@@ -37,6 +37,8 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
 
 
 if __name__ == '__main__':
+
+    log_startup()
     
     parser = optparse.OptionParser(usage="usage: %prog [options] dataset [dataset ...] \n make sure files in dataset actually exist")
     parser.add_option('-v','--verbose',   action='count')
@@ -60,4 +62,11 @@ if __name__ == '__main__':
 
     res = validate(dataset(o.name), just_say = o.just_say, prune = o.prune, verbose = o.verbose , experiment = o.experiment)
 
+    if 0 == res:
+        log_finish("Success")
+    else:
+        log_finish("Success")
+
     sys.exit(res)
+
+  

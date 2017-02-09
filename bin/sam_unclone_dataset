@@ -6,7 +6,8 @@ import os
 import re
 import optparse
 if __name__ == '__main__':
-    
+ 
+    log_startup()   
     parser = optparse.OptionParser(usage="usage: %prog [options] dataset dest_url \n remove copies of files in dataset under destination")
     parser.add_option('-v','--verbose',   action='count')
     parser.add_option('-j','--just_say',  action='store_true', help="do not actually copy, just say what you would do")
@@ -37,3 +38,4 @@ if __name__ == '__main__':
 
     unclone(dataset(o.name), just_say = o.just_say, delete_match = o.dest, verbose = o.verbose, experiment = o.experiment, nparallel = int(o.ncopies), keep = o.keep)
 
+    log_finish("Success")

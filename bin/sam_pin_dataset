@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from fife_sam_utils import dataset, get_standard_certificate_path
+from fife_sam_utils import log_startup, log_finish
 import sys
 import os
 import optparse
@@ -16,6 +17,8 @@ def pin( ds , just_say = False, verbose = False ):
                 ds.ifdh_handle.pin( p, thirtydays )
 
 if __name__ == '__main__':
+
+    log_startup()
     
     cmd = sys.argv[0]
     just_say = False
@@ -42,3 +45,4 @@ if __name__ == '__main__':
 
     pin(dataset(o.name), o.just_say, o.verbose)
 
+    log_finish("Success")
