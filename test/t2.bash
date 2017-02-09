@@ -61,8 +61,7 @@ test_add_dataset_flist_norename() {
 }
 EOF
 
-   sam_add_dataset --no-rename --cert=/tmp/x509up_u`id -u` -e $EXPERIMENT --directory `pwd`/data --metadata meta.json --name ${dataset}
-   #sam_add_dataset --cert=/tmp/x509up_u`id -u` -e $EXPERIMENT `pwd`/data meta.json ${dataset}
+   sam_add_dataset --no-rename --cert=/tmp/x509up_u`id -u` -e $EXPERIMENT --file file_list --metadata meta.json --name ${dataset}
 
    echo "dataset $dataset contains:" 
    ifdh translateConstraints "defname: $dataset" 
@@ -78,6 +77,37 @@ test_add_dataset_flist() {
        echo "file $i" > data/$fname
        echo `pwd`/data/$fname >> file_list
    done
+
+   cat > meta.json <<EOF
+{
+ "file_type": "test", 
+ "file_format": "data", 
+ "content_status": "good", 
+ "group": "samdev", 
+ "data_tier": "log", 
+ "application": {
+  "family": "test", 
+  "name": "test", 
+  "version": "1"
+ } 
+}
+EOF
+
+   sam_add_dataset --cert=/tmp/x509up_u`id -u` -e $EXPERIMENT --file file_list --metadata meta.json --name ${dataset}
+
+   echo "dataset $dataset contains:" 
+   ifdh translateConstraints "defname: $dataset" 
+}
+
+test_add_dataset_flist_glob() {
+   mkdir data
+   : > file_list
+   for i in 1 2 3 
+   do
+       fname="f${i}.txt"
+       echo "file $i" > data/$fname
+   done
+   echo `pwd`/data/f*.txt >> file_list
 
    cat > meta.json <<EOF
 {
@@ -125,7 +155,7 @@ test_add_dataset_directory() {
 }
 EOF
 
-   sam_add_dataset --cert=/tmp/x509up_u`id -u` -e $EXPERIMENT -d data --metadata meta.json --name ${dataset}
+   sam_add_dataset --cert=/tmp/x509up_u`id -u` -e $EXPERIMENT --directory `pwd`/data --metadata meta.json --name ${dataset}
 
    echo "dataset $dataset contains:" 
    ifdh translateConstraints "defname: $dataset" 
@@ -354,9 +384,44 @@ test_retire() {
 
 testsuite test_utils \
 	-s setup_tests \
+        add_dataset \
+	test_validate_1 \
+	test_validate_2 \
+        test_modify \
+	test_clone  \
+        test_retire \
+        add_dataset \
+        test_unclone \
+        test_unclone_slashes \
+        test_pin \
+        test_retire \
+        add_dataset \
+	test_clone_n  \
+        test_retire \
+        test_add_dataset_flist \
+	test_validate_1 \
+        test_retire \
+        test_add_dataset_flist_norename \
+	test_validate_1 \
+        test_retire \
+        test_add_dataset_directory \
+        test_add_dataset_flist_glob \
+	test_validate_1 \
+        test_retire \
         test_add_dataset_directory \
 	test_validate_1 \
         test_retire  \
-
+        add_dataset \
+        test_copy2scratch_dataset \
+        test_retire \
+        add_dataset \
+        test_archive_dataset \
+        test_retire \
+        add_dataset \
+        test_move2persistent \
+        test_retire \
+        add_dataset \
+        test_move2archive \
+        test_retire \
          
 test_utils "$@"
