@@ -384,44 +384,8 @@ test_retire() {
 
 testsuite test_utils \
 	-s setup_tests \
-        add_dataset \
-	test_validate_1 \
-	test_validate_2 \
-        test_modify \
-	test_clone  \
-        test_retire \
-        add_dataset \
-        test_unclone \
-        test_unclone_slashes \
-        test_pin \
-        test_retire \
-        add_dataset \
-	test_clone_n  \
-        test_retire \
-        test_add_dataset_flist \
-	test_validate_1 \
-        test_retire \
-        test_add_dataset_flist_norename \
-	test_validate_1 \
-        test_retire \
-        test_add_dataset_directory \
         test_add_dataset_flist_glob \
 	test_validate_1 \
-        test_retire \
-        test_add_dataset_directory \
-	test_validate_1 \
-        test_retire  \
-        add_dataset \
-        test_copy2scratch_dataset \
-        test_retire \
-        add_dataset \
-        test_archive_dataset \
-        test_retire \
-        add_dataset \
-        test_move2persistent \
-        test_retire \
-        add_dataset \
-        test_move2archive \
-        test_retire \
+        test_retire 
          
 test_utils "$@"

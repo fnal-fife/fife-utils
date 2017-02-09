@@ -404,7 +404,6 @@ testsuite test_utils \
         test_add_dataset_flist_norename \
 	test_validate_1 \
         test_retire \
-        test_add_dataset_directory \
         test_add_dataset_flist_glob \
 	test_validate_1 \
         test_retire \
