@@ -67,6 +67,38 @@ EOF
    ifdh translateConstraints "defname: $dataset" 
 }
 
+test_add_dataset_flist_glob() {
+   mkdir data
+   : > file_list
+   for i in 1 2 3 
+   do
+       fname="f${i}.txt"
+       echo "file $i" > data/$fname
+   done
+   echo `pwd`/data/f*.txt >> file_list
+
+   cat > meta.json <<EOF
+{
+ "file_type": "test", 
+ "file_format": "data", 
+ "content_status": "good", 
+ "group": "samdev", 
+ "data_tier": "log", 
+ "application": {
+  "family": "test", 
+  "name": "test", 
+  "version": "1"
+ } 
+}
+EOF
+
+   sam_add_dataset --cert=/tmp/x509up_u`id -u` -e $EXPERIMENT --directory `pwd`/data --metadata meta.json --name ${dataset}
+   #sam_add_dataset --cert=/tmp/x509up_u`id -u` -e $EXPERIMENT `pwd`/data meta.json ${dataset}
+
+   echo "dataset $dataset contains:" 
+   ifdh translateConstraints "defname: $dataset" 
+}
+
 test_add_dataset_directory() {
    mkdir data
    for i in 1 2 3 
@@ -320,6 +352,10 @@ testsuite test_utils \
 	test_clone_n  \
         test_retire \
         test_add_dataset_flist \
+	test_validate_1 \
+        test_retire \
+        test_add_dataset_directory \
+        test_add_dataset_flist_glob \
 	test_validate_1 \
         test_retire \
         test_add_dataset_directory \
