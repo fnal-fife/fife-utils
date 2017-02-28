@@ -397,7 +397,7 @@ def main():
     return
 
 
-  check_o(p, o)
+  check_options(p, o)
   
   if o.experiment:
         os.environ['EXPERIMENT']= o.experiment
