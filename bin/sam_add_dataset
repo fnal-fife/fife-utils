@@ -15,6 +15,7 @@ import re
 import time
 import socket
 import exceptions
+import grp
 #
 # old python compatability hacks
 #

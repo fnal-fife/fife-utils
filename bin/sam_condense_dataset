@@ -2,6 +2,7 @@
 
 import os
 import socket
+import grp
 
 from fife_sam_utils import log_startup, log_finish
 

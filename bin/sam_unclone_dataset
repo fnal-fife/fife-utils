@@ -4,6 +4,7 @@ from samweb_client import *
 import sys
 import os
 import re
+import grp
 import optparse
 if __name__ == '__main__':
  

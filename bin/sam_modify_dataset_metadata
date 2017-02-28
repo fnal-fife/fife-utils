@@ -3,6 +3,7 @@
 from fife_sam_utils import *
 import sys
 import os
+import grp
 from samweb_client import *
 import socket
 import optparse

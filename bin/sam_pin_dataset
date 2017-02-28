@@ -5,6 +5,7 @@ from fife_sam_utils import log_startup, log_finish
 import sys
 import os
 import optparse
+import grp
 
 def pin( ds , just_say = False, verbose = False ):
     thirtydays = 30 * 24 * 60 * 60

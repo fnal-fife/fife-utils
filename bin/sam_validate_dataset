@@ -4,6 +4,7 @@ from samweb_client import *
 from fife_sam_utils import *
 import sys
 import os
+import grp
 import optparse
 
 def validate( ds, just_say = False, prune = False, verbose = False, experiment = None ):

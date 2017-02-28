@@ -4,6 +4,7 @@ from samweb_client import *
 from fife_sam_utils import *
 import sys
 import os
+import grp
 import optparse
 from fife_sam_utils import log_startup, log_finish
 

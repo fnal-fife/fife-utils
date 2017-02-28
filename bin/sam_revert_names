@@ -5,6 +5,7 @@
 import optparse
 import os
 import sys
+import grp
 import logging
 import re
 from fife_sam_utils import has_uuid_prefix
