@@ -30,10 +30,12 @@ if __name__ == '__main__':
 
     log_startup()
 
+    experiment = os.environ.get('EXPERIMENT',os.environ.get('SAM_EXPERIMENT',grp.getgrgid(os.getgid())[0]))
+
     parser = optparse.OptionParser(usage="usage: %prog [options] \n modify metadata on all files in dataset")
     parser.add_option('-v','--verbose',   action='count')
     parser.add_option('-j','--just_say',  action='store_true', help="do not actually copy, just say what you would do")
-    parser.add_option('-e','--experiment')
+    parser.add_option('-e','--experiment', default=experiment, help='use this experiment server defaults to $SAM_EXPERIMENT if not set')
     parser.add_option('-n', '--name',     help="dataset name to modify", )
     parser.add_option('-m', '--metadata', help="metadata file with updates", )
 

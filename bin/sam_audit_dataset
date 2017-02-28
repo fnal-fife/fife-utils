@@ -95,10 +95,13 @@ def audit( ds, dest,  verbose = False, experiment = None, keeplists=None ):
 if __name__ == '__main__':
     
     log_startup()
+
+    experiment = os.environ.get('EXPERIMENT',os.environ.get('SAM_EXPERIMENT',grp.getgrgid(os.getgid())[0]))
+
     parser = optparse.OptionParser(usage="usage: %prog [options] dataset [dataset ...] \n make sure files in dataset actually exist")
     parser.add_option('-v','--verbose',   action='count')
     parser.add_option('-d','--dest',   help="location to audit")
-    parser.add_option('-e','--experiment', help="experiment name to use")
+    parser.add_option('-e','--experiment', default=experiment, help='use this experiment server defaults to $SAM_EXPERIMENT if not set')
     parser.add_option('-k','--keeplists', help="keep file lists in directory KEEPLISTS",default=None)
     parser.add_option('-n', '--name',     help="dataset name to audit", )
 

@@ -43,20 +43,6 @@ from fife_sam_utils import log_startup, log_finish
 
 
 
-def get_experiment(options):
-  logging.info('looking for experiment')
-
-  if options.experiment:
-    experiment = options.experiment
-  elif 'SAM_EXPERIMENT' in os.environ:
-    experiment = os.environ.get("SAM_EXPERIMENT")
-  else:
-    sys.exit("you must specify an experiment as an option or set $SAM_EXPERIMENT")
-
-  logging.info('experiment is %s' % experiment)
-  return experiment
-
-
 
 def getJSONMetadata(jsonFile, tag):
   logging.info('looking for json metadata from user at %s' % jsonFile)
@@ -375,6 +361,7 @@ def main():
   user = getpass.getuser()
   
   """runs program and handles command line options"""
+  experiment = os.environ.get('EXPERIMENT',os.environ.get('SAM_EXPERIMENT',grp.getgrgid(os.getgid())[0]))
 
   p = optparse.OptionParser(description='Add a group of files to SAM and create a dataset out of it.',
                             prog='sam_add_dataset',
@@ -382,7 +369,7 @@ def main():
                             usage='%prog <-f file | -d directory> [options]')
 
 
-  p.add_option('-e', '--experiment', help='use this experiment server defaults to $SAM_EXPERIMENT if not set')
+  p.add_option('-e','--experiment', default=experiment, help='use this experiment server defaults to $SAM_EXPERIMENT if not set')
   p.add_option('-u', '--user', help='default is %s' % user)
   p.add_option('-t', '--tag', help='the value for Dataset.Tag which will be used to distinguish this new dataset default format is user+date')
   p.add_option('-n', '--name', help='the dataset name default is userdataset+user+date')
@@ -396,9 +383,9 @@ def main():
   p.add_option('-v', '--verbose', action ='store_true', help='returns verbose output')
   
   
-  options, arguments = p.parse_args()
+  o, arguments = p.parse_args()
 
-  if options.verbose:
+  if o.verbose:
     logging.basicConfig(level=logging.DEBUG)
   else:
     logging.disable(logging.CRITICAL)
@@ -409,25 +396,28 @@ def main():
     return
 
 
-  check_options(p, options)
+  check_o(p, o)
   
-  experiment = get_experiment(options)
+  if o.experiment:
+        os.environ['EXPERIMENT']= o.experiment
+        os.environ['SAM_EXPERIMENT']= o.experiment
+        os.environ['IFDH_BASE_URI'] = "http://samweb.fnal.gov:8480/sam/%s/api" % o.experiment
 
-  if options.user:
-    user = options.user
+  if o.user:
+    user = o.user
 
-  cert = get_standard_certificate_path(options)
+  cert = get_standard_certificate_path(o)
   os.environ['X509_USER_PROXY'] = cert
 
   samweb = samweb_client.SAMWebClient(experiment=experiment, cert=cert)
 
-  jsonFile = options.metadata
+  jsonFile = o.metadata
   
-  datasetName = get_dataset_name(options, user)
+  datasetName = get_dataset_name(o, user)
 
-  tag = get_tag(options, datasetName)
+  tag = get_tag(o, datasetName)
 
-  logging.info('the options are %s' % options)
+  logging.info('the o are %s' % o)
   logging.info('the arguments are %s' % arguments)
   logging.info('the user is %s' % user)
 
@@ -435,17 +425,17 @@ def main():
   if 5 > 3:  #still need to figure out this condition
 
     if jsonFile:
-      universalMD = getJSONMetadata(options.metadata, tag)
+      universalMD = getJSONMetadata(o.metadata, tag)
     else:
       universalMD = {"Dataset.Tag": tag}
 
-    if options.directory:
-      if os.path.isdir(options.directory):
-        fileList = getFileListFromDir(options.directory, options.recurse)
-    elif options.file == '-':
+    if o.directory:
+      if os.path.isdir(o.directory):
+        fileList = getFileListFromDir(o.directory, o.recurse)
+    elif o.file == '-':
       fileList = getFileListFromPipe()
     else:
-      fileList = getFileList(options.file)
+      fileList = getFileList(o.file)
 
     # expand globs
     gflist = []
@@ -460,15 +450,15 @@ def main():
       
       fileMD = {}
       
-      if options.subprocess:
-        dumperObject = Sam_Metadata_Dumper_Parser(filename, samweb, options.subprocess)
+      if o.subprocess:
+        dumperObject = Sam_Metadata_Dumper_Parser(filename, samweb, o.subprocess)
         dumperObject.get_json()
         sam_metadata_dumper_metadata = dumperObject.format_json()
         fileMD.update(sam_metadata_dumper_metadata) 
         
       fileMD.update( statBuildMetaData(filename) )
 
-      if options.no_rename:
+      if o.no_rename:
           renamedFile =  {"file_name": os.path.basename(filename), "location":os.path.dirname(filename)} 
       else:
           renamedFile = renameFile(filename)
