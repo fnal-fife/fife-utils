@@ -37,6 +37,9 @@ if __name__ == '__main__':
         os.environ['EXPERIMENT']= o.experiment
         os.environ['SAM_EXPERIMENT']= o.experiment
         os.environ['IFDH_BASE_URI'] = "http://samweb.fnal.gov:8480/sam/%s/api" % o.experiment
+    else: 
+        sys.stderr.write("Error: Need either --experiment or $EXPERIMENT $SAM_EXPERIMENT in environment")
+        os.exit(1)
 
     cert = get_standard_certificate_path(o)
     os.environ['X509_USER_PROXY'] = cert
