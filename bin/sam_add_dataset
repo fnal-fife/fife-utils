@@ -54,7 +54,7 @@ def getJSONMetadata(jsonFile, tag):
     metadata = json.loads(f.read())
     f.close()
   except Exception, e:
-    sys.exit('oops: %s' % e)
+    sys.exit('failed geting json data from %s: %s' % (jsonFile, e))
 
   logging.info('extracted user metadata which is %s' % metadata)
 
@@ -85,7 +85,7 @@ def getFileList(txtFile):
         fileList.append( os.path.abspath(line.strip('\n')) )
     f.close()
   except Exception, e:
-    sys.exit('oops: %s' % e)
+    sys.exit('Failed reading file list from %s: %s' % (txtFile,e))
 
   logging.info('the python list is %s' % fileList)
   return fileList
@@ -120,7 +120,7 @@ def getFileListFromPipe():
     for line in sys.stdin:
       fileList.append( os.path.abspath(line.strip('\n')) )
   except Exception, e:
-    sys.exit('oops: %s' % e)
+    sys.exit('Failed reading file list from pipe: %s' % e)
 
   logging.info('the python list is %s' % fileList)
   return fileList
