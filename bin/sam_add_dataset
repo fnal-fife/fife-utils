@@ -391,7 +391,7 @@ def main():
   if o.verbose:
     logging.basicConfig(level=logging.DEBUG)
   else:
-    logging.disable(logging.CRITICAL)
+    logging.disable(logging.INFO)
 
   logging.info("options are: %s " % repr(o))
 
