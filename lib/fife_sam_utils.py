@@ -68,40 +68,18 @@ def get_standard_certificate_path(options):
 
   if hasattr(options,'cert') and options.cert:
     cert = options.cert
-
   else:
-    cert = os.environ.get('X509_USER_PROXY')
+    cert = os.environ.get('X509_USER_PROXY',None)
     if not cert:
-      cert = os.environ.get('X509_USER_CERT')
-      key = os.environ.get('X509_USER_KEY')
+      cert = os.environ.get('X509_USER_CERT',None)
+      key = os.environ.get('X509_USER_KEY',None)
       if cert and key: cert = (cert, key)
     if not cert:
-      #look in standard place for cert
-      proxypath = '/tmp/x509up_u%d' % os.getuid()
-      #if os.path.exists(proxypath) and is_cert_valid():
-      if os.path.exists(proxypath):
-        cert = proxypath
-    if not cert:
       logging.info('trying to create cert for you as none were found')
-      if os.environ.get('EXPERIMENT') and os.environ.get('ROLE'):
-        EXPERIMENT = os.environ.get('EXPERIMENT')
-        ROLE = os.environ.get('ROLE')
-
-        a = os.system("kx509")
-        b = os.system("voms-proxy-init \
-                      -rfc \
-                      -noregen \
-                      -voms fermilab:/fermilab/"+EXPERIMENT+"/Role="+ROLE)
-
-        if a != 0 and b != 0:
-          sys.exit('there was a problem running kx509 and or voms-proxy-init')
-        else:
-          proxypath = '/tmp/x509up_u%d' % os.getuid()
-          if os.path.exists(proxypath):
-            os.environ['X509_USER_PROXY'] = proxypath
-            cert = proxypath
-      else:
-        sys.exit("please make sure the environment variables $EXPERIMENT and $ROLE are set\nexamples of $ROLE are Analysis or Production")
+      logging.info('looking for cert with ifdh')
+      ih = ifdh.ifdh()
+      cert = ih.getProxy()
+      logging.info('ifdh returns %s' % cert)
 
   if not cert:
     sys.exit("unable to find cert and unable to make one")

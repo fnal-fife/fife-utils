@@ -45,5 +45,3 @@ Action=setup
 
     # workaround environment variables, should go away with
     # newer sam_web_client, ifdh versions.
-    EnvSetIfNotSet(SSL_CERT_DIR, /etc/grid-security/certificates)
-    EnvSetIfNotSet(X509_USER_PROXY, /tmp/x509up_u`id -u`)

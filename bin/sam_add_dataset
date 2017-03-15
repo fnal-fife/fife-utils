@@ -204,11 +204,12 @@ def declareFileLocation(samweb, fileName, location):
   except Exception, e:
     if "Location" and "not found" in str(e):
       data_disks = samweb.listDataDisks()
+      logging.error("Valid data disks are:\n")
       for item in data_disks:
-        logging.info("valid data disk: " + item['mount_point'])
-      sys.exit('oops: this is not a valid sam path')
+        logging.error(item['mount_point'])
+      sys.exit('Error: %s is not a valid sam path' % location)
     else:
-      sys.exit('oops: %s' % e)
+      raise
   logging.info('file location was declared to sam')
 
 
@@ -370,7 +371,7 @@ def main():
                             usage='%prog <-f file | -d directory> [options]')
 
 
-  p.add_option('-e','--experiment', default=experiment, help='use this experiment server defaults to $SAM_EXPERIMENT if not set')
+  p.add_option('-e','--experiment', default=experiment, help='use this experiment server defaults to $SAM_EXPERIMENT or group name if not set')
   p.add_option('-u', '--user', help='default is %s' % user)
   p.add_option('-t', '--tag', help='the value for Dataset.Tag which will be used to distinguish this new dataset default format is user+date')
   p.add_option('-n', '--name', help='the dataset name default is userdataset+user+date')
@@ -386,11 +387,13 @@ def main():
   
   o, arguments = p.parse_args()
 
+
   if o.verbose:
     logging.basicConfig(level=logging.DEBUG)
   else:
     logging.disable(logging.CRITICAL)
 
+  logging.info("options are: %s " % repr(o))
 
   if len(sys.argv) == 1:
     p.print_help()
@@ -403,6 +406,7 @@ def main():
         os.environ['EXPERIMENT']= o.experiment
         os.environ['SAM_EXPERIMENT']= o.experiment
         os.environ['IFDH_BASE_URI'] = "http://samweb.fnal.gov:8480/sam/%s/api" % o.experiment
+        experiment = o.experiment
   else: 
         sys.stderr.write("Error: Need either --experiment or $EXPERIMENT $SAM_EXPERIMENT in environment")
         os.exit(1)
@@ -475,13 +479,16 @@ def main():
       if declareFile(samweb, fileMD):
           # don't try to declare the location if you could not declare the filename
           declareFileLocation(samweb, fileMD["file_name"], fileLocation)
+      else:
+          logging.error("Could not declare file: %s " % filename)
 
     logging.info('for loop is done')
     
     
     dimension = "Dataset.Tag " + tag
-    createDefinition(samweb, datasetName, dimension)
-
+    res = createDefinition(samweb, datasetName, dimension)
+    
+    logging.info('createDefinition returned %s' % repr(res))
 
     logging.info('PROGRAM SUCCESS')
     print 'the dataset with name ' + datasetName + ' was created'
