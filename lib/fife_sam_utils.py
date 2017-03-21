@@ -195,6 +195,17 @@ class dataset:
         locs = [(x + '/' + filename) for x in locs]
         return locs
 
+    def remove_path_for(self, filename, path):
+        locs = [x for x in self.locmap.get(filename)]
+        if len(locs) >  0:
+            print "got locs: ", locs
+	    for i in range(len(locs)):
+		if locs[i][locs[i].find(':')+1:] == path:
+                    print "found match ", i
+		    del locs[i:i+1]
+		    break
+	    self.locmap[filename] = locs
+
     def get_locmap(self, fulllocflag = False):
         if self.locmap != None:
             return
@@ -598,6 +609,10 @@ def unclone( d, just_say = False, delete_match = '.*', verbose = False, experime
 		   path = full[0:4]+full[3:]
 		else:
 		   path = sampath(full)
+
+                # clean path out of our cache, so we don't count it
+                # next time.
+                d.remove_path_for(file, os.path.dirname(full))
 
 		# unlink in background, wait if we
 		# have nparallel ones running.
