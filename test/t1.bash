@@ -275,7 +275,23 @@ test_move2archive() {
     echo "after:"
     sam_validate_dataset -v --name $dataset
     locs2=`sam_validate_dataset -v --name $dataset | wc -l`
-    [ "$locs2" -gt "$locs1" ]
+    [ "$locs2" -eq "$locs1" ]
+}
+
+test_move2archive_double() {
+    echo "before:"
+    sam_validate_dataset -v --name $dataset
+    locs1=`sam_validate_dataset -v --name  $dataset | wc -l`
+    # make a *second* copy
+    ifdh mkdir ${pnfs_dir}_alt
+    sam_clone_dataset --name $dataset --dest ${pnfs_dir}_alt
+    echo "after clone:"
+    locs2=`sam_validate_dataset -v --name  $dataset | wc -l`
+    sam_move2archive_dataset -v --name $dataset --dest $pnfs_dir
+    echo "after archive:"
+    sam_validate_dataset -v --name $dataset
+    locs3=`sam_validate_dataset -v --name $dataset | wc -l`
+    [ "$locs2" -gt "$locs1"  -a "$locs3" -eq $locs1" ]
 }
 
 test_move2persistent() {
@@ -384,6 +400,11 @@ test_retire() {
 
 testsuite test_utils \
 	-s setup_tests \
+        add_dataset \
+        test_archive_double \
+        test_retire \
+
+: \
         add_dataset \
 	test_validate_1 \
 	test_validate_2 \
