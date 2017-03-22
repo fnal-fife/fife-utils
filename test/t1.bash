@@ -2,6 +2,16 @@
 
 . unittest.bash
 
+count_report_files() {
+    echo
+    echo "$1"
+    echo "----------------------------------"
+    sam_validate_dataset -v --name $dataset 2>/dev/null | tee /tmp/v$$
+    echo "----------------------------------"
+    eval "$2=`grep located: /tmp/v$$ | wc -l`"
+    rm /tmp/v$$
+}
+
 setup_tests() {
    export EXPERIMENT=samdev
    export SAM_EXPERIMENT=samdev
@@ -217,6 +227,7 @@ test_validate_1() {
     sam_validate_dataset --name $dataset
 }
 
+
 test_validate_2() {
     mv ${dataset}_f2 ${dataset}_f2_hide
     if sam_validate_dataset --name $dataset
@@ -231,121 +242,78 @@ test_validate_2() {
 
 
 test_clone() {
-    echo "before:"
-    sam_validate_dataset -v --name $dataset 2>/dev/null
-    locs1=`sam_validate_dataset -v --name  $dataset 2>/dev/null | wc -l`
-    echo "----------------------------------"
+    count_report_files "before:" locs1
     sam_clone_dataset -v -b 2 --name $dataset --dest $pnfs_dir
-    echo "----------------------------------"
-    echo "after:"
-    sam_validate_dataset -v --name $dataset 2>/dev/null
-    locs2=`sam_validate_dataset -v --name $dataset 2>/dev/null | wc -l`
+    count_report_files "after:" locs2
     [ "$locs2" -gt "$locs1" ]
 }
 
 test_clone_n() {
-    echo "before:"
-    sam_validate_dataset -v --name $dataset 2>/dev/null
-    locs1=`sam_validate_dataset -v --name  $dataset 2>/dev/null | wc -l`
-    echo "----------------------------------"
+    count_report_files "before:" locs1
     sam_clone_dataset -v -N 3 -b 2 --name $dataset --dest $pnfs_dir
-    echo "----------------------------------"
-    echo "after:"
-    sam_validate_dataset -v --name $dataset 2>/dev/null
-    locs2=`sam_validate_dataset -v --name $dataset 2>/dev/null | wc -l`
+    count_report_files "after:" locs2
     [ "$locs2" -gt "$locs1" ]
 }
 
 test_copy2scratch_dataset() {
-    echo "before:"
-    sam_validate_dataset -v --name $dataset
-    locs1=`sam_validate_dataset -v --name  $dataset | wc -l`
+    count_report_files "before:" locs1
     sam_copy2scratch_dataset -v --name $dataset --dest $pnfs_dir
-    echo "after:"
-    sam_validate_dataset -v --name $dataset
-    locs2=`sam_validate_dataset -v --name $dataset | wc -l`
+    count_report_files "after:" locs2
     [ "$locs2" -gt "$locs1" ]
 }
 
 test_move2archive() {
-    echo "before:"
-    sam_validate_dataset -v --name $dataset
-    locs1=`sam_validate_dataset -v --name  $dataset | wc -l`
+    count_report_files "before:" locs1
     sam_move2archive_dataset -v --name $dataset --dest $pnfs_dir
-    echo "after:"
-    sam_validate_dataset -v --name $dataset
-    locs2=`sam_validate_dataset -v --name $dataset | wc -l`
+    count_report_files "after:" locs2
     [ "$locs2" -eq "$locs1" ]
 }
 
 test_move2archive_double() {
-    echo "before:"
-    sam_validate_dataset -v --name $dataset
-    locs1=`sam_validate_dataset -v --name  $dataset | wc -l`
+    count_report_files "before:" locs1
     # make a *second* copy
     ifdh mkdir ${pnfs_dir}_alt
-    sam_clone_dataset --name $dataset --dest ${pnfs_dir}_alt
-    echo "after clone:"
-    locs2=`sam_validate_dataset -v --name  $dataset | wc -l`
-    sam_move2archive_dataset -v --name $dataset --dest $pnfs_dir
-    echo "after archive:"
-    sam_validate_dataset -v --name $dataset
-    locs3=`sam_validate_dataset -v --name $dataset | wc -l`
-    [ "$locs2" -gt "$locs1"  -a "$locs3" -eq $locs1" ]
+    sam_clone_dataset --name $dataset --dest ${pnfs_dir}_1
+    count_report_files "after clone:" locs2
+    sam_move2archive_dataset -v --name $dataset --dest ${pnfs_dir}_2
+    count_report_files "after archive:" locs3
+    echo counts $locs1 $locs2 $locs3
+    [ "$locs2" -gt "$locs1"  -a "$locs3" -eq "$locs1" ]
 }
 
 test_move2persistent() {
-    echo "before:"
-    sam_validate_dataset -v --name $dataset
-    locs1=`sam_validate_dataset -v --name  $dataset | wc -l`
+    count_report_files "before:" locs1
     sam_move2persistent_dataset -v --name $dataset --dest $pnfs_dir
-    echo "after:"
-    sam_validate_dataset -v --name $dataset
-    locs2=`sam_validate_dataset -v --name $dataset | wc -l`
+    count_report_files "after:" locs2
     [ "$locs2" -gt "$locs1" ]
 }
 
 test_archive_dataset() {
-    echo "before:"
-    sam_validate_dataset -v --name $dataset
-    locs1=`sam_validate_dataset -v --name  $dataset | wc -l`
+    count_report_files "before:" locs1
     # use a non-archving location for testing!
     sam_archive_dataset -v --name $dataset --dest $pnfs_dir
-    echo "after:"
-    sam_validate_dataset -v --name $dataset
-    locs2=`sam_validate_dataset -v --name $dataset | wc -l`
-    [ "$locs2" -gt "$locs1" ]
+    count_report_files "after:" locs2
+    [ "$locs2" -eq "$locs1" ]
 }
 
 test_unclone() {
-    echo "before:"
-    sam_validate_dataset -v --name $dataset
-    locs1=`sam_validate_dataset -v --name $dataset 2>/dev/null | wc -l`
+    count_report_files "before:" locs1
     sam_clone_dataset -v --name $dataset --dest $pnfs_dir
-    echo "after:"
-    sam_validate_dataset -v --name $dataset
-    locs2=`sam_validate_dataset -v --name $dataset 2>/dev/null | wc -l`
+    count_report_files "after clone:" locs2
     sam_unclone_dataset -v --name $dataset --dest $pnfs_dir/
-    echo "after unclone:"
-    sam_validate_dataset -v --name $dataset
-    locs3=`sam_validate_dataset -v --name $dataset 2>/dev/null | wc -l`
-    [ "$locs2" -gt "$locs1" -a "$locs3" -lt "$locs2" ]
+    count_report_files "after unclone:" locs3
+    [ "$locs2" -gt "$locs1" -a "$locs3" -lt "$locs2" -a "$locs1" -eq "$locs3" ]
 }
+
 test_unclone_slashes() {
     # same as the other, but extra slashes in unclone --dest param
-    echo "before:"
-    sam_validate_dataset -v --name $dataset
-    locs1=`sam_validate_dataset -v --name $dataset | wc -l`
+    count_report_files "before:" locs1
     sam_clone_dataset -v --name $dataset --dest $pnfs_dir
-    echo "after:"
-    sam_validate_dataset -v --name $dataset
-    locs2=`sam_validate_dataset -v --name $dataset | wc -l`
+    count_report_files "after:" locs2
     sdest=`echo $pnfs_dir | sed -e 's|nova/|nova//|'`
     sam_unclone_dataset --name $dataset --dest $sdest
-    echo "after unclone:"
-    sam_validate_dataset -v --name $dataset
-    locs3=`sam_validate_dataset -v --name $dataset | wc -l`
-    [ "$locs2" -gt "$locs1" -a "$locs3" -lt "$locs2" ]
+    count_report_files "after unclone:" locs3
+    [ "$locs2" -gt "$locs1" -a "$locs3" -lt "$locs2" -a "$locs1" -eq "$locs3" ]
 }
 
 test_modify() {
@@ -365,17 +333,13 @@ test_pin() {
 
 test_split_clone() {
     proj="${USER}_clonetest_$$_`date +%s`"
-    echo "before:"
-    sam_validate_dataset -v --name $dataset 2>/dev/null
-    locs1=`sam_validate_dataset -v --name  $dataset 2>/dev/null | wc -l`
+    count_report_files "before:" locs1
     echo "----------------------------------"
     sam_clone_dataset -v --project=${proj} --just-start-project -b 2 --name $dataset --dest $pnfs_dir
     echo "----------------------------------"
     sam_clone_dataset -v --project=${proj} --connect-project    -b 2 --name $dataset --dest $pnfs_dir
     echo "----------------------------------"
-    echo "after:"
-    sam_validate_dataset -v --name $dataset 2>/dev/null
-    locs2=`sam_validate_dataset -v --name $dataset 2>/dev/null | wc -l`
+    count_report_files "after:" locs2
     [ "$locs2" -gt "$locs1" ]
 }
 
@@ -400,11 +364,6 @@ test_retire() {
 
 testsuite test_utils \
 	-s setup_tests \
-        add_dataset \
-        test_archive_double \
-        test_retire \
-
-: \
         add_dataset \
 	test_validate_1 \
 	test_validate_2 \
@@ -443,5 +402,9 @@ testsuite test_utils \
         add_dataset \
         test_move2archive \
         test_retire \
+        add_dataset \
+        test_move2archive_double \
+        test_retire \
+
          
 test_utils "$@"

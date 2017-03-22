@@ -91,6 +91,9 @@ class dataset:
     def __init__( self, name ):
         self.ifdh_handle = ifdh.ifdh()   
         self.name = name
+        self.flush()
+
+    def flush(self):
         self.flist = None
         self.dircache = {}
         self.locmap = None
@@ -129,12 +132,21 @@ class dataset:
         return res
 
     def location_has_file(self, fullpath):
+        if self.cached_location_has_file(fullpath):
+            return 1
+        else:
+            #print "double-checking: " , fullpath
+            res = self.ifdh_handle.ls(fullpath, 0, '')
+            return len(res) != 0
+
+    def cached_location_has_file(self, fullpath):
         base = self.get_base_dir(fullpath)
         if not self.dircache.has_key(base):
             fl = self.normalize_list(self.ifdh_handle.ls(base, 10, ''))
             #print "got file list: ", fl
             self.dircache[base] = set(fl)
         return fullpath in self.dircache[base]
+
 
     def get_flist( self ):
         if self.flist == None:
@@ -453,6 +465,36 @@ def copy_and_declare(d, cpargs, locargs, dest, subdirf, samweb, just_say, verbos
                     res = 1
     return res
 
+def validate( ds, just_say = False, prune = False, verbose = False, experiment = None ):
+    samweb = SAMWebClient(experiment=experiment)
+    res=0
+
+    for p in ds.fullpath_iterator(fulllocflag = True):
+        sp = sampath(p)
+        if just_say and not prune:
+            print "I would: ifdh ls %s 0" % sp
+        else:
+            if not ds.location_has_file( sp ):
+                print "missing: %s" % sp
+                res = 1
+                if prune:
+                    if just_say:
+                       print "I would remove location: %s for %s " % (dirname(p), basename(p))
+                    else:
+                        samweb.removeFileLocation(basename(p), dirname(p))
+                        print "-- location removed"
+            else:
+                if verbose: print "located: %s" % p
+
+    for f in ds.file_iterator():
+        l = ds.ifdh_handle.locateFile(f)
+        if len(l) == 0:
+           print "file %s has 0 locations"
+           res = 1
+
+    return res
+
+
 def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 1, verbose = False, experiment = None, ncopies=1, just_start_project = False, connect_project = False , projname = None, paranoid = False, intermed = False, getawscreds = False):
   
     if getawscreds:
@@ -593,6 +635,7 @@ def unclone( d, just_say = False, delete_match = '.*', verbose = False, experime
     for full in d.fullpath_iterator(True):
         if verbose: print "looking at full path:", full
         spath = sampath(full)
+        if verbose: print "looking at sampath:", spath
         file = basename(full)
         if just_say:
             if re.match(delete_match, full) or re.match(delete_match, spath):
@@ -601,7 +644,9 @@ def unclone( d, just_say = False, delete_match = '.*', verbose = False, experime
         else:
             if re.match(delete_match, full) or re.match(delete_match, spath):
                 if verbose: print "matches: " , delete_match
-                if len(d.get_paths_for(file)) == 1:
+                pl = d.get_paths_for(file)
+                if verbose: print "paths: " , pl
+                if len(pl) == 1:
                     print "NOT removing %s, it is the only location!" % full
                     continue
 		if verbose: print "removing: " , full

@@ -7,34 +7,6 @@ import os
 import grp
 import optparse
 
-def validate( ds, just_say = False, prune = False, verbose = False, experiment = None ):
-    samweb = SAMWebClient(experiment=experiment)
-    res=0
-
-    for p in ds.fullpath_iterator(fulllocflag = True):
-        sp = sampath(p)
-        if just_say and not prune:
-            print "I would: ifdh ls %s 0" % sp
-        else:
-            if not ds.location_has_file( sp ):
-                print "missing: %s" % sp
-                res = 1
-                if prune:
-                    if just_say:
-                       print "I would remove location: %s for %s " % (dirname(p), basename(p))
-                    else:
-                        samweb.removeFileLocation(basename(p), dirname(p))
-                        print "-- location removed"
-            else:
-                if verbose: print "located: %s" % p
-
-    for f in ds.file_iterator():
-        l = ds.ifdh_handle.locateFile(f)
-        if len(l) == 0:
-           print "file %s has 0 locations"
-           res = 1
-
-    return res
 
 
 if __name__ == '__main__':

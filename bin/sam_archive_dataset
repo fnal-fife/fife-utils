@@ -6,7 +6,7 @@ import os
 
 import ifdh
 import os.path
-from fife_sam_utils import clone, fourdeep, unclone, dataset, get_standard_certificate_path
+from fife_sam_utils import clone, fourdeep, unclone, dataset, get_standard_certificate_path, validate
 from fife_sam_utils import log_startup, log_finish
 
 def check_dest(dest, default_dest):
@@ -124,7 +124,10 @@ if __name__ == '__main__':
         
     clone(d, o.dest, subdirf = o.dirfunc, just_say = o.just_say, batch_size = o.batch_size, verbose = o.verbose, experiment=o.experiment, ncopies = o.ncopies, paranoid = o.paranoid, getawscreds = o.getawscreds, intermed = o.intermed)
 
+    validate(d,prune=True, verbose = o.verbose)
+
     if clean_others:
-        unclone(d, delete_match = '(?!%s)' % o.dest, verbose = o.verbose, experiment = o.experiment) 
+        d.flush()  # forget what you thought you knew about locations, etc.
+        unclone(d, delete_match = '(?![a-z]*:*%s/)' % o.dest, verbose = o.verbose, experiment = o.experiment) 
 
     log_finish("Success")
