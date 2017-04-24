@@ -39,7 +39,7 @@ except:
        uuid4 = staticmethod(uuid4)
           
 #from fife_sam_utils import samprefix, is_cert_valid, has_uuid_prefix
-from fife_sam_utils import samprefix, has_uuid_prefix, get_standard_certificate_path
+from fife_sam_utils import samprefix, has_uuid_prefix, strip_uuids, get_standard_certificate_path
 from fife_sam_utils import log_startup, log_finish
 
 
@@ -142,13 +142,18 @@ def declareFile(samweb, metadata):
 
 
 
-def renameFile(file):
+def renameFile(file, replace_uuids = False):
 
   fileName = os.path.basename(file)
   dirName = os.path.dirname(file)
 
   if not has_uuid_prefix(fileName):
+
+
     logging.info('trying to rename %s on disk with a uuid' % file)
+
+    if replace_uuids:
+      filename = strip_uuids(fileName)
 
     uniquifier = str(uuid.uuid4()) + '-'
 
@@ -382,6 +387,7 @@ def main():
   p.add_option('-s',  '--subprocess', help='execute a child program in a new process to extract metadata only sam_metadata_dumper currently supported')
   p.add_option('-c', '--cert', help='x509 certificate for authentication. If not specified, use $X509_USER_PROXY, $X509_USER_CERT/$X509_USER_KEY or standard grid proxy location')
   p.add_option('--no-rename', action='store_true', default = False, help = 'Do not rename files to ensure uniqueness')
+  p.add_option('--replace-uuids', action='store_true', default = False, help = 'Replace existing uuid strings to ensure uniqueness')
   p.add_option('-v', '--verbose', action ='store_true', help='returns verbose output')
   
   
@@ -453,8 +459,23 @@ def main():
     fileList = gflist
 
     logging.info('entering for loop to process all the files to create the dataset')
+    if o.no_rename:
+        fname_limit = 154
+    else
+        fname_limit = 200 
+
+    lengths_ok = True
+    for filename in fileList:
+      if len(os.path.basename(filename)) > fname_limit:
+          logging.error("file name too long: %s" % os.path.basename(filename))
+          lengths_ok = False
+
+    if not lengths_ok:
+      exit(1)
+
     for filename in fileList:
       logging.info('processing %s' % filename)
+
       
       fileMD = {}
       
@@ -469,7 +490,7 @@ def main():
       if o.no_rename:
           renamedFile =  {"file_name": os.path.basename(filename), "location":os.path.dirname(filename)} 
       else:
-          renamedFile = renameFile(filename)
+          renamedFile = renameFile(filename, o.replace_uuids)
 
       fileLocation = renamedFile.pop("location")
             

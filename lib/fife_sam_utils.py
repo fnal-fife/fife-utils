@@ -324,8 +324,13 @@ def canonical(uri):
 
     return uri      
 
+UUID_RE=r'[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}'
+
 def has_uuid_prefix(s):
-    return bool(re.match(r'[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}',s))
+    return bool(re.match(UUID_RE,s))
+
+def replace_uuids(s):
+    return re.sub(UUID_RE,'',s)
 
 def check_destination(samweb,dest):
     # /pnfs is officially okay
