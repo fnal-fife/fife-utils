@@ -494,7 +494,7 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
     for f in ds.file_iterator():
         l = ds.ifdh_handle.locateFile(f)
         if len(l) == 0:
-           print "file %s has 0 locations"
+           print "file %s has 0 locations" % f
            res = 1
 
     return res

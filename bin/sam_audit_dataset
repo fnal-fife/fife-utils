@@ -53,15 +53,15 @@ def audit( ds, dest,  verbose = False, experiment = None, keeplists=None ):
         found = 0
         for sp in spl:
             #print "checking %s startswith %s" % (sp, dest)
-	    if sp.startswith(dest):
+            if sp.startswith(dest):
                 if keeplists != None:
                     loclist.write(sp+"\n")
                 found = 1
-		num_declared_at_dest += 1
-		if  sp in full_set:
-		    num_present_declared_at_dest += 1
-		    if verbose: print "located: %s" % p
-		else:
+                num_declared_at_dest += 1
+                if  sp in full_set:
+                    num_present_declared_at_dest += 1
+                    if verbose: print "located: %s" % p
+                else:
                     if f in fnameset:
                         num_present_wrong_loc += 1
                         for pp in full_list:
@@ -69,8 +69,8 @@ def audit( ds, dest,  verbose = False, experiment = None, keeplists=None ):
                                 if keeplists != None:
                                     wronglist.write("wrong path: %s at %s not %s" % ( f, pp, sp))
                                 if verbose: print "wrong path: %s at %s not %s" % ( f, pp, sp)
-		    if verbose: print "missing: %s" % sp
-		    res = 1
+                    if verbose: print "missing: %s" % sp
+                    res = 1
         if found == 0:
            if keeplists != None:
                misslist.write(f+"\n")
@@ -99,7 +99,7 @@ if __name__ == '__main__':
 
     experiment = os.environ.get('EXPERIMENT',os.environ.get('SAM_EXPERIMENT',grp.getgrgid(os.getgid())[0]))
 
-    parser = optparse.OptionParser(usage="usage: %prog [options] dataset [dataset ...] \n make sure files in dataset actually exist")
+    parser = optparse.OptionParser(usage="usage: %prog [options] --name dataset --dest location\n Audit all files at location to see what files are and are not in dataset")
     parser.add_option('-v','--verbose',   action='count')
     parser.add_option('-d','--dest',   help="location to audit")
     parser.add_option('-e','--experiment', default=experiment, help='use this experiment server defaults to $SAM_EXPERIMENT if not set')
@@ -123,8 +123,11 @@ if __name__ == '__main__':
         parser.error("expected --name dataset-name")
         exit(1)
 
-    res = audit(dataset(o.name), dest = o.dest, verbose = o.verbose , experiment = o.experiment, keeplists= o.keeplists)
+    if not o.dest:
+        parser.error("expected --dest path")
+        exit(1)
 
+    es = audit(dataset(o.name), dest = o.dest, verbose = o.verbose , experiment = o.experiment, keeplists= o.keeplists)
     if res == 0:
         log_finish("Success")
     else:
