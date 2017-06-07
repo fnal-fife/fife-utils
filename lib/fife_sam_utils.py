@@ -493,19 +493,21 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
                 if verbose: print "located: %s" % p
 
             if locality:
-                if not p.startswith("/pnfs"):
+               
+                if not p.startswith("enstore:/pnfs"):
                      continue
+                p = p[8:]
 
                 try:
                     d = os.path.dirname(p) 
                     f = os.path.basename(p) 
                 
                     fd = open( "%s/.(get)(%s)(locality)" % (d, f), "r")
-                    loc = fd.read()
+                    loc = fd.read().strip()
                     fd.close()
                     if verbose:
                         print "locality: %s\t%s" % (loc, p)
-                    counts[loc] = counts.get[loc,0] + 1
+                    counts[loc] = counts.get(loc,0) + 1
                 except:
                     pass
        

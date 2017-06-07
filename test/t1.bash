@@ -285,7 +285,7 @@ test_move2persistent() {
     count_report_files "before:" locs1
     sam_move2persistent_dataset -v --name $dataset --dest $pnfs_dir
     count_report_files "after:" locs2
-    [ "$locs2" -gt "$locs1" ]
+    [ "$locs2" -eq "$locs1" ]
 }
 
 test_archive_dataset() {
