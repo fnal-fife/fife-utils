@@ -470,10 +470,11 @@ def copy_and_declare(d, cpargs, locargs, dest, subdirf, samweb, just_say, verbos
                     res = 1
     return res
 
-def validate( ds, just_say = False, prune = False, verbose = False, experiment = None ):
+def validate( ds, just_say = False, prune = False, verbose = False, experiment = None , locality = False):
     samweb = SAMWebClient(experiment=experiment)
     res=0
 
+    counts = {}
     for p in ds.fullpath_iterator(fulllocflag = True):
         sp = sampath(p)
         if just_say and not prune:
@@ -490,6 +491,28 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
                         print "-- location removed"
             else:
                 if verbose: print "located: %s" % p
+
+            if locality:
+                if not p.startswith("/pnfs"):
+                     continue
+
+                try:
+                    d = os.path.dirname(p) 
+                    f = os.path.basename(p) 
+                
+                    fd = open( "%s/.(get)(%s)(locality)" % (d, f), "r")
+                    loc = fd.read()
+                    fd.close()
+                    if verbose:
+                        print "locality: %s\t%s" % (loc, p)
+                    counts[loc] = counts.get[loc,0] + 1
+                except:
+                    pass
+       
+    if locality:
+       print "locality counts:"
+       for k in counts.keys():
+            print "%s: %d" % (k, counts[k])
 
     for f in ds.file_iterator():
         l = ds.ifdh_handle.locateFile(f)
