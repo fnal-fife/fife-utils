@@ -494,7 +494,7 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
 
             if locality:
                
-                if not p.startswith("enstore:/pnfs"):
+                if not p.startswith("enstore:/pnfs") or not p.startswith("dcache:/pnfs"):
                      continue
                 p = p[8:]
 

@@ -240,6 +240,12 @@ test_validate_2() {
     return $res
 }
 
+test_validate_locality() {
+    sam_clone_dataset -v -b 2 --name $dataset --dest $pnfs_dir
+    sam_validate_dataset -v --name $dataset --locality > out
+    sam_unclone_dataset -v -b 2 --name $dataset --dest $pnfs_dir
+    grep Locality out
+}
 
 test_clone() {
     count_report_files "before:" locs1
