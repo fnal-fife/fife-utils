@@ -252,6 +252,8 @@ exit
         if self.options.prescript:
             if self.options.debug: sys.stderr.write("prescripts:\n")
             for s in self.options.prescript:
+                if os.access(s, os.R_OK) and not os.access(s, os.X_OK):
+                    os.chmod(s,0o755)
                 if self.options.debug: sys.stderr.write("prescript: %s\n" % s)
                 cmdlist.append(s)
 	    cmd = "\n".join(cmdlist)
@@ -260,6 +262,9 @@ exit
         if self.options.prescript_unquote:
             if self.options.debug: sys.stderr.write("prescripts:\n")
             for s in self.options.prescript_unquote:
+                sbase = s.split(' ')[0]
+                if os.access(sbase, os.R_OK) and not os.access(sbase, os.X_OK):
+                    os.chmod(sbase,0o755)
                 if self.options.debug: sys.stderr.write("prescript: %s\n" % s)
                 cmdlist.append(urllib.unquote(s))
 	    cmd = "\n".join(cmdlist)
@@ -344,6 +349,8 @@ exit
         if self.options.postscript:
             if self.options.debug: sys.stderr.write("postscripts:\n")
             for s in self.options.postscript:
+                if os.access(s, os.R_OK) and not os.access(s, os.X_OK):
+                    os.chmod(s,0o755)
                 if self.options.debug: sys.stderr.write("postscript: %s\n" % s)
                 cmdlist.append(urllib.unquote(s))
 	    cmd = "\n".join(cmdlist)
@@ -352,6 +359,9 @@ exit
         if self.options.postscript_unquote:
             if self.options.debug: sys.stderr.write("postscripts:\n")
             for s in self.options.postscript_unquote:
+                sbase = s.split(' ')[0]
+                if os.access(sbase, os.R_OK) and not os.access(sbase, os.X_OK):
+                    os.chmod(sbase,0o755)
                 if self.options.debug: sys.stderr.write("postscript: %s\n" % s)
                 cmdlist.append(urllib.unquote(s))
 	    cmd = "\n".join(cmdlist)
