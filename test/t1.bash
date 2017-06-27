@@ -240,6 +240,12 @@ test_validate_2() {
     return $res
 }
 
+test_validate_locality() {
+    sam_clone_dataset -v -b 2 --name $dataset --dest $pnfs_dir
+    sam_validate_dataset -v --name $dataset --locality > out
+    sam_unclone_dataset -v -b 2 --name $dataset --dest $pnfs_dir
+    grep Locality out
+}
 
 test_clone() {
     count_report_files "before:" locs1
@@ -285,7 +291,7 @@ test_move2persistent() {
     count_report_files "before:" locs1
     sam_move2persistent_dataset -v --name $dataset --dest $pnfs_dir
     count_report_files "after:" locs2
-    [ "$locs2" -gt "$locs1" ]
+    [ "$locs2" -eq "$locs1" ]
 }
 
 test_archive_dataset() {

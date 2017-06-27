@@ -39,7 +39,7 @@ except:
        uuid4 = staticmethod(uuid4)
           
 #from fife_sam_utils import samprefix, is_cert_valid, has_uuid_prefix
-from fife_sam_utils import samprefix, has_uuid_prefix, strip_uuids, get_standard_certificate_path
+from fife_sam_utils import samprefix, has_uuid_prefix, replace_uuids, get_standard_certificate_path
 from fife_sam_utils import log_startup, log_finish
 
 
@@ -142,7 +142,7 @@ def declareFile(samweb, metadata):
 
 
 
-def renameFile(file, replace_uuids = False):
+def renameFile(file, do_replace_uuids = False):
 
   fileName = os.path.basename(file)
   dirName = os.path.dirname(file)
@@ -152,8 +152,8 @@ def renameFile(file, replace_uuids = False):
 
     logging.info('trying to rename %s on disk with a uuid' % file)
 
-    if replace_uuids:
-      filename = strip_uuids(fileName)
+    if do_replace_uuids:
+      filename = replace_uuids(fileName)
 
     uniquifier = str(uuid.uuid4()) + '-'
 
@@ -461,7 +461,7 @@ def main():
     logging.info('entering for loop to process all the files to create the dataset')
     if o.no_rename:
         fname_limit = 154
-    else
+    else:
         fname_limit = 200 
 
     lengths_ok = True
