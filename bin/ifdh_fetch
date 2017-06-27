@@ -85,9 +85,19 @@ for f in "$@"
 do
   
    flocs=`ifdh locateFile $f gsiftp`
-   eflocs=`echo "$flocs" | grep fndca1 | tail -1`
-   bflocs=`echo "$flocs" | grep bestman | head -1`
-   if [ x$eflocs != x ]
+   pflocs=`echo "$flocs" | grep '://fndca1.*/persistent/' | tail -1`
+   sflocs=`echo "$flocs" | grep '://fndca1.*/scratch/' | tail -1`
+   eflocs=`echo "$flocs" | grep '://fndca1' | tail -1`
+   bflocs=`echo "$flocs" | grep '://fg-bestman1' | head -1`
+   if [ x$pflocs != x ]
+   then
+       echo "found file on persistent dcache, using dcache gridftp"
+       src="$pflocs"
+   elif [ x$sflocs != x ]
+   then
+       echo "found file on dcache scratch, using dcache gridftp"
+       src="$sflocs"
+   elif [ x$eflocs != x ]
    then
        echo "found file on enstore, using dcache gridftp"
        src="$eflocs"
