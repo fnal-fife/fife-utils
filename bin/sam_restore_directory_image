@@ -6,7 +6,7 @@ import os
 import time
 import ifdh
 import samweb_client
-from fife_sam_utils import dataset, sampath
+from fife_sam_utils import dataset, sampath, get_standard_certificate_path
 from fife_sam_utils import log_startup, log_finish
 import subprocess
 

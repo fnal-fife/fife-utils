@@ -368,8 +368,25 @@ test_retire() {
         )
 }
 
+test_archive_restore_dir() {
+    cd $workdir
+    mkdir mytestdir
+    for f in a b c d; do echo foo $f >> mytestdir/$f; done
+    sam_archive_directory_image --dest=$pnfs_dir --src=$workdir/mytestdir
+    rm -rf reftestdir
+    mv mytestdir reftestdir
+    listout=`sam_restore_directory_image --list | grep $workdir/mytestdir | tail -1`
+    set : $listout
+    sam_restore_directory_image --restore=`pwd`/mytestdir --date=$2
+    diff --recursive mytestdir reftestdir && [ "x$listout" != "x" ]
+}
+
 testsuite test_utils \
 	-s setup_tests \
+        test_archive_restore_dir \
+
+
+: \
         add_dataset \
 	test_validate_1 \
 	test_validate_2 \
