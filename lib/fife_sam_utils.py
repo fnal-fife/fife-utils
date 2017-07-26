@@ -107,11 +107,11 @@ class dataset:
         # if it is a really deep location, start 5 subdirs in
         # otherwise 1 subdir in
         if nslashes > 6:
-           trim = nslashes - 5
+           trim = 3
         elif nslashes > 4:
-           trim = nslashes - 3
+           trim = 2
         else:
-           trim = nslashes - 1
+           trim = 1
         base = fullpath
         for i in range(trim):
             base = base[:base.rfind('/')]
