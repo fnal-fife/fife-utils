@@ -76,13 +76,13 @@ def getJSONMetadata(jsonFile, tag):
 def checkfiletype(line):
     """ check first line of a file to see if its a data file or something """
     if line[:5] == 'root\0':
-        raise TypeError("Argument to -f must be a *text* file listing file names, not a .root file")
+        raise TypeError("ERROR: Argument to -f must be a *text* file listing file names, not a .root file")
     if line[:10] == '#include "':
-        raise TypeError("Argument to -f must be a text file listing file names, not a .fcl or .c file")
+        raise TypeError("ERROR: Argument to -f must be a text file listing file names, not a .fcl or .c file")
     try: 
         line.encode("ascii")
     except:
-        raise TypeError("Argument to -f must be a text file listing file names, not a binary file")
+        raise TypeError("ERROR: Argument to -f must be a text file listing file names, not a binary file")
 
 
 def getFileList(txtFile):
