@@ -76,16 +76,19 @@ def getJSONMetadata(jsonFile, tag):
 def checkfiletype(line):
     """ check first line of a file to see if its a data file or something """
     if line[:5] == 'root\0':
-        raise LogicError("Argument to -f must be a *text* file listing file names, not a .root file")
+        raise TypeError("Argument to -f must be a *text* file listing file names, not a .root file")
     if line[:10] == '#include "':
-        raise LogicError("Argument to -f must be a text file listing file names, not a .fcl or .c file")
+        raise TypeError("Argument to -f must be a text file listing file names, not a .fcl or .c file")
+    try: 
+        line.encode("ascii")
+    except:
+        raise TypeError("Argument to -f must be a text file listing file names, not a binary file")
 
 
 def getFileList(txtFile):
   logging.info('trying to create a python list of files from file %s' % txtFile)
   fileList = []
   
-  first = True
   try:
     f = open(txtFile)
     fileList = getFileListCommon(f)
@@ -107,12 +110,13 @@ def getFileListFromPipe():
   return fileList
 
 def getFileListCommon(f):
+    first = True
     for line in f:
 
       # check for users doing "sam_add_datset -f foo.root"
       if first:
          first = False
-         checkfileytpe(line)
+         checkfiletype(line)
 
       if line[0] != '#':
         fileList.append( os.path.abspath(line.strip('\n')) )
