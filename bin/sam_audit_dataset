@@ -127,7 +127,7 @@ if __name__ == '__main__':
         parser.error("expected --dest path")
         exit(1)
 
-    es = audit(dataset(o.name), dest = o.dest, verbose = o.verbose , experiment = o.experiment, keeplists= o.keeplists)
+    res = audit(dataset(o.name), dest = o.dest, verbose = o.verbose , experiment = o.experiment, keeplists= o.keeplists)
     if res == 0:
         log_finish("Success")
     else:

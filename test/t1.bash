@@ -227,6 +227,26 @@ test_validate_1() {
     sam_validate_dataset --name $dataset
 }
 
+test_audit_1() {
+    sam_audit_dataset --name $dataset --dest=$workdir
+}
+
+test_audit_2() {
+    sam_audit_dataset --name $dataset --dest=$workdir | tee /tmp/sadout$$
+    echo "------"
+    grep "Present and declared: 9" /tmp/sadout$$
+}
+
+test_audit_3() {
+    mkdir $workdir/hide
+    mv *_f2 $workdir/hide
+    sam_audit_dataset --name $dataset --dest=$workdir | tee /tmp/sadout$$
+    mv $workdir/hide/*_f2 .
+    echo "------"
+    grep "Present and declared: 8" /tmp/sadout$$ &&
+        grep "Present at wrong location: 1" /tmp/sadout$$ 
+}
+
 
 test_validate_2() {
     mv ${dataset}_f2 ${dataset}_f2_hide
@@ -384,11 +404,11 @@ test_archive_restore_dir() {
 testsuite test_utils \
 	-s setup_tests \
         test_archive_restore_dir \
-
-
-: \
         add_dataset \
 	test_validate_1 \
+	test_audit_1 \
+	test_audit_2 \
+	test_audit_3 \
 	test_validate_2 \
         test_modify \
 	test_clone  \

@@ -494,9 +494,10 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
 
             if locality:
                
-                if not p.startswith("enstore:/pnfs") or not p.startswith("dcache:/pnfs"):
+                if not p.startswith("enstore:/pnfs") and not p.startswith("dcache:/pnfs") and not p.startswith("/pnfs"):
                      continue
-                p = p[8:]
+
+                p = p[p.find(':/')+1:]
 
                 try:
                     d = os.path.dirname(p) 
