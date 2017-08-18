@@ -662,6 +662,8 @@ def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 1, verbose =
 
 def unclone( d, just_say = False, delete_match = '.*', verbose = False, experiment = '', nparallel = 1 , keep = False):
     proccount = 0
+    fail = 0
+    succeed = 0
     samweb = SAMWebClient(experiment = experiment)
     for full in d.fullpath_iterator(True):
         if verbose: print "looking at full path:", full
@@ -712,8 +714,10 @@ def unclone( d, just_say = False, delete_match = '.*', verbose = False, experime
 			    samweb.removeFileLocation(file, loc)
 		        else:
 			    print "Removing ", path, " failed."
+                            os._exit(1)
 		    except:
 			traceback.print_exc()
+                        os._exit(1)
 		    os._exit(0)
 		elif -1 == pid:
 		    print "Cannot fork!"
@@ -725,6 +729,10 @@ def unclone( d, just_say = False, delete_match = '.*', verbose = False, experime
 		    while proccount >= nparallel:
 		       (wpid, wstat) = os.wait()
 		       #print "child ", wpid, " completed status ", wstat
+                       if wstat != 0:
+                           fail = fail + 1
+                       else:
+                           succeed = succeed + 1
 		       proccount = proccount - 1
     else:
 	pass
@@ -733,8 +741,20 @@ def unclone( d, just_say = False, delete_match = '.*', verbose = False, experime
     # clean up rm threads
     while proccount > 0:
        (wpid, wstat) = os.wait()
+       if wstat != 0:
+           fail = fail + 1
+       else:
+           succeed = succeed + 1
        #print "child ", wpid, " completed status ", wstat
        proccount = proccount - 1
+
+    if fail > 0:
+       print "Error: %d unlink/undeclares failed" % fail
+
+    if succeed == 0:
+       print "Notice: no matching files found"
+      
+    return fail
 
 if __name__ == '__main__':
     os.environ['EXPERIMENT'] = 'nova'

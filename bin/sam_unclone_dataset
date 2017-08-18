@@ -44,6 +44,9 @@ if __name__ == '__main__':
 
     o.dest = canonical(o.dest)
 
-    unclone(dataset(o.name), just_say = o.just_say, delete_match = o.dest, verbose = o.verbose, experiment = o.experiment, nparallel = int(o.ncopies), keep = o.keep)
+    res = unclone(dataset(o.name), just_say = o.just_say, delete_match = o.dest, verbose = o.verbose, experiment = o.experiment, nparallel = int(o.ncopies), keep = o.keep)
 
-    log_finish("Success")
+    if res == 0:
+        log_finish("Success")
+    else:
+        log_finish("Failed")
