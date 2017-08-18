@@ -711,10 +711,9 @@ def unclone( d, just_say = False, delete_match = '.*', verbose = False, experime
 		        loc = dirname(full)
 			if res == 0:
 		            if verbose: print "removing location: " , loc , " for " , file
-			    samweb.removeFileLocation(file, loc)
 		        else:
 			    print "Removing ", path, " failed."
-                            os._exit(1)
+                        samweb.removeFileLocation(file, loc)
 		    except:
 			traceback.print_exc()
                         os._exit(1)
