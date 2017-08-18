@@ -87,7 +87,6 @@ def checkfiletype(line):
 
 def getFileList(txtFile):
   logging.info('trying to create a python list of files from file %s' % txtFile)
-  fileList = []
   
   try:
     f = open(txtFile)
@@ -111,6 +110,7 @@ def getFileListFromPipe():
 
 def getFileListCommon(f):
     first = True
+    fileList = []
     for line in f:
 
       # check for users doing "sam_add_datset -f foo.root"
