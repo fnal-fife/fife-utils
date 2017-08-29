@@ -724,28 +724,7 @@ def unclone( d, just_say = False, delete_match = '.*', verbose = False, experime
 		pid = os.fork()
 		if 0 == pid:
                     # child
-<<<<<<< HEAD
-		    try:
-                        if keep:
-                            res = 0
-                        else:
-			    res = d.ifdh_handle.rm(path, '')
-		    except:
-			traceback.print_exc()
-		    try:
-		        loc = dirname(full)
-			if res == 0:
-		            if verbose: print "removing location: " , loc , " for " , file
-		        else:
-			    print "Removing ", path, " failed."
-                        samweb.removeFileLocation(file, loc)
-		    except:
-			traceback.print_exc()
-                        os._exit(1)
-		    os._exit(0)
-=======
                     os.exit(clean_one(d,path))
->>>>>>> b7f79c79f0b55ac0d4062e34a079c7d765ac23bc
 		elif -1 == pid:
                     # fork failed...
 		    print "Cannot fork!"
