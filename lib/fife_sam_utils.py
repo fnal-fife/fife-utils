@@ -659,6 +659,32 @@ def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 1, verbose =
     if len(kidlist) > 1 or int(ncopies) == 1:
        d.ifdh_handle.endProject(purl)
 
+def clean_one(d, path, keep):
+    samweb = SAMWebClient(experiment = experiment)
+    loc = dirname(full)
+    res = 5
+    try:
+        if keep:
+            res = 0
+        else:
+            res = d.ifdh_handle.rm(path, '')
+    except:
+        err = d.ifdh_handle.getErrorText()
+        if err.find("No such file") >= 0 or err.find("No match") >= 0:
+            print("rm failed due to missing file, ignoring...")
+            res = 0
+        else:
+            res = 2
+
+    if res == 0:
+        try:
+            samweb.removeFileLocation(file, loc)
+            res = 0
+        except:
+            traceback.print_exc()
+            res = 3
+
+    return res
 
 def unclone( d, just_say = False, delete_match = '.*', verbose = False, experiment = '', nparallel = 1 , keep = False):
     proccount = 0
@@ -697,31 +723,12 @@ def unclone( d, just_say = False, delete_match = '.*', verbose = False, experime
 
 		pid = os.fork()
 		if 0 == pid:
-		    samweb = SAMWebClient(experiment = experiment)
-  		    res = -1
                     # child
-		    try:
-                        if keep:
-                            res = 0
-                        else:
-			    res = d.ifdh_handle.rm(path, '')
-		    except:
-			traceback.print_exc()
-		    try:
-		        loc = dirname(full)
-			if res == 0:
-		            if verbose: print "removing location: " , loc , " for " , file
-			    samweb.removeFileLocation(file, loc)
-		        else:
-			    print "Removing ", path, " failed."
-                            os._exit(1)
-		    except:
-			traceback.print_exc()
-                        os._exit(1)
-		    os._exit(0)
+                    os.exit(clean_one(d,path))
 		elif -1 == pid:
+                    # fork failed...
 		    print "Cannot fork!"
-		    d.ifdh_handle.rm(path, '')
+                    clean_one(d, path)
 		else: 
                     # parent            
 		    proccount = proccount + 1
