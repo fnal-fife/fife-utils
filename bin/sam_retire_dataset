@@ -32,7 +32,10 @@ def retire( d, just_say = False, keep_files = False, delete_match = '.*', experi
                     if verbose: print "excpetion in remove", traceback.format_exc()
 		    pass
 	    if verbose: print "removing location:", samprefix(full), full 
-	    samweb.removeFileLocation(file, samprefix(full) + dirname(full))
+            try:
+	        samweb.removeFileLocation(file, samprefix(full) + dirname(full))
+            except:
+                traceback.print_exc()
 
     for file in d.file_iterator():
         if just_say:
