@@ -684,6 +684,8 @@ def clean_one(d, path, keep):
             traceback.print_exc()
             res = 3
 
+    sys.stdout.flush()
+    sys.stderr.flush()
     return res
 
 def unclone( d, just_say = False, delete_match = '.*', verbose = False, experiment = '', nparallel = 1 , keep = False):
@@ -724,7 +726,7 @@ def unclone( d, just_say = False, delete_match = '.*', verbose = False, experime
 		pid = os.fork()
 		if 0 == pid:
                     # child
-                    os.exit(clean_one(d,path))
+                    os._exit(clean_one(d,path))
 		elif -1 == pid:
                     # fork failed...
 		    print "Cannot fork!"

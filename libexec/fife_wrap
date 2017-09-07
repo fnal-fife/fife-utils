@@ -299,6 +299,7 @@ exit
 		if self.options.with_gdb:
 		    f = open('.gdbcmds')
 		    f.write('run\nwhere\nquit\n')
+                    f.close()
 		    cmdlist = ['gdb', '-x', '.gdbcmds', '--args' ] + cmdlist
 
                 cmd = " ".join(cmdlist)
@@ -331,6 +332,7 @@ exit
 	    if self.options.with_gdb:
 		 f = open('.gdbcmds')
 		 f.write('run\nwhere\nquit\n')
+                 f.close()
 		 cmdlist = ['gdb', '-x', '.gdbcmds', '--args' ] + cmdlist
 
 	    res = os.system(" ".join(cmdlist))
@@ -346,6 +348,7 @@ exit
 	    if self.options.with_gdb:
 		 f = open('.gdbcmds')
 		 f.write('run\nwhere\nquit\n')
+                 f.close()
 		 cmdlist = ['gdb', '-x', '.gdbcmds', '--args' ] + cmdlist
 	    res = os.system(" ".join(cmdlist))
 	    self.rres = res

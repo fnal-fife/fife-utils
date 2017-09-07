@@ -493,6 +493,9 @@ def main():
     if not lengths_ok:
       exit(1)
 
+    failedfiles = 0
+    totfiles = 0
+
     for filename in fileList:
       logging.info('processing %s' % filename)
 
@@ -517,11 +520,13 @@ def main():
       fileMD.update(renamedFile)
       fileMD.update(universalMD)
     
+      totfiles = totfiles + 1
       if declareFile(samweb, fileMD):
           # don't try to declare the location if you could not declare the filename
           declareFileLocation(samweb, fileMD["file_name"], fileLocation)
       else:
           logging.error("Could not declare file: %s " % filename)
+          failedfiles = failedfiles + 1
 
     logging.info('for loop is done')
     
@@ -533,7 +538,8 @@ def main():
 
     logging.info('PROGRAM SUCCESS')
     print 'the dataset with name ' + datasetName + ' was created'
-
+    if failedfiles > 0:
+        logging.error("...however %d files out of %d failed to declare" % (failedfiles, totfiles))
 
   else:
     #p.print_help()
