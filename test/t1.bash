@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. unittest.bash
+. ./unittest.bash
 
 count_report_files() {
     echo
