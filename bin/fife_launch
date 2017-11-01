@@ -136,6 +136,9 @@ class launcher:
 		res.append("    --%s '%s' \\" % (k,v))   
 
 	    res.append("  --exe  %s \\" % self.cfg.get('executable','name', vars = globals))
+
+            res.append(" -- \\") # end options to wrapper
+
 	    for k,v in self.cfg.items("executable", raw=1):
 		v = self.cfg.get("executable",k,vars = globals)
 		if k.startswith('arg_'):
