@@ -30,8 +30,8 @@ class launcher:
 
     def cfg_get(self, section, name, vars={}):
         res = self.cfg.get(section, name, vars)
-        if self.stage and self.cfg.has_option(self.stage, name, vars):
-            res = self.cfg.get(self.stage, name, vars)
+        if self.stage and self.cfg.has_option('stage_'+self.stage, name, vars):
+            res = self.cfg.get('stage_'+self.stage, name, vars)
 
     def do_cfg_includes(self, cffile):
         #print "do_cfg_includes:" , cffile
