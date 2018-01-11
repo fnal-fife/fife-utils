@@ -8,14 +8,18 @@ import signal
 import grp
 import urllib
 import glob
+import datetime
+import json
+import re
+import traceback
+
 
 class Wrapper:
     def __init__(self):
         self.experiment = os.environ.get('EXPERIMENT',os.environ.get('SAM_EXPERIMENT',os.environ.get('GROUP',grp.getgrgid(os.getgid())[0])))
         self.setupslist = [
-            '/cvmfs/%s.opensciencegrid.org/externals/setups' % self.experiment,
-            '/cvmfs/oasis.opensciencegrid.org/%s/externals/setups' % self.experiment,
-            '/grid/fermiapp/products/%s/externals/setups' % self.experiment,
+            # just places where fife_utils is known to be up to date
+            # experiments will source their favorite bits on top...
             '/cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups',
             '/grid/fermiapp/products/common/etc/setups',
         ]
@@ -56,7 +60,7 @@ class Wrapper:
             # we forked a job, make a note
             self.timeoutproc = res
         else:
-            sys.stderr.write( "fife_wrap: Unable to fork timeout process, something is probably wrong")
+            sys.stderr.write( "fife_wrap: Unable to fork timeout process, something is probably wrong\n")
         return
 
     def parse_arguments(self):
@@ -102,17 +106,18 @@ class Wrapper:
 	parser.add_option("--find_setups", action="store_true", help="look in the 'usual places' for the ups setups script at startup")
 	parser.add_option("--start_project_on", default=None, help="start a sam project on this dataset ")
 	parser.add_option("--end_project", action="store_true", help="look in the 'usual places' for the ups setups script at startup")
-        parser.add_option("--extract_metadata", help="use given program to extract and declare metadata", default=None)
+        parser.add_option("--declare_metadata", help="use given program to extract and declare metadata", action="store_true",  default=None)
+        parser.add_option("--metadata_extractor", help="use given program to extract and declare metadata", default=None)
         parser.add_option("--add_to_dataset", help="Add files to named dataset using Dataset.Tag", default=None)
-        parser.add_option("--add_locations", help="Add locations of output files to SAM", default=None)
+        parser.add_option("--add_locations", action="store_true", default=None, help="Add locations of output files to SAM")
 
 	parser.add_option("--nosetup", action="store_true", help="do not run setup actions (used internally)")
 
 	(self.options, self.args) = parser.parse_args()
 
         if self.options.debug:
-            sys.stderr.write( "Options: %s" % self.options)
-            sys.stderr.write( "Args: %s" % self.args)
+            sys.stderr.write( "Options: %s\n" % self.options)
+            sys.stderr.write( "Args: %s\n" % self.args)
 
     def do_setup(self):
         #
@@ -128,6 +133,7 @@ class Wrapper:
                  print "imported ifdh"
              except:
                  sys.stderr.write("fife_wrap: import ifdh failed\n")
+                 if self.options.debug: sys.stderr.write(traceback.format_exc())
                  pass
              return
 
@@ -191,11 +197,12 @@ exit
                  found = True
         p.stdin.close()
         p.stdout.close()
+        p.wait()
         if self.options.debug: sys.stderr.write('inhaled environment: %s' % repr(evallist))
         exec '\n'.join(evallist)
         # just assume the setup stuff made a different python environment(?)
         sys.argv = [ 'python' , sys.argv[0] , '--nosetup' ] + sys.argv[1:]
-        if self.options.debug: sys.stderr.write( "about to exec, args: %s" % sys.argv)
+        if self.options.debug: sys.stderr.write( "about to exec, args: %s\n" % sys.argv)
         #os.execvpe( 'python', sys.argv, os.environ)
         os.execvp( 'python', sys.argv)
         raise(Exception("Could not restart under new python"))
@@ -206,6 +213,7 @@ exit
             import ifdh
         except:
             sys.stderr.write("fife_wrap: import ifdh failed\n")
+            if self.options.debug: sys.stderr.write(traceback.format_exc())
 
         import socket
 
@@ -237,13 +245,15 @@ exit
                    os.environ.get('GRID_USER',os.environ.get('USER')),
 		   self.options.appfamily,
 		   description,
-		   self.options.limit,
+		   int(self.options.limit),
                    ""
                 )
-                if self.options.debug: sys.stderr.write( "Got consumerid of: %d" % self.consumerid)
+                self.consumerid = self.consumerid.strip()
+                if self.options.debug: sys.stderr.write( "Got consumerid of: %s\n" % self.consumerid)
 
             except Exception as e:
                 sys.stderr.write("fife_wrap: Got exception: %s while trying to establish consumer\n" % e)
+                if self.options.debug: sys.stderr.write(traceback.format_exc())
 
             if self.consumerid:
                 break
@@ -431,22 +441,34 @@ exit
         #  note that this should work like the one in fife_utils, we should
         #  list data disks and look for path matches... but it covers most
         #  cases for now.
-        if self.re.match(path, '/pnfs/[^/]*/(scratch|volatile|persistent)'):
+        if re.match(path, '/pnfs/[^/]*/(scratch|volatile|persistent)'):
             return 'dcache:'
-        if self.re.match(path, '/pnfs/'):
+        if re.match(path, '/pnfs/'):
             return 'enstore:'
-        if self.re.match(path, '/eos/cern.ch/'):
+        if re.match(path, '/eos/cern.ch/'):
             return 'cern-eos:'
-        if self.re.match(path, '/%s/'%self.experiment):
+        if re.match(path, '/%s/'%self.experiment):
             return '%sdata:' % self.experiment
         return ''
 
     def file_stats(self, f):
+        if self.options.debug: sys.stderr.write("entering file_stats(%s)"%f)
         sd = os.stat(f)
-        cdate = datetime.utcfromtimestamp(sd.st_ctime).strftime("%Y-%m-%dT%H:%M:%S:+00:00")
-        checksum = self.ih.checksum(f)
-        checksum = '["enstore:%s"]' % json.loads(checksum)["crc_value"]
-        return f, cdate, self.user, sd.st_size, checksum
+        cdate = datetime.datetime.utcfromtimestamp(sd.st_ctime).strftime("%Y-%m-%dT%H:%M:%S:+00:00")
+        
+        #checksum = self.ih.checksum(f)
+        
+        p = subprocess.Popen("ifdh checksum %s" % f, shell=True, stdout=subprocess.PIPE)
+        checksum = p.stdout.read()
+        p.stdout.close()
+        rc = p.wait()
+
+        if self.options.debug: sys.stderr.write("DEBUG: ifdh checksum returns: %s" % checksum)
+        if checksum:
+            checksum = '["enstore:%s"]' % json.loads(checksum)["crc_value"]
+        else:
+            checksum = '[]'
+        return (f, cdate, self.user, sd.st_size, checksum)
 
     def ih_addFileLocation(self, of, loc):
         '''ifdh doesn't have addFileLocation (yet) so fake it with curl..'''
@@ -460,54 +482,18 @@ exit
                 import ifdh
                 self.ih = ifdh.ifdh()
             except:
+                if self.options.debug: sys.stderr.write(traceback.format_exc())
                 pass
         
 	if self.options.dest and self.options.addoutput:
 	    for g in self.options.addoutput:
 		for f in glob.glob(g):
-                    if self.options.debug: sys.stderr.write( "addoutput: %s\n", f)
+                    if self.options.debug: sys.stderr.write( "addoutput: %s\n"% f)
 		    self.ih.addOutputFile(f)
 
-                    if self.options.declare_metadata or self.options.extract_metadata:
-                        if self.options.extract_metadata:
-                            p = subprocess.Popen("%s %s" % (self.options.extract_metadata, f), stdout=PIPE, close_fds=True)
-                            metadata = p.stdout.read()
-                            p.stdout.close()
-                            rc = process.wait()
-                        else:
-                            metadata = '''{
- "file_name": "%s", 
- "create_date": "%s",
- "user": "%s",
- "file_size": %d,
- "checksum": %s,
- "content_status": "good",
- "file_type": "unknown",
- "file_format": "unknown"
-}
-''' % self.file_stats(f)
- 
-                        if self.options.add_to_dataset:
-                            if self.options.add_to_dataset== '_poms_task':
-                                datasetname = 'poms_depends_%s_1' % os.environ.get("POMS_TASK_ID")
-                            else:
-                                datasetname = self.options.add_to_dataset
-                            metadata = metadata.replace('\n}\n', ',\n "Dataset.Tag": "%s"\n}\n' % datasetname)
-                            # we don't know which job will actually initially 
-                            # create the definition, so we all try
-                            try:
-                                self.ih.createDefinition(
-                                    datasetname, 
-                                    'Dataset.Tag == %s' % datasetname, 
-                                    self.user,
-                                    self.experiment)
-                            except:
-                                pass
-
-                        self.ih.declareFile(f, metadata)
                   
             if self.options.rename:
-                if self.options.debug: sys.stderr.write( "rename: %s\n", self.options.rename)
+                if self.options.debug: sys.stderr.write( "rename: %s\n" % self.options.rename)
 	        for r in self.options.rename:
 		    self.ih.renameOutput(r)
 
@@ -518,10 +504,65 @@ exit
                 outfiles_name = self.ih.localPath("/output_files")
                 f = open(outfiles_name,"r")
                 for line in f:
-                    oflist.append(line.strip())
+                    oflist.append(line.strip().split()[0])
                 f.close()
 
-	    if self.options.debug: sys.stderr.write( "copybackoutput: %s\n", self.options.dest)
+            for f in oflist:
+                
+	        if self.options.debug: sys.stderr.write("output file: %s\n" % f)
+
+                if self.options.declare_metadata or self.options.metadata_extractor:
+                    if self.options.metadata_extractor:
+                        p = subprocess.Popen("%s %s" % (self.options.metadata_extractor, f), stdout=PIPE, close_fds=True)
+                        metadata = p.stdout.read()
+                        p.stdout.close()
+                        rc = p.wait()
+                    else:
+                        rt = self.file_stats(f)
+                        metadata = '''{
+"file_name": "%s", 
+"create_date": "%s",
+"user": "%s",
+"file_size": %d,
+"checksum": %s,
+"content_status": "good",
+"file_type": "unknown",
+"file_format": "unknown"
+}
+''' % rt
+
+                    if self.options.add_to_dataset:
+
+                        if self.options.add_to_dataset == '_poms_task':
+                            datasetname = 'poms_depends_%s_1' % os.environ.get("POMS_TASK_ID")
+                        else:
+                            datasetname = self.options.add_to_dataset
+
+                        metadata = metadata.replace('\n}\n', ',\n "Dataset.Tag": "%s"\n}\n' % datasetname)
+                        # we don't know which job will actually initially 
+                        # create the definition, so we all try
+             
+                        if self.options.debug: sys.stderr.write("creating definitino %s\n" % datasetname)
+                        try:
+                            self.ih.createDefinition(
+                                datasetname, 
+                                'Dataset.Tag %s' % datasetname, 
+                                self.user,
+                                self.experiment)
+                        except:
+                            print("error creating definition " + repr(sys.exc_info()))
+                            if self.options.debug: sys.stderr.write(traceback.format_exc())
+                            pass
+   
+	            if self.options.debug: sys.stderr.write( "DEBUG: metadata: %s\n" % str(metadata))
+                    try:
+                        self.ih.declareFile(str(metadata))
+                    except:
+                        sys.stderr.write("error declaring metadata " + repr(sys.exc_info()))
+                        if self.options.debug: sys.stderr.write(traceback.format_exc())
+                        pass
+
+	    if self.options.debug: sys.stderr.write( "copybackoutput: %s\n" % self.options.dest)
 
 	    self.ih.copyBackOutput(self.options.dest)
 
@@ -567,19 +608,20 @@ exit
 
 if __name__ == '__main__' :
     w = Wrapper()
+    w.parse_arguments()
     try:
-	w.parse_arguments()
 	w.do_setup()
         if w.options.start_project_on:
              w.start_project()
 	w.start_self_destruct()
         w.fetch_inputs()
-        if w.options.ifdh_art or  w.options.multifile or w.options.getconfig:
+        if w.options.ifdh_art or w.options.multifile or w.options.getconfig:
 	    w.start_client()
 	w.file_loop()   
         w.userscripts()
 	w.copy_back()
     except:
+        if self.options.debug: sys.stderr.write(traceback.format_exc())
         raise
     finally:
         w.cleanup()
@@ -588,6 +630,7 @@ if __name__ == '__main__' :
 	if w.options.end_project:
 	   w.end_project()
     except:
+        if self.options.debug: sys.stderr.write(traceback.format_exc())
         pass
 
     exit(w.rres)

@@ -107,6 +107,8 @@ class launcher:
 		elif v == 'True':
 		    res.append("  --%s \\" % k)
 		else:
+		    if k[-2] == '_' and k[-1] in "0123456789":
+			 k = k[:-2]
 		    res.append("  --%s='%s'  \\" %( k,v))
 
             wrapfile = os.path.expandvars(self.cfg_get('global','wrapper',vars = globals))
@@ -201,7 +203,7 @@ if __name__ == '__main__':
     p = optparse.OptionParser(description='launch a job with parameters'
 ,
                             prog='fife_launch',
-                            version='0.9',
+                            version='1.1',
                             usage='%prog --config file.cfg --override foo.bar=10')
 
 
