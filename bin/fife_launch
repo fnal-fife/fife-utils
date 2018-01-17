@@ -13,17 +13,18 @@ except:
 
 class launcher:
  
-    def __init__(self, cfgfilename, overrides, jobname = None, stage = None ):
+    def __init__(self, cfgfilename, overrides, jobname = None, stage = None, fake=None ):
 	self.cfg = ConfigParser.SafeConfigParser()
         self.stage = stage
         self.cfg.optionxform = str
         self.included = {}
+        self.fake = fake
         self.jobname = jobname
         self.searchpath = os.environ.get("FIFE_LAUNCH_PATH","").split(":")
         self.do_cfg_includes(cfgfilename)
         if overrides:
 	    for o in overrides:
-		print "o is", o
+		#print "o is", o
 		k, v = o.split('=',1)
 		s,n = k.split('.',1)
 		self.cfg.set(s,n,v)
@@ -77,7 +78,10 @@ class launcher:
 
 	if self.cfg.has_section("submit"):
 
-	    res.append("jobsub_submit \\")
+            if self.fake:
+	        res.append("fake_jobsub \\")
+            else:
+	        res.append("jobsub_submit \\")
 
 	    for k,v in self.cfg.items("env_pass", raw = 1):
 		v = self.cfg_get("env_pass",k,vars = globals)
@@ -211,8 +215,8 @@ if __name__ == '__main__':
     p.add_option('-O', '--override',  help='override config file values', action='append' )
     p.add_option('--jobname', help='job name for launching', default=None)
     p.add_option('--stage', help='stage name to add options from', default=None)
-
+    p.add_option('--fake', action='store_true', help='use fake_jobsub', default=None)
     options, args = p.parse_args()
    
-    l = launcher(options.config, options.override, options.jobname, options.stage)
+    l = launcher(options.config, options.override, options.jobname, options.stage, options.fake)
     l.launch()
