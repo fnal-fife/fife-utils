@@ -470,6 +470,20 @@ exit
             checksum = '[]'
         return (f, cdate, self.user, sd.st_size, checksum)
 
+    def merge_metadata(self, m1, m2):
+        dm1 = json.loads(m1)
+        dm2 = json.loads(m2)
+        if dm2.has_key(dm1['file_name']):
+            # sam_metadata_dumper multi-file format
+            dm1.update(dm2[dm1['file_name']])
+        elif dm2.has_key('file_name') and dm1['file_name'] == dm2['file_name']:
+            dm1.update(dm2)
+        else:
+            # for now just punt, we're just adding data?
+            sys.stderr.write("metadata_extractor data doesn't have filename, trying anyway...\n")
+            dm1.update(dm2)
+        return json.dumps(dm1)
+
     def ih_addFileLocation(self, of, loc):
         '''ifdh doesn't have addFileLocation (yet) so fake it with curl..'''
         os.system("curl --data 'add=%s' 'https://samweb.fnal.gov:8483/sam/%s/api/files/name/%s/locations'" % (loc, self.experiment, of))
@@ -512,14 +526,8 @@ exit
 	        if self.options.debug: sys.stderr.write("output file: %s\n" % f)
 
                 if self.options.declare_metadata or self.options.metadata_extractor:
-                    if self.options.metadata_extractor:
-                        p = subprocess.Popen("%s %s" % (self.options.metadata_extractor, f), stdout=PIPE, close_fds=True)
-                        metadata = p.stdout.read()
-                        p.stdout.close()
-                        rc = p.wait()
-                    else:
-                        rt = self.file_stats(f)
-                        metadata = '''{
+                    rt = self.file_stats(f)
+                    metadata = '''{
 "file_name": "%s", 
 "create_date": "%s",
 "user": "%s",
@@ -530,6 +538,12 @@ exit
 "file_format": "unknown"
 }
 ''' % rt
+                    if self.options.metadata_extractor:
+                        p = subprocess.Popen("%s %s" % (self.options.metadata_extractor, f), stdout=PIPE, close_fds=True)
+                        added_metadata = p.stdout.read()
+                        p.stdout.close()
+                        rc = p.wait()
+                        metadata = self.merge_meta(metadata,added_metadata)
 
                     if self.options.add_to_dataset:
 
