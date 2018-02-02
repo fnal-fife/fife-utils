@@ -107,12 +107,14 @@ class launcher:
 
 	    for k,v in self.cfg.items("submit", raw = 1):
 		v = self.cfg_get("submit",k,vars = globals)
-                if k[-2] == '_' and k[-1] in "0123456789":
+                if len(k) > 2 and k[-2] == '_' and k[-1] in "0123456789":
                      k = k[:-2]
                 if len(k) == 1:
 		    res.append("  -%s '%s'  \\" %( k,v))
 		elif v == 'True':
 		    res.append("  --%s \\" % k)
+		elif v == 'False':
+                    pass
 		else:
 		    res.append("  --%s='%s'  \\" %( k,v))
 
@@ -130,10 +132,12 @@ class launcher:
 
 	    for k,v in self.cfg.items("job_setup", raw=1):
 		v = self.cfg_get("job_setup",k,vars = globals)
-                if k[-2] == '_' and k[-1] in "0123456789":
+                if len(k) > 2 and k[-2] == '_' and k[-1] in "0123456789":
                      k = k[:-2]
 		if v == 'True':
 		    res.append("    --%s \\" % k)   
+		if v == 'False':
+		    pass
 		else:
                     if k in ['export','source','setup','prescript','postscript'] and urllib.quote(v) != v:
                          k = '%s-unquote' % k
