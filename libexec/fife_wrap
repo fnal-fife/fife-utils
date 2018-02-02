@@ -640,7 +640,12 @@ exit
 }
 ''' % rt
                     if self.options.metadata_extractor:
-                        p = subprocess.Popen("%s %s" % (self.options.metadata_extractor, f), stdout=PIPE, close_fds=True)
+
+                        if self.options.metadata_extractor == 'json':
+                            md_cmd = "cat %s.json" % f
+                        else:
+                            md_cmd = "%s %s" % (self.options.metadata_extractor, f)
+                        p = subprocess.Popen(md_cmd, stdout=PIPE, close_fds=True)
                         added_metadata = p.stdout.read()
                         p.stdout.close()
                         rc = p.wait()
