@@ -692,7 +692,9 @@ exit
                         else:
                             datasetname = self.options.add_to_dataset
 
-                        metadata = metadata.replace('\n}\n', ',\n "Dataset.Tag": "%s"\n}\n' % datasetname)
+                        metadata_d["dataset.tag"] = datasetname
+                        metadata = json.dumps(metadata_d)
+
                         # we don't know which job will actually initially 
                         # create the definition, so we all try
              
@@ -704,8 +706,6 @@ exit
                                 self.user,
                                 self.experiment)
                         except:
-                            print("error creating definition " + repr(sys.exc_info()))
-                            if self.options.debug: sys.stderr.write(traceback.format_exc())
                             pass
    
 	            if self.options.debug: sys.stderr.write( "DEBUG: metadata: %s\n" % str(metadata))
