@@ -587,7 +587,7 @@ exit
         for k in dm1.keys():
            if k.endswith('_event') and isinstance(dm1[k],list):
               dm1[k] = dm1[k][-1]
-           if k in [ 'process_name', 'file_format_era', 'file_format_verision']:
+           if k in [ 'process_name', 'file_format_era', 'file_format_version']:
               dm1['art.%s'%k] = dm1[k]
               del dm1[k]
 
