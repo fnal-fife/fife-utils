@@ -577,7 +577,7 @@ exit
 
         else:
             '''ifdh doesn't have addFileLocation (yet) so fake it with curl..'''
-            os.system("curl --data 'add=%s' 'https://samweb.fnal.gov:8483/sam/%s/api/files/name/%s/locations'" % (loc, self.experiment, of))
+            os.system("curl -k --data 'add=%s' 'https://samweb.fnal.gov:8483/sam/%s/api/files/name/%s/locations'" % (loc, self.experiment, of))
 
     def copy_back(self):
         if self.options.debug: sys.stderr.write( "Entering copy_back:\n")
@@ -645,11 +645,11 @@ exit
                             md_cmd = "cat %s.json" % f
                         else:
                             md_cmd = "%s %s" % (self.options.metadata_extractor, f)
-                        p = subprocess.Popen(md_cmd, stdout=PIPE, close_fds=True)
+                        p = subprocess.Popen(md_cmd, shell=True, stdout=subprocess.PIPE, close_fds=True)
                         added_metadata = p.stdout.read()
                         p.stdout.close()
                         rc = p.wait()
-                        metadata = self.merge_meta(metadata,added_metadata)
+                        metadata = self.merge_metadata(metadata,added_metadata)
 
                     if self.options.add_to_dataset:
 

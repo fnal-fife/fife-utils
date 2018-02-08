@@ -120,9 +120,9 @@ class launcher:
                      k = k[:-2]
                 if len(k) == 1:
 		    res.append("  -%s '%s'  \\" %( k,v))
-		elif v == 'True':
+		elif v == 'True' or v == True:
 		    res.append("  --%s \\" % k)
-		elif v == 'False':
+		elif v == 'False' or v == False or v == None:
                     pass
 		else:
 		    res.append("  --%s='%s'  \\" %( k,v))
@@ -143,9 +143,9 @@ class launcher:
 		v = self.cfg_get("job_setup",k,vars = globals)
                 if len(k) > 2 and k[-2] == '_' and k[-1] in "0123456789":
                      k = k[:-2]
-		if v == 'True':
+		if v == 'True' or v == True:
 		    res.append("    --%s \\" % k)   
-		elif v == 'False':
+		elif v == 'False' or v == False or v == None:
 		    pass
 		else:
                     if k in ['export','source','setup','prescript','postscript'] and urllib.quote(v) != v:
@@ -153,13 +153,24 @@ class launcher:
                          v = urllib.quote(v)
 		    res.append("    --%s '%s' \\" % (k,v))   
 
-	    for k,v in self.cfg.items("job_output", raw=1):
-		v = self.cfg_get("job_output",k,vars = globals)
-		res.append("    --%s '%s' \\" % (k,v))
    
 	    for k,v in self.cfg.items("sam_consumer", raw=1):
 		v = self.cfg_get("sam_consumer",k,vars = globals)
-		res.append("    --%s '%s' \\" % (k,v))   
+		if v == 'True' or v == True:
+		    res.append("  --%s \\" % k)
+		elif v == 'False' or v == False or v == None:
+                    pass
+                else:
+		    res.append("    --%s '%s' \\" % (k,v))   
+
+	    for k,v in self.cfg.items("job_output", raw=1):
+		v = self.cfg_get("job_output",k,vars = globals)
+		if v == 'True' or v == True:
+		    res.append("    --%s \\" % k)   
+		elif v == 'False' or v == False or v == None:
+		    pass
+                else:
+		    res.append("    --%s '%s' \\" % (k,v))
 
 	    res.append("  --exe  %s \\" % self.cfg_get('executable','name', vars = globals))
 
