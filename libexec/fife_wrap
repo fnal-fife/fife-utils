@@ -582,9 +582,14 @@ exit
         #     "first_event": 1,
         #     "last_event": 10,
         # so we need to fix that
+        # it also has params listed as sam builtins that aren't
+        # so we rename them from whatever to art.whatever
         for k in dm1.keys():
            if k.endswith('_event') and isinstance(dm1[k],list):
               dm1[k] = dm1[k][-1]
+           if k in [ 'process_name', 'file_format_era', 'file_format_verision']:
+              dm1['art.%s'%k] = dm1[k]
+              del dm1[k]
 
         return json.dumps(dm1)
 
