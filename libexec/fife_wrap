@@ -287,6 +287,7 @@ exit
         if self.options.debug: sys.stderr.write("Entering file loop:\n")
 
         self.rres = 0
+        self.furi = None
  
         cmdlist=[]
         if self.options.prescript:
@@ -330,18 +331,18 @@ exit
                 print('# getNextFile loop')
                 print('while furi=ifdh getNextFile "$cpurl" "$consumerid"')
                 print("do")
-                furi = "fake"
+                self.furi = "fake"
             else:
-                furi=self.ih.getNextFile(self.cpurl,self.consumerid)
+                self.furi=self.ih.getNextFile(self.cpurl,self.consumerid)
 
-	    while furi:
+	    while self.furi:
                 if self.options.dry_run:
                     print('    fname=`ifdh fetchInput "$furi"')
                     print('    ifdh updateFileStatus "$cpurl" "$consumerid" "$fname" "transferred"')
                     fname='"$fname"'
                 else:
-                    fname=self.ih.fetchInput(furi)
-                    if self.options.debug: sys.stderr.write( "Fetching: %s gave: %s\n" % (furi, fname))
+                    fname=self.ih.fetchInput(self.furi)
+                    if self.options.debug: sys.stderr.write( "Fetching: %s gave: %s\n" % (self.furi, fname))
                     self.ih.updateFileStatus(self.cpurl, self.consumerid, fname, 'transferred')
 		cmdlist = [ self.options.exe ]
 		if self.options.getconfig:
@@ -376,7 +377,7 @@ exit
                     print("          rres=$?")
                     print('          ifdh updateFileStatus "$cpurl" "$consumerid" "$fname" "skipped"')
                     print("     fi")
-                    furi = None  # leave loop gracefully(?)
+                    self.furi = None  # leave loop gracefully(?)
                 else:
                     res = os.system(cmd)
 
@@ -387,7 +388,7 @@ exit
                         if self.options.debug: sys.stderr.write( "Failed, marking skipped\n")
                         self.ih.updateFileStatus(self.cpurl, self.consumerid, fname, 'skipped')
                     self.rres = res
-                    furi=self.ih.getNextFile(self.cpurl,self.consumerid)
+                    self.furifuri=self.ih.getNextFile(self.cpurl,self.consumerid)
 
 	elif self.options.ifdh_art:
 
@@ -633,12 +634,19 @@ exit
 "create_date": "%s",
 "user": "%s",
 "file_size": %d,
-"checksum": %s,
+n"checksum": %s,
 "content_status": "good",
 "file_type": "unknown",
 "file_format": "unknown"
 }
 ''' % rt
+                    if self.options.appfamily and self.options.appversion:
+              
+                        metadata = metadata[:-2]+',\n"application":{\n"family": {"family":"%s",\n"name","%s",\n"version":"%s"\n}\n}\n}' % (self.options.appfamily, self.options.appname, self.options.appversion)
+
+                    if self.furi and self.options.dataset:
+                        metadata = metadata[:-2]+',\n"parents":[{"file_name": "%s"}]\n}' % os.basename(selffuri)
+
                     if self.options.metadata_extractor:
 
                         if self.options.metadata_extractor == 'json':
