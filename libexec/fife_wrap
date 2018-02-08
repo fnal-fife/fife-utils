@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+import os.path
 import sys
 import time
 import subprocess
@@ -335,7 +336,8 @@ exit
             else:
                 self.furi=self.ih.getNextFile(self.cpurl,self.consumerid)
 
-	    while self.furi:
+            lastfuri = ""
+	    while self.furi and self.furi != lastfuri:
                 if self.options.dry_run:
                     print('    fname=`ifdh fetchInput "$furi"')
                     print('    ifdh updateFileStatus "$cpurl" "$consumerid" "$fname" "transferred"')
@@ -343,7 +345,7 @@ exit
                 else:
                     fname=self.ih.fetchInput(self.furi)
                     if self.options.debug: sys.stderr.write( "Fetching: %s gave: %s\n" % (self.furi, fname))
-                    self.ih.updateFileStatus(self.cpurl, self.consumerid, fname, 'transferred')
+                    self.ih.updateFileStatus(self.cpurl, self.consumerid, os.path.basename(self.furi), 'transferred')
 		cmdlist = [ self.options.exe ]
 		if self.options.getconfig:
 		    cmdlist.extend(self.args)
@@ -383,12 +385,14 @@ exit
 
                     if 0 == res:
                         if self.options.debug: sys.stderr.write( "Success, marking consumed\n")
-                        self.ih.updateFileStatus(self.cpurl, self.consumerid, fname, 'consumed')
+                        self.ih.updateFileStatus(self.cpurl, self.consumerid, os.path.basename(self.furi), 'consumed')
                     else:
                         if self.options.debug: sys.stderr.write( "Failed, marking skipped\n")
-                        self.ih.updateFileStatus(self.cpurl, self.consumerid, fname, 'skipped')
+                        self.ih.updateFileStatus(self.cpurl, self.consumerid, os.path.basename(self.furi), 'skipped')
                     self.rres = res
-                    self.furifuri=self.ih.getNextFile(self.cpurl,self.consumerid)
+                    lastfuri = self.furi
+                    self.furi=self.ih.getNextFile(self.cpurl,self.consumerid)
+
 
 	elif self.options.ifdh_art:
 
@@ -646,19 +650,24 @@ exit
 "create_date": "%s",
 "user": "%s",
 "file_size": %d,
-n"checksum": %s,
+"checksum": %s,
 "content_status": "good",
 "file_type": "unknown",
 "file_format": "unknown"
 }
 ''' % rt
-                    if self.options.appfamily and self.options.appversion:
-              
-                        metadata = metadata[:-2]+',\n"application":{\n"family": {"family":"%s",\n"name","%s",\n"version":"%s"\n}\n}\n}' % (self.options.appfamily, self.options.appname, self.options.appversion)
+                    metadata_d = json.loads(metadata)
+                    if self.options.appfamily and self.options.appvers:
+                        metadata_d["application"] =  {
+                           "family":self.options.appfamily,
+                           "name": self.options.appname,
+                           "version": self.options.appvers
+                        }
+                        metadata = json.dumps(metadata_d)
 
                     if self.furi and self.options.dataset:
-                        metadata = metadata[:-2]+',\n"parents":[{"file_name": "%s"}]\n}' % os.basename(selffuri)
-
+                        metadata_d["parents"] = [{"file_name": os.path.basename(self.furi)}]
+                        metadata = json.dumps(metadata_d)
                     if self.options.metadata_extractor:
 
                         if self.options.metadata_extractor == 'json':
