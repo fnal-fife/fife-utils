@@ -589,7 +589,7 @@ exit
               dm1[k] = dm1[k][-1]
            if k in [ 'applicationversion', 'applicationfamily' ]:
               dm1['application'][k[11:]]
-           if k in [ 'run_type' 'process_name', 'file_format_era', 'file_format_version', 'applicationversion', 'applicationfamily']:
+           if k in [ 'run_type', 'process_name', 'file_format_era', 'file_format_version', 'applicationversion', 'applicationfamily']:
               del dm1[k]
 
         return json.dumps(dm1)
