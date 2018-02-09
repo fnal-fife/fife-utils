@@ -533,13 +533,13 @@ exit
         #  note that this should work like the one in fife_utils, we should
         #  list data disks and look for path matches... but it covers most
         #  cases for now.
-        if re.match(path, '/pnfs/[^/]*/(scratch|volatile|persistent)'):
+        if re.match( '/pnfs/[^/]*/(scratch|volatile|persistent)',path):
             return 'dcache:'
-        if re.match(path, '/pnfs/'):
+        if re.match('/pnfs/',path):
             return 'enstore:'
-        if re.match(path, '/eos/cern.ch/'):
+        if re.match('/eos/cern.ch/',path):
             return 'cern-eos:'
-        if re.match(path, '/%s/'%self.experiment):
+        if re.match('/%s/'%self.experiment, path):
             return '%sdata:' % self.experiment
         return ''
 
@@ -583,12 +583,13 @@ exit
         #     "last_event": 10,
         # so we need to fix that
         # it also has params listed as sam builtins that aren't
-        # so we rename them from whatever to art.whatever
+        # so we just delete them
         for k in dm1.keys():
            if k.endswith('_event') and isinstance(dm1[k],list):
               dm1[k] = dm1[k][-1]
-           if k in [ 'process_name', 'file_format_era', 'file_format_version']:
-              dm1['art.%s'%k] = dm1[k]
+           if k in [ 'applicationversion', 'applicationfamily' ]:
+              dm1['application'][k[11:]]
+           if k in [ 'run_type' 'process_name', 'file_format_era', 'file_format_version', 'applicationversion', 'applicationfamily']:
               del dm1[k]
 
         return json.dumps(dm1)
