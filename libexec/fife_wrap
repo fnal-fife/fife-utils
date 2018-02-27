@@ -81,6 +81,7 @@ class Wrapper:
 	parser.add_option("-M","--multifile", action="store_true", help="Fetch files in wrapper and run executable once per file")
 	parser.add_option("-G","--with_gdb", action="store_true", help="run executable under gdb and print stack trace")
 	parser.add_option("-L","--limit", type="int", help="Set SAM project file delivery limit", default=0)
+	parser.add_option("-S","--schema",  help="Set SAM file delivery schema", default="")
 	parser.add_option("-I","--inputfile", action="append", help="Input file to copy to job area before running the executable")
 	parser.add_option("-T","--inputtar", action="append", help="Input tar file to copy to job area and unpack running the executable")
 	parser.add_option("--inputlist", action="append", help="ifdh cp -f file to run to fetch inputs")
@@ -116,6 +117,9 @@ class Wrapper:
 	parser.add_option("--nosetup", action="store_true", help="do not run setup actions (used internally)")
 
 	(self.options, self.args) = parser.parse_args()
+
+        if self.options.dry_run:
+            self.options.debug = False
 
         if self.options.debug:
             sys.stderr.write( "Options: %s\n" % self.options)
@@ -240,7 +244,8 @@ exit
         # assume SAM_PROJECT and SAM_STATION are set...
  
         if self.options.dry_run:
-            print( 'cpurl=`ifdh findProject "%s" "%s" "%s"`' %(os.environ['SAM_PROJECT'],os.environ.get('SAM_STATION', os.environ.get('EXPERIMENT',''))))
+            self.cpurl = "$cpurl"
+            print( 'cpurl=`ifdh findProject "%s" "%s"`' %('$SAM_PROJECT',os.environ.get('SAM_STATION', os.environ.get('EXPERIMENT',''))))
             print( 'consumerid=`ifdh establishProcess "%s" "%s" "%s" "%s" "%s" "%s" "%s" "%s" "%s"`' %  ( 
 		   self.cpurl, 
 		   self.options.appname, 
@@ -271,7 +276,7 @@ exit
 		   self.options.appfamily,
 		   description,
 		   int(self.options.limit),
-                   ""
+                   self.options.schema
                 )
                 self.consumerid = self.consumerid.strip()
                 if self.options.debug: sys.stderr.write( "Got consumerid of: %s\n" % self.consumerid)
@@ -439,6 +444,10 @@ exit
                 res = os.system(" ".join(cmdlist))
                 self.rres = res
 
+        if self.options.multifile or self.options.getconfig:
+            if self.options.dry_run:
+                print('done')
+
         if self.options.debug: sys.stderr.write("leaving file loop:\n")
 
         if self.options.postscript:
@@ -584,12 +593,15 @@ exit
         # so we need to fix that
         # it also has params listed as sam builtins that aren't
         # so we just delete them
-        for k in dm1.keys():
+        l = list(dm1.keys())
+        for k in l:
            if k.endswith('_event') and isinstance(dm1[k],list):
               dm1[k] = dm1[k][-1]
-           if k in [ 'applicationversion', 'applicationfamily' ]:
-              dm1['application'][k[11:]]
-           if k in [ 'run_type', 'process_name', 'file_format_era', 'file_format_version', 'applicationversion', 'applicationfamily']:
+           if k in [ 'applicationVersion', 'applicationFamily' ]:
+              tag = k[11:].lower()
+              if not dm1.get('application',None) or not dm1['application'].get(tag,None):
+                  dm1['application'][tag] = dm1[k]
+           if k in [ 'run_type', 'process_name', 'file_format_era', 'file_format_version', 'applicationVersion','applicationFamily']:
               del dm1[k]
 
         return json.dumps(dm1)
@@ -615,13 +627,12 @@ exit
         
 	if self.options.dest and self.options.addoutput:
 	    for g in self.options.addoutput:
-		for f in glob.glob(g):
-                    if self.options.debug: sys.stderr.write( "addoutput: %s\n"% f)
-                    if self.options.dry_run:
-                        print ("ifdh addOutputFile %s" % g)
-                    else:
+                if self.options.dry_run:
+                    print ("ifdh addOutputFile %s" % g)
+                else:
+                    for f in glob.glob(g):
+                        if self.options.debug: sys.stderr.write( "addoutput: %s\n"% f)
 		        self.ih.addOutputFile(f)
-
                   
             if self.options.rename:
                 if self.options.debug: sys.stderr.write( "rename: %s\n" % self.options.rename)
