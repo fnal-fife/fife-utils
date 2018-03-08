@@ -696,6 +696,7 @@ exit
                         p.stdout.close()
                         rc = p.wait()
                         metadata = self.merge_metadata(metadata,added_metadata)
+                        metadata_d = json.loads(metadata)
 
                     if self.options.add_to_dataset:
 
@@ -761,7 +762,10 @@ exit
 
         if self.ih and self.cpurl and self.consumerid:
 	    self.ih.setStatus(self.cpurl, self.consumerid, "completed" if 0 == self.rres else "bad")
-	    self.ih.cleanup()
+
+        if self.ih:
+            self.ih.cleanup()
+
         if self.timeoutproc:
             os.kill(self.timeoutproc, 9)
 
