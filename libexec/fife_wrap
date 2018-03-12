@@ -616,6 +616,7 @@ exit
 
     def copy_back(self):
         if self.options.debug: sys.stderr.write( "Entering copy_back:\n")
+        metadata_d = None
 
         if self.ih == None:
             try:
@@ -733,6 +734,7 @@ exit
 
             actualdest = self.options.dest
 
+            # if we are doing metadata, allow FTS-format path templating
             if metadata_d:
                 actualdest = format_path(actualdest, CaseInsensitiveDict(metadat_d), time.time())
                 
