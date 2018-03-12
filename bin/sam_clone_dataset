@@ -80,7 +80,7 @@ if __name__ == '__main__':
     parser.add_option('-p', '--project', default=None, help = "SAM project name to use"  )
     parser.add_option('--njobs', default=None, help="Launch njobs jobs to help do the cloning")
     parser.add_option('-C', '--connect-project', action='store_const', const=True)
-    parser.add_option('-N', '--ncopies',  default=1, help="number of copies to run in parallel")
+    parser.add_option('-N', '--ncopies',  default=4, help="number of copies to run in parallel" )
     parser.add_option('-S', '--just-start-project', action='store_const', const=True)
     parser.add_option('-P', '--paranoid', action='store_const', const=True, default = False, help = "do not believe copy status, check existence before declaring a location")
     parser.add_option('--getawscreds', action='store_true', help="get AWS S3 credentials from /pnfs file", default = False)

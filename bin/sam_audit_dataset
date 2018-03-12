@@ -19,6 +19,7 @@ def audit( ds, dest,  verbose = False, experiment = None, keeplists=None ):
     num_undeclared_at_dest = 0
     num_present_undeclared_at_dest = 0
     num_present_wrong_loc = 0
+    num_no_locations = 0
     
     if keeplists != None:
         if not os.path.exists(keeplists):
@@ -60,7 +61,7 @@ def audit( ds, dest,  verbose = False, experiment = None, keeplists=None ):
                 num_declared_at_dest += 1
                 if  sp in full_set:
                     num_present_declared_at_dest += 1
-                    if verbose: print "located: %s" % p
+                    if verbose: print "located: %s" % sp
                 else:
                     if f in fnameset:
                         num_present_wrong_loc += 1
@@ -79,7 +80,7 @@ def audit( ds, dest,  verbose = False, experiment = None, keeplists=None ):
                num_present_undeclared_at_dest += 1
         if len(spl) == 0:
            num_no_locations += 1
-           if verbose: print "file %s has 0 locations"
+           if verbose: print "file %s has 0 locations" % f
         
     print "Dataset ", ds.name, "at location", dest, ":"
     print "               Total Files:", num_in_dataset 
@@ -88,10 +89,12 @@ def audit( ds, dest,  verbose = False, experiment = None, keeplists=None ):
     print "              Not Declared:", num_undeclared_at_dest
     print "  Present but not Declared:", num_present_undeclared_at_dest
     print " Present at wrong location:", num_present_wrong_loc
+    print "    Files with no location:", num_no_locations
     if keeplists != None:
         flistf.close()
         loclist.close()
         misslist.close()
+    return res
 
 if __name__ == '__main__':
     

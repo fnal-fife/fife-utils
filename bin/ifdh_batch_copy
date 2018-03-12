@@ -268,7 +268,7 @@ if __name__=='__main__':
     parser.add_option('-d', '--dest',    help="destination for copy", )
     parser.add_option('-e','--experiment')
     parser.add_option('-j','--justsay',  action='store_true', help="do not actually copy, just say what you would do", default=False)
-    parser.add_option('-N','--ncopies',   help="number of copies to run in parallel", default=1)
+    parser.add_option('-N','--ncopies',   help="number of copies to run in parallel", default=4)
     parser.add_option('--njobs',   help="number of jobs to run in parallel", default=0)
     parser.add_option('-n','--nocheck',  action='store_true', help="do not get listing of destination to check for existing files", default=False)
     parser.add_option('--checklist',  help="premade list  of previously copied files")

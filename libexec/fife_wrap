@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import os
+import os.path
 import sys
 import time
 import subprocess
@@ -8,14 +9,18 @@ import signal
 import grp
 import urllib
 import glob
+import datetime
+import json
+import re
+import traceback
+
 
 class Wrapper:
     def __init__(self):
         self.experiment = os.environ.get('EXPERIMENT',os.environ.get('SAM_EXPERIMENT',os.environ.get('GROUP',grp.getgrgid(os.getgid())[0])))
         self.setupslist = [
-            '/cvmfs/%s.opensciencegrid.org/externals/setups' % self.experiment,
-            '/cvmfs/oasis.opensciencegrid.org/%s/externals/setups' % self.experiment,
-            '/grid/fermiapp/products/%s/externals/setups' % self.experiment,
+            # just places where fife_utils is known to be up to date
+            # experiments will source their favorite bits on top...
             '/cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups',
             '/grid/fermiapp/products/common/etc/setups',
         ]
@@ -25,6 +30,7 @@ class Wrapper:
         self.consumerid = None
         self.timeoutproc = None
         self.rres = 0
+        self.user = os.environ.get('GRID_USER', os.environ.get('USER','sam'))
 
     def start_self_destruct(self):
         if self.options.self_destruct_timer == None:
@@ -55,7 +61,7 @@ class Wrapper:
             # we forked a job, make a note
             self.timeoutproc = res
         else:
-            sys.stderr.write( "fife_wrap: Unable to fork timeout process, something is probably wrong")
+            sys.stderr.write( "fife_wrap: Unable to fork timeout process, something is probably wrong\n")
         return
 
     def parse_arguments(self):
@@ -75,6 +81,7 @@ class Wrapper:
 	parser.add_option("-M","--multifile", action="store_true", help="Fetch files in wrapper and run executable once per file")
 	parser.add_option("-G","--with_gdb", action="store_true", help="run executable under gdb and print stack trace")
 	parser.add_option("-L","--limit", type="int", help="Set SAM project file delivery limit", default=0)
+	parser.add_option("-S","--schema",  help="Set SAM file delivery schema", default="")
 	parser.add_option("-I","--inputfile", action="append", help="Input file to copy to job area before running the executable")
 	parser.add_option("-T","--inputtar", action="append", help="Input tar file to copy to job area and unpack running the executable")
 	parser.add_option("--inputlist", action="append", help="ifdh cp -f file to run to fetch inputs")
@@ -101,13 +108,22 @@ class Wrapper:
 	parser.add_option("--find_setups", action="store_true", help="look in the 'usual places' for the ups setups script at startup")
 	parser.add_option("--start_project_on", default=None, help="start a sam project on this dataset ")
 	parser.add_option("--end_project", action="store_true", help="look in the 'usual places' for the ups setups script at startup")
+        parser.add_option("--declare_metadata", help="use given program to extract and declare metadata", action="store_true",  default=None)
+        parser.add_option("--metadata_extractor", help="use given program to extract and declare metadata", default=None)
+        parser.add_option("--add_to_dataset", help="Add files to named dataset using Dataset.Tag", default=None)
+        parser.add_option("--add_locations", action="store_true", default=None, help="Add locations of output files to SAM")
+
+	parser.add_option("--dry_run", action="store_true", help="Don't run commands, just print them")
 	parser.add_option("--nosetup", action="store_true", help="do not run setup actions (used internally)")
 
 	(self.options, self.args) = parser.parse_args()
 
+        if self.options.dry_run:
+            self.options.debug = False
+
         if self.options.debug:
-            sys.stderr.write( "Options: %s" % self.options)
-            sys.stderr.write( "Args: %s" % self.args)
+            sys.stderr.write( "Options: %s\n" % self.options)
+            sys.stderr.write( "Args: %s\n" % self.args)
 
     def do_setup(self):
         #
@@ -123,6 +139,7 @@ class Wrapper:
                  print "imported ifdh"
              except:
                  sys.stderr.write("fife_wrap: import ifdh failed\n")
+                 if self.options.debug: sys.stderr.write(traceback.format_exc())
                  pass
              return
 
@@ -160,8 +177,14 @@ class Wrapper:
 
         scriptlist.append('[ -z "$IFDHC_DIR" ] && setup ifdhc')
 
-        cuthere="--------------cut here-------------"
-        scriptlist.append("""
+        if self.options.dry_run:
+            print("# setup commands:")
+            print("\n".join(scriptlist))
+            print("# end setup commands")
+            print("# note: later commands are paraphrased from python")
+        else:
+            cuthere="--------------cut here-------------"
+            scriptlist.append("""
 echo
 echo "%s"
 cat <<'EOF' | python
@@ -175,25 +198,26 @@ for v in os.environ.keys():
 EOF
 exit
 """ % cuthere )
-        p = subprocess.Popen("/bin/bash" , stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-        p.stdin.write("\n".join(scriptlist))
-        found = False
-        evallist = []
-        for l in p.stdout.readlines():
-             if found:
-                 evallist.append(l)
-             if l.rstrip() == cuthere:
-                 found = True
-        p.stdin.close()
-        p.stdout.close()
-        if self.options.debug: sys.stderr.write('inhaled environment: %s' % repr(evallist))
-        exec '\n'.join(evallist)
-        # just assume the setup stuff made a different python environment(?)
-        sys.argv = [ 'python' , sys.argv[0] , '--nosetup' ] + sys.argv[1:]
-        if self.options.debug: sys.stderr.write( "about to exec, args: %s" % sys.argv)
-        #os.execvpe( 'python', sys.argv, os.environ)
-        os.execvp( 'python', sys.argv)
-        raise(Exception("Could not restart under new python"))
+            p = subprocess.Popen("/bin/bash" , stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+            p.stdin.write("\n".join(scriptlist))
+            found = False
+            evallist = []
+            for l in p.stdout.readlines():
+                 if found:
+                     evallist.append(l)
+                 if l.rstrip() == cuthere:
+                     found = True
+            p.stdin.close()
+            p.stdout.close()
+            p.wait()
+            if self.options.debug: sys.stderr.write('inhaled environment: %s' % repr(evallist))
+            exec '\n'.join(evallist)
+            # just assume the setup stuff made a different python environment(?)
+            sys.argv = [ 'python' , sys.argv[0] , '--nosetup' ] + sys.argv[1:]
+            if self.options.debug: sys.stderr.write( "about to exec, args: %s\n" % sys.argv)
+            #os.execvpe( 'python', sys.argv, os.environ)
+            os.execvp( 'python', sys.argv)
+            raise(Exception("Could not restart under new python"))
 
     def start_client(self):
         if self.options.debug: sys.stderr.write( "entering start_client\n" )
@@ -201,6 +225,7 @@ exit
             import ifdh
         except:
             sys.stderr.write("fife_wrap: import ifdh failed\n")
+            if self.options.debug: sys.stderr.write(traceback.format_exc())
 
         import socket
 
@@ -217,6 +242,24 @@ exit
             self.ih = ifdh.ifdh()
 
         # assume SAM_PROJECT and SAM_STATION are set...
+ 
+        if self.options.dry_run:
+            self.cpurl = "$cpurl"
+            print( 'cpurl=`ifdh findProject "%s" "%s"`' %('$SAM_PROJECT',os.environ.get('SAM_STATION', os.environ.get('EXPERIMENT',''))))
+            print( 'consumerid=`ifdh establishProcess "%s" "%s" "%s" "%s" "%s" "%s" "%s" "%s" "%s"`' %  ( 
+		   self.cpurl, 
+		   self.options.appname, 
+		   self.options.appvers, 
+                   hostname,
+                   os.environ.get('GRID_USER',os.environ.get('USER')),
+		   self.options.appfamily,
+		   description,
+		   int(self.options.limit),
+                   ""
+                )
+            )
+            return
+
         if self.cpurl == None:
             self.cpurl = self.ih.findProject(os.environ['SAM_PROJECT'],os.environ.get('SAM_STATION', os.environ.get('EXPERIMENT','')))
         self.consumerid=None
@@ -232,13 +275,15 @@ exit
                    os.environ.get('GRID_USER',os.environ.get('USER')),
 		   self.options.appfamily,
 		   description,
-		   self.options.limit,
-                   ""
+		   int(self.options.limit),
+                   self.options.schema
                 )
-                if self.options.debug: sys.stderr.write( "Got consumerid of: %d" % self.consumerid)
+                self.consumerid = self.consumerid.strip()
+                if self.options.debug: sys.stderr.write( "Got consumerid of: %s\n" % self.consumerid)
 
             except Exception as e:
                 sys.stderr.write("fife_wrap: Got exception: %s while trying to establish consumer\n" % e)
+                if self.options.debug: sys.stderr.write(traceback.format_exc())
 
             if self.consumerid:
                 break
@@ -248,7 +293,9 @@ exit
         if self.options.debug: sys.stderr.write("Entering file loop:\n")
 
         self.rres = 0
-
+        self.furi = None
+ 
+        cmdlist=[]
         if self.options.prescript:
             if self.options.debug: sys.stderr.write("prescripts:\n")
             for s in self.options.prescript:
@@ -260,8 +307,13 @@ exit
                 if self.options.debug: sys.stderr.write("prescript: %s\n" % s)
                 cmdlist.append(s)
 	    cmd = "\n".join(cmdlist)
-	    res = os.system(cmd)
+            if self.options.dry_run:
+                print("# pre-scripts")
+                print(cmd)
+            else:
+	        res = os.system(cmd)
 
+        cmdlist=[]
         if self.options.prescript_unquote:
             if self.options.debug: sys.stderr.write("prescripts:\n")
             for s in self.options.prescript_unquote:
@@ -274,14 +326,31 @@ exit
                 if self.options.debug: sys.stderr.write("prescript: %s\n" % s)
                 cmdlist.append(urllib.unquote(s))
 	    cmd = "\n".join(cmdlist)
-	    res = os.system(cmd)
+            if self.options.dry_run:
+                print("# pre-scripts-quoted")
+                print(cmd)
+            else:
+	        res = os.system(cmd)
 
         if self.options.multifile or self.options.getconfig:
-            furi=self.ih.getNextFile(self.cpurl,self.consumerid)
-	    while furi:
-                fname=self.ih.fetchInput(furi)
-                if self.options.debug: sys.stderr.write( "Fetching: %s gave: %s\n" % (furi, fname))
-                self.ih.updateFileStatus(self.cpurl, self.consumerid, fname, 'transferred')
+            if self.options.dry_run:
+                print('# getNextFile loop')
+                print('while furi=ifdh getNextFile "$cpurl" "$consumerid"')
+                print("do")
+                self.furi = "fake"
+            else:
+                self.furi=self.ih.getNextFile(self.cpurl,self.consumerid)
+
+            lastfuri = ""
+	    while self.furi and self.furi != lastfuri:
+                if self.options.dry_run:
+                    print('    fname=`ifdh fetchInput "$furi"')
+                    print('    ifdh updateFileStatus "$cpurl" "$consumerid" "$fname" "transferred"')
+                    fname='"$fname"'
+                else:
+                    fname=self.ih.fetchInput(self.furi)
+                    if self.options.debug: sys.stderr.write( "Fetching: %s gave: %s\n" % (self.furi, fname))
+                    self.ih.updateFileStatus(self.cpurl, self.consumerid, os.path.basename(self.furi), 'transferred')
 		cmdlist = [ self.options.exe ]
 		if self.options.getconfig:
 		    cmdlist.extend(self.args)
@@ -306,15 +375,29 @@ exit
 
                 if self.options.debug: sys.stderr.write("Running: %s\n" % cmd)
 
-		res = os.system(cmd)
-		if 0 == res:
-                    if self.options.debug: sys.stderr.write( "Success, marking consumed\n")
-		    self.ih.updateFileStatus(self.cpurl, self.consumerid, fname, 'consumed')
-		else:
-                    if self.options.debug: sys.stderr.write( "Failed, marking skipped\n")
-		    self.ih.updateFileStatus(self.cpurl, self.consumerid, fname, 'skipped')
-		    self.rres = res
-		furi=self.ih.getNextFile(self.cpurl,self.consumerid)
+                if self.options.dry_run:
+                    print("     if " + cmd)
+                    print("     then")
+                    print("          rres=$?")
+                    print('          ifdh updateFileStatus "$cpurl" "$consumerid" "$fname" "consumed"')
+                    print("     else")
+                    print("          rres=$?")
+                    print('          ifdh updateFileStatus "$cpurl" "$consumerid" "$fname" "skipped"')
+                    print("     fi")
+                    self.furi = None  # leave loop gracefully(?)
+                else:
+                    res = os.system(cmd)
+
+                    if 0 == res:
+                        if self.options.debug: sys.stderr.write( "Success, marking consumed\n")
+                        self.ih.updateFileStatus(self.cpurl, self.consumerid, os.path.basename(self.furi), 'consumed')
+                    else:
+                        if self.options.debug: sys.stderr.write( "Failed, marking skipped\n")
+                        self.ih.updateFileStatus(self.cpurl, self.consumerid, os.path.basename(self.furi), 'skipped')
+                    self.rres = res
+                    lastfuri = self.furi
+                    self.furi=self.ih.getNextFile(self.cpurl,self.consumerid)
+
 
 	elif self.options.ifdh_art:
 
@@ -335,8 +418,12 @@ exit
                  f.close()
 		 cmdlist = ['gdb', '-x', '.gdbcmds', '--args' ] + cmdlist
 
-	    res = os.system(" ".join(cmdlist))
-	    self.rres = res
+            if self.options.dry_run:
+                print(" ".join(cmdlist))
+                print('rres=$?')
+            else:
+                res = os.system(" ".join(cmdlist))
+                self.rres = res
 
 	else: 
             # just run the exe..
@@ -350,8 +437,16 @@ exit
 		 f.write('run\nwhere\nquit\n')
                  f.close()
 		 cmdlist = ['gdb', '-x', '.gdbcmds', '--args' ] + cmdlist
-	    res = os.system(" ".join(cmdlist))
-	    self.rres = res
+            if self.options.dry_run:
+                print(" ".join(cmdlist))
+                print('rres=$?')
+            else:
+                res = os.system(" ".join(cmdlist))
+                self.rres = res
+
+        if self.options.multifile or self.options.getconfig:
+            if self.options.dry_run:
+                print('done')
 
         if self.options.debug: sys.stderr.write("leaving file loop:\n")
 
@@ -366,7 +461,10 @@ exit
                 if self.options.debug: sys.stderr.write("postscript: %s\n" % s)
                 cmdlist.append(urllib.unquote(s))
 	    cmd = "\n".join(cmdlist)
-	    res = os.system(cmd)
+            if self.options.dry_run:
+                print(cmd)
+            else:
+	        res = os.system(cmd)
 
         if self.options.postscript_unquote:
             if self.options.debug: sys.stderr.write("postscripts:\n")
@@ -380,7 +478,10 @@ exit
                 if self.options.debug: sys.stderr.write("postscript: %s\n" % s)
                 cmdlist.append(urllib.unquote(s))
 	    cmd = "\n".join(cmdlist)
-	    res = os.system(cmd)
+            if self.options.dry_run:
+                print(cmd)
+            else:
+	        res = os.system(cmd)
 
     def fetch_inputs(self):
         # first copy any tarfiles,inputlists, and outputlists here
@@ -397,7 +498,10 @@ exit
             cplist.append(it)
         cplist.append('.')
         if len(cplist) > 2:
-           self.ih.cp(cplist)
+           if self.dry_run:
+               print("ifdh cp %s" % " ".join(cplist))
+           else:
+               self.ih.cp(cplist)
 
         # then do the copies in any of the input lists
         cplist = []
@@ -406,20 +510,109 @@ exit
             cplist.append('-f')
             cplist.append(it)
         if len(cplist) > 1:
-           self.ih.cp(cplist)
+           if self.dry_run:
+               print("ifdh cp %s" % " ".join(cplist))
+           else:
+               self.ih.cp(cplist)
 
         # and unpack any tarfiles
         for it in self.options.inputtar:
             if it.find('gz') > 0:
-                os.system("tar xzvf %s" % it)
+                if self.options.dry_run:
+                    print("tar xzvf %s" % it)
+                else:
+                    os.system("tar xzvf %s" % it)
             else:
-                os.system("tar xvf %s" % it)
+                if self.options.dry_run:
+                    print("tar xvf %s" % it)
+                else:
+                    os.system("tar xvf %s" % it)
 
     def userscripts(self):
         if not self.options.userscript:
             return
         for s in self.options.userscript:
-            os.system(s)
+            if self.options.dry_run:
+                print(s)
+            else:
+                os.system(s)
+
+    def sam_prefix(self, path):
+        '''figure out a SAM prefix for a path...'''
+        #  note that this should work like the one in fife_utils, we should
+        #  list data disks and look for path matches... but it covers most
+        #  cases for now.
+        if re.match( '/pnfs/[^/]*/(scratch|volatile|persistent)',path):
+            return 'dcache:'
+        if re.match('/pnfs/',path):
+            return 'enstore:'
+        if re.match('/eos/cern.ch/',path):
+            return 'cern-eos:'
+        if re.match('/%s/'%self.experiment, path):
+            return '%sdata:' % self.experiment
+        return ''
+
+    def file_stats(self, f):
+        if self.options.debug: sys.stderr.write("entering file_stats(%s)"%f)
+        sd = os.stat(f)
+        cdate = datetime.datetime.utcfromtimestamp(sd.st_ctime).strftime("%Y-%m-%dT%H:%M:%S:+00:00")
+        
+        #checksum = self.ih.checksum(f)
+        
+        p = subprocess.Popen("ifdh checksum %s" % f, shell=True, stdout=subprocess.PIPE)
+        checksum = p.stdout.read()
+        p.stdout.close()
+        rc = p.wait()
+
+        if self.options.debug: sys.stderr.write("DEBUG: ifdh checksum returns: %s" % checksum)
+        if checksum:
+            checksum = '["enstore:%s"]' % json.loads(checksum)["crc_value"]
+        else:
+            checksum = '[]'
+        return (f, cdate, self.user, sd.st_size, checksum)
+
+    def merge_metadata(self, m1, m2):
+        dm1 = json.loads(m1)
+        dm2 = json.loads(m2)
+        if dm2.has_key(dm1['file_name']):
+            # sam_metadata_dumper multi-file format
+            dm1.update(dm2[dm1['file_name']])
+        elif dm2.has_key('file_name') and dm1['file_name'] == dm2['file_name']:
+            dm1.update(dm2)
+        else:
+            # for now just punt, we're just adding data?
+            sys.stderr.write("metadata_extractor data doesn't have filename, trying anyway...\n")
+            dm1.update(dm2)
+
+        # sam_metadata_dumper puts 
+        #     "first_event": [ 1, 0, 1 ], 
+        #     "last_event": [1, 0, 10],
+        # instead of
+        #     "first_event": 1,
+        #     "last_event": 10,
+        # so we need to fix that
+        # it also has params listed as sam builtins that aren't
+        # so we just delete them
+        l = list(dm1.keys())
+        for k in l:
+           if k.endswith('_event') and isinstance(dm1[k],list):
+              dm1[k] = dm1[k][-1]
+           if k in [ 'applicationVersion', 'applicationFamily' ]:
+              tag = k[11:].lower()
+              if not dm1.get('application',None) or not dm1['application'].get(tag,None):
+                  dm1['application'][tag] = dm1[k]
+           if k in [ 'run_type', 'process_name', 'file_format_era', 'file_format_version', 'applicationVersion','applicationFamily']:
+              del dm1[k]
+
+        return json.dumps(dm1)
+
+    def ih_addFileLocation(self, of, loc):
+        if self.options.dry_run:
+             print('ifdh addFileLocation "%s" "%s"' % of, loc)
+
+        else:
+            '''ifdh doesn't have addFileLocation (yet) so fake it with wget since curl is having trouble with proxies...'''
+            os.system("wget --no-check-certificate  --certificate=$X509_USER_PROXY --ca-certificate=$X509_USER_PROXY --ca-directory=/etc/grid-security/certificates --private-key=$X509_USER_PROXY --post-data 'add=%s' 'https://samweb.fnal.gov:8483/sam/%s/api/files/name/%s/locations'" % (loc, self.experiment, of))
 
     def copy_back(self):
         if self.options.debug: sys.stderr.write( "Entering copy_back:\n")
@@ -429,21 +622,120 @@ exit
                 import ifdh
                 self.ih = ifdh.ifdh()
             except:
+                if self.options.debug: sys.stderr.write(traceback.format_exc())
                 pass
-
+        
 	if self.options.dest and self.options.addoutput:
 	    for g in self.options.addoutput:
-		for f in glob.glob(g):
-                    if self.options.debug: sys.stderr.write( "addoutput: %s\n", f)
-		    self.ih.addOutputFile(f)
-
+                if self.options.dry_run:
+                    print ("ifdh addOutputFile %s" % g)
+                else:
+                    for f in glob.glob(g):
+                        if self.options.debug: sys.stderr.write( "addoutput: %s\n"% f)
+		        self.ih.addOutputFile(f)
+                  
             if self.options.rename:
-                if self.options.debug: sys.stderr.write( "rename: %s\n", self.options.rename)
+                if self.options.debug: sys.stderr.write( "rename: %s\n" % self.options.rename)
 	        for r in self.options.rename:
-		    self.ih.renameOutput(r)
+                    if self.options.dry_run:
+                        print ("ifdh renameOutput %s" % r)
+                    else:
+		        self.ih.renameOutput(r)
 
-	    if self.options.debug: sys.stderr.write( "copybackoutput: %s\n", self.options.dest)
+            oflist = []
+            if self.options.add_locations:
+                if self.options.dry_run:
+                    print("# we add file locations in SAM ")
+                    print("# copy back output files to %s" % self.options.dest)
+                    return
+                # have to get output filenames from the ifdh scratch file
+                # because they could have been renamed "unique"...
+                outfiles_name = self.ih.localPath("/output_files")
+                f = open(outfiles_name,"r")
+                for line in f:
+                    oflist.append(line.strip().split()[0])
+                f.close()
+
+            for f in oflist:
+                
+	        if self.options.debug: sys.stderr.write("output file: %s\n" % f)
+
+                if self.options.declare_metadata or self.options.metadata_extractor:
+                    rt = self.file_stats(f)
+                    metadata = '''{
+"file_name": "%s", 
+"create_date": "%s",
+"user": "%s",
+"file_size": %d,
+"checksum": %s,
+"content_status": "good",
+"file_type": "unknown",
+"file_format": "unknown"
+}
+''' % rt
+                    metadata_d = json.loads(metadata)
+                    if self.options.appfamily and self.options.appvers:
+                        metadata_d["application"] =  {
+                           "family":self.options.appfamily,
+                           "name": self.options.appname,
+                           "version": self.options.appvers
+                        }
+                        metadata = json.dumps(metadata_d)
+
+                    if self.furi and self.options.dataset:
+                        metadata_d["parents"] = [{"file_name": os.path.basename(self.furi)}]
+                        metadata = json.dumps(metadata_d)
+                    if self.options.metadata_extractor:
+
+                        if self.options.metadata_extractor == 'json':
+                            md_cmd = "cat %s.json" % f
+                        else:
+                            md_cmd = "%s %s" % (self.options.metadata_extractor, f)
+                        p = subprocess.Popen(md_cmd, shell=True, stdout=subprocess.PIPE, close_fds=True)
+                        added_metadata = p.stdout.read()
+                        p.stdout.close()
+                        rc = p.wait()
+                        metadata = self.merge_metadata(metadata,added_metadata)
+                        metadata_d = json.loads(metadata)
+
+                    if self.options.add_to_dataset:
+
+                        if self.options.add_to_dataset == '_poms_task':
+                            datasetname = 'poms_depends_%s_1' % os.environ.get("POMS_TASK_ID")
+                        else:
+                            datasetname = self.options.add_to_dataset
+
+                        metadata_d["dataset.tag"] = datasetname
+                        metadata = json.dumps(metadata_d)
+
+                        # we don't know which job will actually initially 
+                        # create the definition, so we all try
+             
+                        if self.options.debug: sys.stderr.write("creating definitino %s\n" % datasetname)
+                        try:
+                            self.ih.createDefinition(
+                                datasetname, 
+                                'Dataset.Tag %s' % datasetname, 
+                                self.user,
+                                self.experiment)
+                        except:
+                            pass
+   
+	            if self.options.debug: sys.stderr.write( "DEBUG: metadata: %s\n" % str(metadata))
+                    try:
+                        self.ih.declareFile(str(metadata))
+                    except:
+                        sys.stderr.write("error declaring metadata " + repr(sys.exc_info()))
+                        if self.options.debug: sys.stderr.write(traceback.format_exc())
+                        pass
+
+	    if self.options.debug: sys.stderr.write( "copybackoutput: %s\n" % self.options.dest)
+
 	    self.ih.copyBackOutput(self.options.dest)
+
+            if self.options.add_locations:
+                for of in oflist:
+                    self.ih_addFileLocation(of, self.sam_prefix(self.options.dest)+self.options.dest)
 
         # handle any touput file lists
         cplist = []
@@ -456,9 +748,24 @@ exit
   
     def cleanup(self):
         if self.options.debug: sys.stderr.write("Entering cleanup:\n")
+        if self.options.dry_run:
+            print('if [ \! -z "$cpurl" -a \! -z "$consumerid" ]') 
+            print('then') 
+            print('    if [ $rres = 0  ]') 
+            print('    then') 
+            print('        ifdh setStatus "$cpurl" "$consumerid" "completed"') 
+            print('    else') 
+            print('        ifdh setStatus "$cpurl" "$consumerid" "bad"') 
+            print('    fi') 
+            print('fi') 
+            print('exit $rres')
+
         if self.ih and self.cpurl and self.consumerid:
 	    self.ih.setStatus(self.cpurl, self.consumerid, "completed" if 0 == self.rres else "bad")
-	    self.ih.cleanup()
+
+        if self.ih:
+            self.ih.cleanup()
+
         if self.timeoutproc:
             os.kill(self.timeoutproc, 9)
 
@@ -483,19 +790,20 @@ exit
 
 if __name__ == '__main__' :
     w = Wrapper()
+    w.parse_arguments()
     try:
-	w.parse_arguments()
 	w.do_setup()
         if w.options.start_project_on:
              w.start_project()
 	w.start_self_destruct()
         w.fetch_inputs()
-        if w.options.ifdh_art or  w.options.multifile or w.options.getconfig:
+        if w.options.ifdh_art or w.options.multifile or w.options.getconfig:
 	    w.start_client()
 	w.file_loop()   
         w.userscripts()
 	w.copy_back()
     except:
+        if w.options.debug: sys.stderr.write(traceback.format_exc())
         raise
     finally:
         w.cleanup()
@@ -504,6 +812,7 @@ if __name__ == '__main__' :
 	if w.options.end_project:
 	   w.end_project()
     except:
+        if self.options.debug: sys.stderr.write(traceback.format_exc())
         pass
 
     exit(w.rres)

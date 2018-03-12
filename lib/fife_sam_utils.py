@@ -158,7 +158,7 @@ class dataset:
         return flist.__iter__()
         
     class _loc_iterator:
-        def __init__(self, locmap, fulllocflag = False):
+        def __init__(self, locmap, fulllocflag = False, tapeset = None):
             #print "in _loc_iterator.__init__, locmap is:", locmap
             self.loc_iter = [].__iter__()
             self.locmap = locmap
@@ -193,7 +193,12 @@ class dataset:
             #pre = res
             if not self.fulllocflag:
                 prefix, res = res.split(':',1)
-            res = re.sub('\(.*?\)$','',res)
+
+            m = re.match('\(.*?@.*?\)$', res)
+            if m:
+                if tapeset:
+                    tapeset.add(m.group(1))
+                res = re.sub('\(.*?\)$','',res)
 
             #print "converted\n\t%s\nto\n\t%s" % ( pre, res)
 
@@ -230,9 +235,9 @@ class dataset:
             self.locmap.update(self.ifdh_handle.locateFiles(first_k))
         #print "get_locmap: finishing", time.ctime()
 
-    def fullpath_iterator(self, fulllocflag = False):
+    def fullpath_iterator(self, fulllocflag = False, tapeset = None):
         self.get_locmap(fulllocflag)
-        return self._loc_iterator(self.locmap, fulllocflag)
+        return self._loc_iterator(self.locmap, fulllocflag, tapeset = tapeset)
 
 def sampath(dir):
     if dir.find("(") > 0:
@@ -324,7 +329,7 @@ def canonical(uri):
 
     return uri      
 
-UUID_RE=r'[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}'
+UUID_RE=r'[0-9a-f]{8}(?:-[0-9a-f]+)+-[0-9a-f]+(?=[-.])'
 
 def has_uuid_prefix(s):
     return bool(re.search(UUID_RE,s))
@@ -470,12 +475,16 @@ def copy_and_declare(d, cpargs, locargs, dest, subdirf, samweb, just_say, verbos
                     res = 1
     return res
 
-def validate( ds, just_say = False, prune = False, verbose = False, experiment = None , locality = False):
+def validate( ds, just_say = False, prune = False, verbose = False, experiment = None , locality = False, list_tapes=False):
     samweb = SAMWebClient(experiment=experiment)
     res=0
 
     counts = {}
-    for p in ds.fullpath_iterator(fulllocflag = True):
+    if list_tapes:
+        tapeset = set()
+    else:
+        tapeset = None
+    for p in ds.fullpath_iterator(fulllocflag = True, tapeset = tapeset):
         sp = sampath(p)
         if just_say and not prune:
             print "I would: ifdh ls %s 0" % sp
@@ -522,6 +531,11 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
         if len(l) == 0:
            print "file %s has 0 locations" % f
            res = 1
+
+    if list_tapes:
+        print "tapes:"
+        for t in tapeset:
+            print t
 
     return res
 
