@@ -13,9 +13,9 @@ except:
 
 class launcher:
  
-    def __init__(self, cfgfilename, overrides, jobname = None, stage = None, fake=None ):
+    def __init__(self, cfgfilename, overrides, jobname = None, stages = [], fake=None ):
 	self.cfg = ConfigParser.SafeConfigParser()
-        self.stage = stage
+        self.stages = stages
         self.cfg.optionxform = str
         self.included = {}
         self.fake = fake
@@ -26,11 +26,12 @@ class launcher:
         self.do_cfg_includes(cfgfilename)
 
         # handle stage overrides up front
-        stagetag = 'stage_' + self.stag
-        if self.cfg.has_section(stagetag):
-	    for k,v in self.cfg.items(stagetag, raw=1):
-		s,n = k.split('.',1)
-		self.cfg.set(s,n,v)
+        for stage in stages:
+            stagetag = 'stage_' + stage
+            if self.cfg.has_section(stagetag):
+                for k,v in self.cfg.items(stagetag, raw=1):
+                    s,n = k.split('.',1)
+                    self.cfg.set(s,n,v)
                
         # then command line overrides last
         if overrides:
@@ -283,7 +284,7 @@ if __name__ == '__main__':
     p.add_option('-c', '--config', help='config file describing job')
     p.add_option('-O', '--override',  help='override config file values', action='append' )
     p.add_option('--jobname', help='job name for launching', default=None)
-    p.add_option('--stage', help='stage name to add options from', default=None)
+    p.add_option('--stage', action='append', help='stage name to add options from', default=[])
     p.add_option('--fake', action='store_true', help='use fake_jobsub', default=None)
     p.add_option('--dry_run', action='store_true', help='Just print what we would do', default=None)
     options, args = p.parse_args()
