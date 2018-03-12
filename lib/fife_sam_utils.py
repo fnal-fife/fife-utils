@@ -329,7 +329,7 @@ def canonical(uri):
 
     return uri      
 
-UUID_RE=r'[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}'
+UUID_RE=r'[0-9a-f]{8}(?:-[0-9a-f]+)+-[0-9a-f]+(?=[-.])'
 
 def has_uuid_prefix(s):
     return bool(re.search(UUID_RE,s))
@@ -482,7 +482,7 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
     counts = {}
     if list_tapes:
         tapeset = set()
-    else
+    else:
         tapeset = None
     for p in ds.fullpath_iterator(fulllocflag = True, tapeset = tapeset):
         sp = sampath(p)
@@ -535,7 +535,7 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
     if list_tapes:
         print "tapes:"
         for t in tapeset:
-            print $t
+            print t
 
     return res
 
