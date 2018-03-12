@@ -109,11 +109,6 @@ class launcher:
     def build_launch(self):
 	res = []
 	self.cfg_globals = dict(self.cfg.items('global'))
-        if self.stage:
-            stage_data = dict(self.cfg.items('stage_%s' % self.stage, raw=True))
-            print("stage_data for %s: %s\n" % (self.stage, repr(stage_data)))
-            self.cfg_globals.update(stage_data)
-        print("globals now: %s\n" % repr(self.cfg_globals))
 
         res.append("set -x")
 
