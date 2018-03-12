@@ -673,8 +673,9 @@ def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 1, verbose =
     if len(kidlist) > 1 or int(ncopies) == 1:
        d.ifdh_handle.endProject(purl)
 
-def clean_one(d, path, keep):
-    samweb = SAMWebClient(experiment = experiment)
+def clean_one(d, path, full, keep, exp):
+    samweb = SAMWebClient(experiment = exp)
+    filename = basename(full)
     loc = dirname(full)
     res = 5
     try:
@@ -692,9 +693,9 @@ def clean_one(d, path, keep):
 
     if res == 0:
         try:
-            samweb.removeFileLocation(file, loc)
+            samweb.removeFileLocation(filename, loc)
             res = 0
-        except:
+        except SAMWebConnectionError:
             traceback.print_exc()
             res = 3
 
@@ -711,7 +712,7 @@ def unclone( d, just_say = False, delete_match = '.*', verbose = False, experime
         if verbose: print "looking at full path:", full
         spath = sampath(full)
         if verbose: print "looking at sampath:", spath
-        file = basename(full)
+        filename = basename(full)
         if just_say:
             if re.match(delete_match, full) or re.match(delete_match, spath):
                 print "I would 'ifdh rm %s'" % sampath(full)
@@ -719,7 +720,7 @@ def unclone( d, just_say = False, delete_match = '.*', verbose = False, experime
         else:
             if re.match(delete_match, full) or re.match(delete_match, spath):
                 if verbose: print "matches: " , delete_match
-                pl = d.get_paths_for(file)
+                pl = d.get_paths_for(filename)
                 if verbose: print "paths: " , pl
                 if len(pl) == 1:
                     print "NOT removing %s, it is the only location!" % full
@@ -732,7 +733,7 @@ def unclone( d, just_say = False, delete_match = '.*', verbose = False, experime
 
                 # clean path out of our cache, so we don't count it
                 # next time.
-                d.remove_path_for(file, os.path.dirname(full))
+                d.remove_path_for(filename, os.path.dirname(full))
 
 		# unlink in background, wait if we
 		# have nparallel ones running.
@@ -740,11 +741,11 @@ def unclone( d, just_say = False, delete_match = '.*', verbose = False, experime
 		pid = os.fork()
 		if 0 == pid:
                     # child
-                    os._exit(clean_one(d,path))
+                    os._exit(clean_one(d,path,full,keep,experiment))
 		elif -1 == pid:
                     # fork failed...
 		    print "Cannot fork!"
-                    clean_one(d, path)
+                    clean_one(d, path,full,keep,experiment)
 		else: 
                     # parent            
 		    proccount = proccount + 1

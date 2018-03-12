@@ -32,7 +32,7 @@ testsuite() {
             n_fails=0
 	    for _t in \$${suitename}_test_list
 	    do
-               n_tests=\$(( \$n_tests + 1 ))
+               n_tests=\$(( n_tests + 1 ))
 	       if [ x\$verbose = "x-v" -o x\$verbose = "x-vv" ]
                then
 	           printf '%s \t...' \$_t
@@ -55,7 +55,7 @@ testsuite() {
 		       echo ---------------- >> ${TMPDIR:-/tmp}/test_out_$$
                    fi
                else
-                   n_fails=\$(( \$n_fails + 1 ))
+                   n_fails=\$(( n_fails + 1 ))
                    if [ x\$verbose = "x-v" -o x\$verbose = "x-vv" ]
                    then
                        echo FAIL
@@ -82,6 +82,6 @@ testsuite() {
             fi
          }
      "
-     # echo "def is $def" 
+     #echo "def is $def" 
      eval "$def"
 }
