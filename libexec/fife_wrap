@@ -731,7 +731,12 @@ exit
 
 	    if self.options.debug: sys.stderr.write( "copybackoutput: %s\n" % self.options.dest)
 
-            actualdest = os.path.expandvars(self.options.dest)
+            actualdest = self.options.dest
+
+            if metadata_d:
+                actualdest = format_path(actualdest, CaseInsensitiveDict(metadat_d), time.time())
+                
+            actualdest = os.path.expandvars()
 
 	    self.ih.copyBackOutput(actualdest)
 
