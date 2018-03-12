@@ -731,11 +731,13 @@ exit
 
 	    if self.options.debug: sys.stderr.write( "copybackoutput: %s\n" % self.options.dest)
 
-	    self.ih.copyBackOutput(self.options.dest)
+            actualdest = os.path.expandvars(self.options.dest)
+
+	    self.ih.copyBackOutput(actualdest)
 
             if self.options.add_locations:
                 for of in oflist:
-                    self.ih_addFileLocation(of, self.sam_prefix(self.options.dest)+self.options.dest)
+                    self.ih_addFileLocation(of, self.sam_prefix(actualdest)+actualdest)
 
         # handle any touput file lists
         cplist = []
