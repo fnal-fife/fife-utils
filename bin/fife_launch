@@ -69,13 +69,14 @@ class launcher:
 
     def pre_launch(self, dry_run = False):
         dest = self.cfg_get('job_output','dest', vars= self.cfg_globals)
-        if dest:
+        if dest and not dest.find('$') >= 0:
             if dry_run:
                 print("I would: ifdh mkdir_p %s" % dest)
             else:
                 import ifdh
                 ih = ifdh.ifdh()
                 ih.mkdir_p(dest)
+
         dataset = self.cfg_get('submit','dataset',vars = self.cfg_globals)
         if dataset:
             if dry_run:
