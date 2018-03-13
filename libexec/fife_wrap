@@ -14,7 +14,9 @@ import json
 import re
 import traceback
 import fnmatch
-from path_template import CaseInsensitiveDict, format_path
+
+#bodily included it below so we don't need it in our include path in the job
+#from path_template import CaseInsensitiveDict, format_path
 
 class Wrapper:
     def __init__(self):
@@ -712,7 +714,7 @@ exit
                         # skip if it is in our exclude pattern
                         if self.options.dataset_exclude and fnmatch(f,self.options.dataset_exclude):
                             pass
-                        else
+                        else:
                             if self.options.add_to_dataset == '_poms_task':
                                 datasetname = 'poms_depends_%s_1' % os.environ.get("POMS_TASK_ID")
                             else:

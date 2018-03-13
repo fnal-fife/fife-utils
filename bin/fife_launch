@@ -25,7 +25,7 @@ class launcher:
         # now pull in the config file with includes
         self.do_cfg_includes(cfgfilename)
 
-        if config_dump == 'before' or config_dump = 'both':
+        if config_dump == 'before' or config_dump == 'both':
            sys.stderr.write("config before expansion:\n================\n")
            self.cfg.write(sys.stderr)
            sys.stderr.write("\n================\n")
@@ -46,7 +46,7 @@ class launcher:
 		s,n = k.split('.',1)
 		self.cfg.set(s,n,v)
 
-        if config_dump == 'after' or config_dump = 'both':
+        if config_dump == 'after' or config_dump == 'both':
            sys.stderr.write("config after expansion:\n================\n")
            self.cfg.write(sys.stderr)
            sys.stderr.write("\n================\n")
