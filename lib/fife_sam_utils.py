@@ -695,7 +695,7 @@ def clean_one(d, path, full, keep, exp):
         try:
             samweb.removeFileLocation(filename, loc)
             res = 0
-        except SAMWebConnectionError:
+        except: 
             traceback.print_exc()
             res = 3
 
