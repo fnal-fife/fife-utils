@@ -13,6 +13,7 @@ import datetime
 import json
 import re
 import traceback
+import fnmatch
 from path_template import CaseInsensitiveDict, format_path
 
 class Wrapper:
@@ -73,20 +74,20 @@ class Wrapper:
 	parser.add_option("-c","--config", help="Specify config file (fcl) for art executable")
 	parser.add_option("-X","--exe", help="Specify executable name for art executable -- default $EXPERIMENT")
 	parser.add_option("-D","--dest", help="Specify destination for copyBackOutput")
-	parser.add_option("-R","--rename", action="append", dest="rename", help="Specify output file rename after Art runs")
-	parser.add_option("--rename2", action="append", dest="rename")
-	parser.add_option("--rename3", action="append", dest="rename")
+	parser.add_option("-R","--rename", action="append", dest="rename", help="Specify output file rename after Art runs", default = [])
+	parser.add_option("--rename2", action="append", dest="rename", default = [])
+	parser.add_option("--rename3", action="append", dest="rename", default = [])
 	parser.add_option("-g","--getconfig", action="store_true", help="get config files as inputs from SAM (i.e. for MonteCarlo simulation). Conflicts with --config")
 	parser.add_option("--confbase", help="Base fcl file to prepend to fetched ones if running --getconfig")
 	parser.add_option("-M","--multifile", action="store_true", help="Fetch files in wrapper and run executable once per file")
 	parser.add_option("-G","--with_gdb", action="store_true", help="run executable under gdb and print stack trace")
 	parser.add_option("-L","--limit", type="int", help="Set SAM project file delivery limit", default=0)
 	parser.add_option("-S","--schema",  help="Set SAM file delivery schema", default="")
-	parser.add_option("-I","--inputfile", action="append", help="Input file to copy to job area before running the executable")
-	parser.add_option("-T","--inputtar", action="append", help="Input tar file to copy to job area and unpack running the executable")
-	parser.add_option("--inputlist", action="append", help="ifdh cp -f file to run to fetch inputs")
-	parser.add_option("--outputlist", action="append", help="ifdh cp -f file to run to copy out outputs")
-	parser.add_option("-O","--addoutput",action="append",  help="glob pattern to match and call addOutputFile on")
+	parser.add_option("-I","--inputfile", action="append", help="Input file to copy to job area before running the executable", default = [])
+	parser.add_option("-T","--inputtar", action="append", help="Input tar file to copy to job area and unpack running the executable", default = [])
+	parser.add_option("--inputlist", action="append", help="ifdh cp -f file to run to fetch inputs", default = [])
+	parser.add_option("--outputlist", action="append", help="ifdh cp -f file to run to copy out outputs", default = [])
+	parser.add_option("-O","--addoutput",action="append",  help="glob pattern to match and call addOutputFile on", default = [])
 	parser.add_option("--export",action="append",  help="export environment variable before running", default= [])
 	parser.add_option("--export-unquote",action="append",  help="export environment variable before running", default= [])
 	parser.add_option("--setup",action="append",  help="setup product before running", default=[])
@@ -94,23 +95,25 @@ class Wrapper:
 	parser.add_option("--source",action="append",  help="source setup file before running", default = [])
 	parser.add_option("--source-unquote",action="append",  help="source setup file before running", default = [])
 	parser.add_option("--self_destruct_timer", type="int", help="After this many seconds, suicide the job so we get output back")
-	parser.add_option("--prescript", action="append", help="script to run before Art executable")
-	parser.add_option("--prescript-unquote",action="append",  help="script to run before Art executable")
-	parser.add_option("--postscript",action="append",  help="script to run after Art executable")
-	parser.add_option("--postscript-unquote",action="append",  help="script to run after Art executable")
+	parser.add_option("--prescript", action="append", help="script to run before Art executable", default = [])
+	parser.add_option("--prescript-unquote",action="append",  help="script to run before Art executable", default = [])
+	parser.add_option("--postscript",action="append",  help="script to run after Art executable", default = [])
+	parser.add_option("--postscript-unquote",action="append",  help="script to run after Art executable", default = [])
 	parser.add_option("--debug", action="count", help="Turn on debugging")
 	parser.add_option("--ifdh_art", action="store_true", help="executable can run the ifdh_art getNextFile loop ")
          
         parser.add_option("--appname", help="application name for SAM", default="demo")
         parser.add_option("--appfamily", help="application family for SAM", default="demo")
         parser.add_option("--appvers", help="application version for SAM", default=os.environ.get("ART_VERSION","1"))
-        parser.add_option("--userscript", action="append", help="extra user script to run after main executable" )
+        parser.add_option("--userscript", action="append", help="extra user script to run after main executable" , default = [])
 	parser.add_option("--find_setups", action="store_true", help="look in the 'usual places' for the ups setups script at startup")
 	parser.add_option("--start_project_on", default=None, help="start a sam project on this dataset ")
 	parser.add_option("--end_project", action="store_true", help="look in the 'usual places' for the ups setups script at startup")
         parser.add_option("--declare_metadata", help="use given program to extract and declare metadata", action="store_true",  default=None)
+	parser.add_option("--add_metadata",action="append",  help="metadata to add when declaring output files", default = [])
         parser.add_option("--metadata_extractor", help="use given program to extract and declare metadata", default=None)
         parser.add_option("--add_to_dataset", help="Add files to named dataset using Dataset.Tag", default=None)
+	parser.add_option("--dataset_exclude",action="append",  help="glob pattern of output files to exclude from the --add_to_dataset dataset", default = [])
         parser.add_option("--add_locations", action="store_true", default=None, help="Add locations of output files to SAM")
 
 	parser.add_option("--dry_run", action="store_true", help="Don't run commands, just print them")
@@ -699,15 +702,28 @@ exit
                         metadata = self.merge_metadata(metadata,added_metadata)
                         metadata_d = json.loads(metadata)
 
-                    if self.options.add_to_dataset:
-
-                        if self.options.add_to_dataset == '_poms_task':
-                            datasetname = 'poms_depends_%s_1' % os.environ.get("POMS_TASK_ID")
-                        else:
-                            datasetname = self.options.add_to_dataset
-
-                        metadata_d["dataset.tag"] = datasetname
+                    # add extra metadata fields from commandline
+                    for siv in self.options.add_metadata:
+                        si, v = siv.split('=',1)
+                        metadata_d[si] = v
                         metadata = json.dumps(metadata_d)
+                            
+                    if self.options.add_to_dataset:
+                        # skip if it is in our exclude pattern
+                        if self.options.dataset_exclude and fnmatch(f,self.options.dataset_exclude):
+                            pass
+                        else
+                            if self.options.add_to_dataset == '_poms_task':
+                                datasetname = 'poms_depends_%s_1' % os.environ.get("POMS_TASK_ID")
+                            else:
+                                datasetname = self.options.add_to_dataset
+
+                            # support metadata templated dataset names(!)
+                            if datasetname.find('$') >= 0:
+                                datasetname = format_path(datasetname, CaseInsensitiveDict(metadata_d), time.time())
+ 
+                            metadata_d["dataset.tag"] = datasetname
+                            metadata = json.dumps(metadata_d)
 
                         # we don't know which job will actually initially 
                         # create the definition, so we all try
@@ -736,7 +752,7 @@ exit
 
             # if we are doing metadata, allow FTS-format path templating
             if metadata_d:
-                actualdest = format_path(actualdest, CaseInsensitiveDict(metadat_d), time.time())
+                actualdest = format_path(actualdest, CaseInsensitiveDict(metadata_d), time.time())
                 
             actualdest = os.path.expandvars()
 
