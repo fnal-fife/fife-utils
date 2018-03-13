@@ -13,7 +13,7 @@ except:
 
 class launcher:
  
-    def __init__(self, cfgfilename, overrides, jobname = None, stages = [], fake=None ):
+    def __init__(self, cfgfilename, overrides, jobname = None, stages = [], fake=None, config_dump = None ):
 	self.cfg = ConfigParser.SafeConfigParser()
         self.stages = stages
         self.cfg.optionxform = str
@@ -24,6 +24,11 @@ class launcher:
  
         # now pull in the config file with includes
         self.do_cfg_includes(cfgfilename)
+
+        if config_dump == 'before' or config_dump = 'both':
+           sys.stderr.write("config before expansion:\n================\n")
+           self.cfg.write(sys.stderr)
+           sys.stderr.write("\n================\n")
 
         # handle stage overrides up front
         for stage in stages:
@@ -41,6 +46,10 @@ class launcher:
 		s,n = k.split('.',1)
 		self.cfg.set(s,n,v)
 
+        if config_dump == 'after' or config_dump = 'both':
+           sys.stderr.write("config after expansion:\n================\n")
+           self.cfg.write(sys.stderr)
+           sys.stderr.write("\n================\n")
      
     def cfg_get(self, section, name, vars={}):
         ''' like cfg.get() except it gives None and not an exception '''
@@ -282,7 +291,8 @@ if __name__ == '__main__':
     p.add_option('--stage', action='append', help='stage name to add options from', default=[])
     p.add_option('--fake', action='store_true', help='use fake_jobsub', default=None)
     p.add_option('--dry_run', action='store_true', help='Just print what we would do', default=None)
+    p.add_option('--config_dump', help='dump our config "before" or "after" expansion and overrides (or "both")', default=None)
     options, args = p.parse_args()
    
-    l = launcher(options.config, options.override, options.jobname, options.stage, options.fake)
+    l = launcher(options.config, options.override, options.jobname, options.stage, options.fake, options.config_dump)
     l.launch(options.dry_run)
