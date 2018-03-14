@@ -6,6 +6,7 @@ import os
 import optparse
 import urllib
 import shutil
+from samweb_client import *
 try:
     import poms_client
 except:
