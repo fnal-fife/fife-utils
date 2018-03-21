@@ -18,6 +18,12 @@ import fnmatch
 #bodily included it below so we don't need it in our include path in the job
 #from path_template import CaseInsensitiveDict, format_path
 
+def match_list(f,globlist):
+    for g in globlist:
+        if fnmatch.fnmatch(f,g):
+            return True
+    return False
+
 class Wrapper:
     def __init__(self):
         self.experiment = os.environ.get('EXPERIMENT',os.environ.get('SAM_EXPERIMENT',os.environ.get('GROUP',grp.getgrgid(os.getgid())[0])))
@@ -260,7 +266,7 @@ exit
 		   self.options.appfamily,
 		   description,
 		   int(self.options.limit),
-                   ""
+                   self.options.schema
                 )
             )
             return
@@ -701,8 +707,10 @@ exit
                         added_metadata = p.stdout.read()
                         p.stdout.close()
                         rc = p.wait()
-                        metadata = self.merge_metadata(metadata,added_metadata)
-                        metadata_d = json.loads(metadata)
+                        # only take the metadata if the command was successful
+                        if rc == 0:
+                            metadata = self.merge_metadata(metadata,added_metadata)
+                            metadata_d = json.loads(metadata)
 
                     # add extra metadata fields from commandline
                     for siv in self.options.add_metadata:
@@ -712,7 +720,7 @@ exit
                             
                     if self.options.add_to_dataset:
                         # skip if it is in our exclude pattern
-                        if self.options.dataset_exclude and fnmatch(f,self.options.dataset_exclude):
+                        if self.options.dataset_exclude and match_list(f,self.options.dataset_exclude):
                             pass
                         else:
                             if self.options.add_to_dataset == '_poms_task':
