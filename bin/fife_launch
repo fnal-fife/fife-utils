@@ -79,6 +79,12 @@ class launcher:
 
     def pre_launch(self, dry_run = False):
         dest = self.cfg_get('job_output','dest', vars= self.cfg_globals)
+
+        // do mkdir with the right experiment set...
+        exp = self.cfg_get('env_pass','SAM_EXPERIMENT', vars= self.cfg_globals)
+        if exp and not os.environ.get('EXPERIMENT', None):
+            os.environ['EXPERIMENT'] = exp
+
         if dest and not dest.find('$') >= 0:
             if dry_run:
                 print("I would: ifdh mkdir_p %s" % dest)
