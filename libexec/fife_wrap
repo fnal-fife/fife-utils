@@ -118,7 +118,7 @@ class Wrapper:
 	parser.add_option("--start_project_on", default=None, help="start a sam project on this dataset ")
 	parser.add_option("--end_project", action="store_true", help="look in the 'usual places' for the ups setups script at startup")
         parser.add_option("--declare_metadata", help="use given program to extract and declare metadata", action="store_true",  default=None)
-	parser.add_option("--add_metadata",action="append",  help="metadata to add when declaring output files", default = [])
+	parser.add_option("--add_metadata",action="append",  help="single metadata field key=value to add when declaring output files", default = [])
         parser.add_option("--metadata_extractor", help="use given program to extract and declare metadata", default=None)
         parser.add_option("--add_to_dataset", help="Add files to named dataset using Dataset.Tag", default=None)
 	parser.add_option("--dataset_exclude",action="append",  help="glob pattern of output files to exclude from the --add_to_dataset dataset", default = [])
@@ -462,6 +462,7 @@ exit
         if self.options.debug: sys.stderr.write("leaving file loop:\n")
 
         if self.options.postscript:
+            cmdlist=[]
             if self.options.debug: sys.stderr.write("postscripts:\n")
             for s in self.options.postscript:
                 if os.access(s, os.R_OK) and not os.access(s, os.X_OK):
@@ -478,6 +479,7 @@ exit
 	        res = os.system(cmd)
 
         if self.options.postscript_unquote:
+            cmdlist=[]
             if self.options.debug: sys.stderr.write("postscripts:\n")
             for s in self.options.postscript_unquote:
                 sbase = s.split(' ')[0]
