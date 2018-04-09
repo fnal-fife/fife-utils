@@ -19,20 +19,20 @@ end_proj() {
 
 test_client_1() {
     export POMS_TASK_ID=9999
-    ../libexec/fife_wrap --debug --find_setups --setup fife_utils --limit 1 --multifile  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_to_dataset _poms_task --add_locations --dest /pnfs/nova/scratch/users/mengel/ -- '>bar.root' '<' 
+    ../libexec/fife_wrap --debug --find_setups --setup fife_utils --limit 1 --multifile  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_to_dataset _poms_task --add_location --dest /pnfs/nova/scratch/users/mengel/ -- '>bar.root' '<' 
 }
 
 test_client_tmpl() {
     export POMS_TASK_ID=9999
-    ../libexec/fife_wrap --debug --find_setups --setup fife_utils --limit 1 --multifile  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_to_dataset _poms_task --add_locations --dest '/pnfs/nova/scratch/users/mengel/${month}/' -- '>bar.root' '<' 
+    ../libexec/fife_wrap --debug --find_setups --setup fife_utils --limit 1 --multifile  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_to_dataset _poms_task --add_location --dest '/pnfs/nova/scratch/users/mengel/${month}/' -- '>bar.root' '<' 
 }
 test_client_4() {
     export POMS_TASK_ID=9999
-    ../libexec/fife_wrap --debug --find_setups --setup fife_utils --limit 4 --multifile  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_locations --add_to_dataset _poms_task --dest /pnfs/nova/scratch/users/mengel -- '>bar.root' '<' 
+    ../libexec/fife_wrap --debug --find_setups --setup fife_utils --limit 4 --multifile  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_location --add_to_dataset _poms_task --dest /pnfs/nova/scratch/users/mengel -- '>bar.root' '<' 
 }
 test_client_excl() {
     export POMS_TASK_ID=9999
-    ../libexec/fife_wrap --debug --find_setups --setup fife_utils --limit 1 --multifile  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_locations --add_to_dataset _poms_task --dataset_exclude '*.xyzzy' --dest /pnfs/nova/scratch/users/mengel -- '>bar.root' '<' 
+    ../libexec/fife_wrap --debug --find_setups --setup fife_utils --limit 1 --multifile  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_location --add_to_dataset _poms_task --dataset_exclude '*.xyzzy' --dest /pnfs/nova/scratch/users/mengel -- '>bar.root' '<' 
 }
 
 testsuite fife_wrap_tests -s setup_proj -t end_proj test_client_excl

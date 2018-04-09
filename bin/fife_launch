@@ -14,7 +14,7 @@ except:
 
 class launcher:
  
-    def __init__(self, cfgfilename, overrides, jobname = None, stages = [], fake=None, config_dump = None ):
+    def __init__(self, cfgfilename, overrides, jobname = None, stages = [], fake=None, config_dump = None , arg_push = [], arg_del = []):
 	self.cfg = ConfigParser.SafeConfigParser()
         self.stages = stages
         self.cfg.optionxform = str
@@ -46,6 +46,34 @@ class launcher:
 		k, v = o.split('=',1)
 		s,n = k.split('.',1)
 		self.cfg.set(s,n,v)
+
+        # arg push/parse replace...
+        # - put them in an args list
+        # - shuffle as requested
+        # - stick back in arg_n config entries
+        args= []
+        for i in range(1,30):
+            try:
+                v = self.cfg.get('executable','arg_%d'%i, raw=True)
+            except:
+                v = None
+            if v:
+                args.append(v)
+
+        for v in arg_push:
+            args.insert(0,v)
+
+        for v in arg_del:
+            args.remove(v)
+
+        for i in range(1,30):
+            if i < len(args):
+                self.cfg.set('executable', 'arg_%d' % i, args[i-1])
+            else:
+                try:
+                    self.cfg.remove_option('executable', 'arg_%d' % i)
+                except:
+                    break
 
         if config_dump == 'after' or config_dump == 'both':
            sys.stderr.write("config after expansion:\n================\n")
@@ -311,7 +339,9 @@ if __name__ == '__main__':
     p.add_option('--fake', action='store_true', help='use fake_jobsub', default=None)
     p.add_option('--dry_run', action='store_true', help='Just print what we would do', default=None)
     p.add_option('--config_dump', help='dump our config "before" or "after" expansion and overrides (or "both")', default=None)
+    p.add_option('--arg_push', action='append', help='push a command line argument in the executable section', default=[])
+    p.add_option('--arg_del', action='append', help='delete a specific argument in the executable section', default=[])
     options, args = p.parse_args()
    
-    l = launcher(options.config, options.override, options.jobname, options.stage, options.fake, options.config_dump)
+    l = launcher(options.config, options.override, options.jobname, options.stage, options.fake, options.config_dump, options.arg_push, options.arg_del)
     l.launch(options.dry_run)
