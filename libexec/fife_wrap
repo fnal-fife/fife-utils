@@ -81,10 +81,6 @@ class Wrapper:
 	parser.add_option("-v","--vers", help="Set version for ifdh_art setup")
 	parser.add_option("-c","--config", help="Specify config file (fcl) for art executable")
 	parser.add_option("-X","--exe", help="Specify executable name for art executable -- default $EXPERIMENT")
-	parser.add_option("-D","--dest", help="Specify destination for copyBackOutput")
-	parser.add_option("-R","--rename", action="append", dest="rename", help="Specify output file rename after Art runs", default = [])
-	parser.add_option("--rename2", action="append", dest="rename", default = [])
-	parser.add_option("--rename3", action="append", dest="rename", default = [])
 	parser.add_option("-g","--getconfig", action="store_true", help="get config files as inputs from SAM (i.e. for MonteCarlo simulation). Conflicts with --config")
 	parser.add_option("--confbase", help="Base fcl file to prepend to fetched ones if running --getconfig")
 	parser.add_option("-M","--multifile", action="store_true", help="Fetch files in wrapper and run executable once per file")
@@ -94,8 +90,6 @@ class Wrapper:
 	parser.add_option("-I","--inputfile", action="append", help="Input file to copy to job area before running the executable", default = [])
 	parser.add_option("-T","--inputtar", action="append", help="Input tar file to copy to job area and unpack running the executable", default = [])
 	parser.add_option("--inputlist", action="append", help="ifdh cp -f file to run to fetch inputs", default = [])
-	parser.add_option("--outputlist", action="append", help="ifdh cp -f file to run to copy out outputs", default = [])
-	parser.add_option("-O","--addoutput",action="append",  help="glob pattern to match and call addOutputFile on", default = [])
 	parser.add_option("--export",action="append",  help="export environment variable before running", default= [])
 	parser.add_option("--export-unquote",action="append",  help="export environment variable before running", default= [])
 	parser.add_option("--setup",action="append",  help="setup product before running", default=[])
@@ -117,15 +111,26 @@ class Wrapper:
 	parser.add_option("--find_setups", action="store_true", help="look in the 'usual places' for the ups setups script at startup")
 	parser.add_option("--start_project_on", default=None, help="start a sam project on this dataset ")
 	parser.add_option("--end_project", action="store_true", help="look in the 'usual places' for the ups setups script at startup")
-        parser.add_option("--declare_metadata", help="use given program to extract and declare metadata", action="store_true",  default=None)
-	parser.add_option("--add_metadata",action="append",  help="single metadata field key=value to add when declaring output files", default = [])
-        parser.add_option("--metadata_extractor", help="use given program to extract and declare metadata", default=None)
-        parser.add_option("--add_to_dataset", help="Add files to named dataset using Dataset.Tag", default=None)
-	parser.add_option("--dataset_exclude",action="append",  help="glob pattern of output files to exclude from the --add_to_dataset dataset", default = [])
-        parser.add_option("--add_locations", action="store_true", default=None, help="Add locations of output files to SAM")
-
 	parser.add_option("--dry_run", action="store_true", help="Don't run commands, just print them")
 	parser.add_option("--nosetup", action="store_true", help="do not run setup actions (used internally)")
+
+        # output options
+        for  i in range(10):
+            if i == 0:
+                suffix = ''
+            else:
+                suffix = str(i)
+            parser.add_option("--dest"+suffix, help="Specify destination for copyBackOutput")
+            parser.add_option("--rename"+suffix, action="append", dest="rename", help="Specify output file rename after Art runs", default = [])
+            parser.add_option("--addoutput"+suffix,action="append",  help="glob pattern to match and call addOutputFile on", default = [])
+            parser.add_option("--declare_metadata"+suffix, help="use given program to extract and declare metadata", action="store_true",  default=None)
+            parser.add_option("--add_metadata"+suffix,action="append",  help="single metadata field key=value to add when declaring output files", default = [])
+            parser.add_option("--metadata_extractor"+suffix, help="use given program to extract and declare metadata", default=None)
+            parser.add_option("--add_to_dataset"+suffix, help="Add files to named dataset using Dataset.Tag", default=None)
+            parser.add_option("--dataset_exclude"+suffix,action="append",  help="glob pattern of output files to exclude from the --add_to_dataset dataset", default = [])
+            parser.add_option("--add_locations"+suffix, action="store_true", default=None, help="Add locations of output files to SAM")
+	    parser.add_option("--outputlist"+suffix, action="append", help="ifdh cp -f file to run to copy out outputs", default = [])
+
 
 	(self.options, self.args) = parser.parse_args()
 
@@ -628,6 +633,25 @@ exit
             os.system("wget --no-check-certificate  --certificate=$X509_USER_PROXY --ca-certificate=$X509_USER_PROXY --ca-directory=/etc/grid-security/certificates --private-key=$X509_USER_PROXY --post-data 'add=%s' 'https://samweb.fnal.gov:8483/sam/%s/api/files/name/%s/locations'" % (loc, self.experiment, of))
 
     def copy_back(self):
+        for i in range(10):
+            self.copy_back_n(i)
+
+    def copy_back_n(self, i):
+
+        if i > 0:
+            # this moves the dest3 -> dest , etc. when i is 3...
+            for k in ('dest', 'rename', 'addoutput', 'declare_metadata', 
+                    'add_metadata', 'metadata_extractor', 'add_to_dataset', 
+                    'dataset_exclude', 'add_locations'):
+                self.options.setattr(k, self.options.getattr(k+str(i), None))
+
+            # clean out output files from previous pass
+            outfiles_name = self.ih.localPath("/output_files")
+            try:
+                os.unlink(outfile_name)           
+            except:
+                pass
+ 
         if self.options.debug: sys.stderr.write( "Entering copy_back:\n")
         metadata_d = None
 
