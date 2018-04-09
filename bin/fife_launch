@@ -220,14 +220,22 @@ class launcher:
                 else:
 		    res.append("    --%s '%s' \\" % (k,v))   
 
-	    for k,v in self.cfg.items("job_output", raw=1):
-		v = self.cfg_get("job_output",k,vars = self.cfg_globals)
-		if v == 'True' or v == True:
-		    res.append("    --%s \\" % k)   
-		elif v == 'False' or v == False or v == None:
-		    pass
+            for i in range(10):
+                if i == 0:
+                    ssuffix=""
+                    osuffix=""
                 else:
-		    res.append("    --%s '%s' \\" % (k,v))
+                    ssuffix="_%d" % i
+                    osuffix="%d" % i
+
+                for k,v in self.cfg.items("job_output"+ssuffix, raw=1):
+                    v = self.cfg_get("job_output"+ssuffix,k,vars = self.cfg_globals)
+                    if v == 'True' or v == True:
+                        res.append("    --%s%s \\" % (k,osuffix))   
+                    elif v == 'False' or v == False or v == None:
+                        pass
+                    else:
+                        res.append("    --%s%s '%s' \\" % (k,osuffix, v))
 
 	    res.append("  --exe  %s \\" % self.cfg_get('executable','name', vars = self.cfg_globals))
 
