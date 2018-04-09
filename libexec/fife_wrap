@@ -657,8 +657,8 @@ exit
 		        self.ih.renameOutput(r)
 
             oflist = []
-            if self.options.add_locations:
-                if self.options.dry_run:
+            if self.options.add_locations or self.options.declare_metadata:
+                if self.options.dry_run and self.options.add_locations:
                     print("# we add file locations in SAM ")
                     print("# copy back output files to %s" % self.options.dest)
                     return
@@ -740,7 +740,7 @@ exit
                         # we don't know which job will actually initially 
                         # create the definition, so we all try
              
-                        if self.options.debug: sys.stderr.write("creating definitino %s\n" % datasetname)
+                        if self.options.debug: sys.stderr.write("creating definition %s\n" % datasetname)
                         try:
                             self.ih.createDefinition(
                                 datasetname, 
