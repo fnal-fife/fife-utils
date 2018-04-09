@@ -128,7 +128,7 @@ class Wrapper:
             parser.add_option("--metadata_extractor"+suffix, help="use given program to extract and declare metadata", default=None)
             parser.add_option("--add_to_dataset"+suffix, help="Add files to named dataset using Dataset.Tag", default=None)
             parser.add_option("--dataset_exclude"+suffix,action="append",  help="glob pattern of output files to exclude from the --add_to_dataset dataset", default = [])
-            parser.add_option("--add_locations"+suffix, action="store_true", default=None, help="Add locations of output files to SAM")
+            parser.add_option("--add_location"+suffix, action="store_true", default=None, help="Add locations of output files to SAM")
 	    parser.add_option("--outputlist"+suffix, action="append", help="ifdh cp -f file to run to copy out outputs", default = [])
 
 
@@ -642,8 +642,8 @@ exit
             # this moves the dest3 -> dest , etc. when i is 3...
             for k in ('dest', 'rename', 'addoutput', 'declare_metadata', 
                     'add_metadata', 'metadata_extractor', 'add_to_dataset', 
-                    'dataset_exclude', 'add_locations'):
-                self.options.setattr(k, self.options.getattr(k+str(i), None))
+                    'dataset_exclude', 'add_location'):
+                self.options.__dict__[k] = self.options.__dict__.get(k+str(i), None)
 
             # clean out output files from previous pass
             outfiles_name = self.ih.localPath("/output_files")
@@ -680,19 +680,26 @@ exit
                     else:
 		        self.ih.renameOutput(r)
 
-            oflist = []
-            if self.options.add_locations or self.options.declare_metadata:
-                if self.options.dry_run and self.options.add_locations:
+            if self.options.dry_run:
+                if self.options.add_location:
                     print("# we add file locations in SAM ")
-                    print("# copy back output files to %s" % self.options.dest)
-                    return
+                print("# copy back output files to %s" % self.options.dest)
+                return
+
+            oflist = []
+            if self.options.add_location or self.options.declare_metadata:
                 # have to get output filenames from the ifdh scratch file
                 # because they could have been renamed "unique"...
                 outfiles_name = self.ih.localPath("/output_files")
-                f = open(outfiles_name,"r")
-                for line in f:
-                    oflist.append(line.strip().split()[0])
-                f.close()
+                try:
+                    f = open(outfiles_name,"r")
+                except:
+                    f = None
+                    pass
+                if f:
+                    for line in f:
+                        oflist.append(line.strip().split()[0])
+                    f.close()
 
             for f in oflist:
                 
@@ -802,7 +809,7 @@ exit
 
 	    self.ih.copyBackOutput(actualdest)
 
-            if self.options.add_locations:
+            if self.options.add_location:
                 for of in oflist:
                     self.ih_addFileLocation(of, self.sam_prefix(actualdest)+actualdest)
 

@@ -80,7 +80,7 @@ class launcher:
     def pre_launch(self, dry_run = False):
         dest = self.cfg_get('job_output','dest', vars= self.cfg_globals)
 
-        // do mkdir with the right experiment set...
+        ## do mkdir with the right experiment set...
         exp = self.cfg_get('env_pass','SAM_EXPERIMENT', vars= self.cfg_globals)
         if exp and not os.environ.get('EXPERIMENT', None):
             os.environ['EXPERIMENT'] = exp
@@ -227,6 +227,9 @@ class launcher:
                 else:
                     ssuffix="_%d" % i
                     osuffix="%d" % i
+
+                if not self.cfg.has_section("job_output"+ssuffix):
+                    break
 
                 for k,v in self.cfg.items("job_output"+ssuffix, raw=1):
                     v = self.cfg_get("job_output"+ssuffix,k,vars = self.cfg_globals)
