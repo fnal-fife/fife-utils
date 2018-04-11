@@ -280,29 +280,26 @@ exit
             self.cpurl = self.ih.findProject(os.environ['SAM_PROJECT'],os.environ.get('SAM_STATION', os.environ.get('EXPERIMENT','')))
         self.consumerid=None
 
-        for i in range(0,1):
-            try:
-                if self.options.debug: sys.stderr.write( "trying to establish consumer process\n")
-                self.consumerid = self.ih.establishProcess( 
-		   self.cpurl, 
-		   self.options.appname, 
-		   self.options.appvers, 
-                   hostname,
-                   os.environ.get('GRID_USER',os.environ.get('USER')),
-		   self.options.appfamily,
-		   description,
-		   int(self.options.limit),
-                   self.options.schema
-                )
-                self.consumerid = self.consumerid.strip()
-                if self.options.debug: sys.stderr.write( "Got consumerid of: %s\n" % self.consumerid)
+        try:
+            if self.options.debug: sys.stderr.write( "trying to establish consumer process\n")
+            self.consumerid = self.ih.establishProcess( 
+               self.cpurl, 
+               self.options.appname, 
+               self.options.appvers, 
+               hostname,
+               os.environ.get('GRID_USER',os.environ.get('USER')),
+               self.options.appfamily,
+               description,
+               int(self.options.limit),
+               self.options.schema
+            )
+            self.consumerid = self.consumerid.strip()
+            if self.options.debug: sys.stderr.write( "Got consumerid of: %s\n" % self.consumerid)
 
-            except Exception as e:
-                sys.stderr.write("fife_wrap: Got exception: %s while trying to establish consumer\n" % e)
-                if self.options.debug: sys.stderr.write(traceback.format_exc())
-
-            if self.consumerid:
-                break
+        except Exception as e:
+            sys.stderr.write("fife_wrap: Got exception: %s while trying to establish consumer\n" % e)
+            if self.options.debug: sys.stderr.write(traceback.format_exc())
+            raise
 
     def file_loop(self):
 
