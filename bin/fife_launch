@@ -268,15 +268,32 @@ class launcher:
                     else:
                         res.append("    --%s%s '%s' \\" % (k,osuffix, v))
 
-	    res.append("  --exe  %s \\" % self.cfg_get('executable','name', vars = self.cfg_globals))
+            for i in xrange(9):
+                if i == 0:
+                    sname = "executable"
+                else:
+                    sname = "executable%d" % i
 
-            res.append(" -- \\") # end options to wrapper
+                if not self.cfg.has_section(sname):
+                    continue
 
-	    for k,v in self.cfg.items("executable", raw=1):
-		v = self.cfg_get("executable",k,vars = self.cfg_globals)
-		if k.startswith('arg_'):
-		    res.append("      %s \\" % v)
+  	        res.append("  --exe  %s \\" % self.cfg_get(sname,'name', vars = self.cfg_globals))
 
+            for i in xrange(9):
+                if i == 0:
+                    sname = "executable"
+                else:
+                    sname = "executable%d" % i
+
+                if not self.cfg.has_section(sname):
+                    continue
+
+                res.append(" -- \\") # end options to wrapper
+
+                for k,v in self.cfg.items(sname, raw=1):
+                    v = self.cfg_get(sname,k,vars = self.cfg_globals)
+                    if k.startswith('arg_'):
+                        res.append("      %s \\" % v)
 
             if self.cfg.has_section("poms_get_task_id"):
 

@@ -80,7 +80,7 @@ class Wrapper:
 	parser.add_option("-q","--quals", help="Set qualifiers for ifdh_art setup")
 	parser.add_option("-v","--vers", help="Set version for ifdh_art setup")
 	parser.add_option("-c","--config", help="Specify config file (fcl) for art executable")
-	parser.add_option("-X","--exe", help="Specify executable name for art executable -- default $EXPERIMENT")
+	parser.add_option("-X","--exe", help="Specify executable name for art executable -- default $EXPERIMENT" , default=[], action="append")
 	parser.add_option("-g","--getconfig", action="store_true", help="get config files as inputs from SAM (i.e. for MonteCarlo simulation). Conflicts with --config")
 	parser.add_option("--confbase", help="Base fcl file to prepend to fetched ones if running --getconfig")
 	parser.add_option("-M","--multifile", action="store_true", help="Fetch files in wrapper and run executable once per file")
@@ -133,6 +133,20 @@ class Wrapper:
 
 
 	(self.options, self.args) = parser.parse_args()
+
+        # split args on -- 
+        newargs = []
+        start = 0
+        for i in xrange(len(self.args)):
+            if self.args[i] == '--':
+                newargs.append(self.args[start:i])
+                start = i+1
+        newargs.append(self.args[start:len(self.args)])
+
+        self.args = newargs
+
+        while len(self.options.exe) < len(self.args) :
+            self.options.exe.append(self.experiment)
 
         if self.options.dry_run:
             self.options.debug = False
@@ -364,32 +378,43 @@ exit
                     fname=self.ih.fetchInput(self.furi)
                     if self.options.debug: sys.stderr.write( "Fetching: %s gave: %s\n" % (self.furi, fname))
                     self.ih.updateFileStatus(self.cpurl, self.consumerid, os.path.basename(self.furi), 'transferred')
-		cmdlist = [ self.options.exe ]
-		if self.options.getconfig:
-		    cmdlist.extend(self.args)
-		    cmdlist.append('-c')
-		    cmdlist.append(fname)
-		elif self.options.config:
-		    cmdlist.extend(self.args)
-		    cmdlist.append('-c')
-		    cmdlist.append(self.options.config)
-		    cmdlist.append(fname)
-                else:
-		    cmdlist.extend(self.args)
-		    cmdlist.append(fname)
+                res = 0
+                if self.options.dry_run:
+                    print("     if " )
+                for i in xrange(len(self.options.exe)):
+                    cmdlist = [ self.options.exe[i] ]
+                    if self.options.getconfig:
+                        cmdlist.extend(self.args[i])
+                        cmdlist.append('-c')
+                        cmdlist.append(fname)
+                    elif self.options.config:
+                        cmdlist.extend(self.args[i])
+                        cmdlist.append('-c')
+                        cmdlist.append(self.options.config)
+                        cmdlist.append(fname)
+                    else:
+                        cmdlist.extend(self.args[i])
+                        cmdlist.append(fname)
 
-		if self.options.with_gdb:
-		    f = open('.gdbcmds')
-		    f.write('run\nwhere\nquit\n')
-                    f.close()
-		    cmdlist = ['gdb', '-x', '.gdbcmds', '--args' ] + cmdlist
+                    if self.options.with_gdb:
+                        f = open('.gdbcmds')
+                        f.write('run\nwhere\nquit\n')
+                        f.close()
+                        cmdlist = ['gdb', '-x', '.gdbcmds', '--args' ] + cmdlist
 
-                cmd = " ".join(cmdlist)
+                    cmd = " ".join(cmdlist)
 
-                if self.options.debug: sys.stderr.write("Running: %s\n" % cmd)
+                    if self.options.debug: sys.stderr.write("Running: %s\n" % cmd)
+
+                    if self.options.dry_run:
+                        print("     " + cmd )
+                    else:
+                        res = os.system(cmd)
+ 
+                    if res != 0:
+                        break;
 
                 if self.options.dry_run:
-                    print("     if " + cmd)
                     print("     then")
                     print("          rres=$?")
                     print('          ifdh updateFileStatus "$cpurl" "$consumerid" "$fname" "consumed"')
@@ -398,18 +423,17 @@ exit
                     print('          ifdh updateFileStatus "$cpurl" "$consumerid" "$fname" "skipped"')
                     print("     fi")
                     self.furi = None  # leave loop gracefully(?)
-                else:
-                    res = os.system(cmd)
+                    break
 
-                    if 0 == res:
-                        if self.options.debug: sys.stderr.write( "Success, marking consumed\n")
-                        self.ih.updateFileStatus(self.cpurl, self.consumerid, os.path.basename(self.furi), 'consumed')
-                    else:
-                        if self.options.debug: sys.stderr.write( "Failed, marking skipped\n")
-                        self.ih.updateFileStatus(self.cpurl, self.consumerid, os.path.basename(self.furi), 'skipped')
-                    self.rres = res
-                    lastfuri = self.furi
-                    self.furi=self.ih.getNextFile(self.cpurl,self.consumerid)
+                if 0 == res:
+                    if self.options.debug: sys.stderr.write( "Success, marking consumed\n")
+                    self.ih.updateFileStatus(self.cpurl, self.consumerid, os.path.basename(self.furi), 'consumed')
+                else:
+                    if self.options.debug: sys.stderr.write( "Failed, marking skipped\n")
+                    self.ih.updateFileStatus(self.cpurl, self.consumerid, os.path.basename(self.furi), 'skipped')
+                self.rres = res
+                lastfuri = self.furi
+                self.furi=self.ih.getNextFile(self.cpurl,self.consumerid)
 
 
 	elif self.options.ifdh_art:
@@ -418,44 +442,52 @@ exit
 	    # so we have to pass options in to it to
             # invoke the loop
 
-	    cmdlist = [ self.options.exe ]
-	    cmdlist.append('-c')
-	    cmdlist.append(self.options.config)
-	    cmdlist.append("--sam-web-uri=%s" % self.cpurl)
-	    cmdlist.append("--sam-process-id=%s" % self.consumerid)
-	    cmdlist.extend(self.args)
+            for i in xrange(len(self.options.exe)):
+                cmdlist = [ self.options.exe[i] ]
+                cmdlist.append('-c')
+                cmdlist.append(self.options.config)
+                cmdlist.append("--sam-web-uri=%s" % self.cpurl)
+                cmdlist.append("--sam-process-id=%s" % self.consumerid)
+                cmdlist.extend(self.args[i])
 
-	    if self.options.with_gdb:
-		 f = open('.gdbcmds')
-		 f.write('run\nwhere\nquit\n')
-                 f.close()
-		 cmdlist = ['gdb', '-x', '.gdbcmds', '--args' ] + cmdlist
+                if self.options.with_gdb:
+                     f = open('.gdbcmds')
+                     f.write('run\nwhere\nquit\n')
+                     f.close()
+                     cmdlist = ['gdb', '-x', '.gdbcmds', '--args' ] + cmdlist
 
-            if self.options.dry_run:
-                print(" ".join(cmdlist))
-                print('rres=$?')
-            else:
-                res = os.system(" ".join(cmdlist))
-                self.rres = res
+                if self.options.dry_run:
+                    print(" ".join(cmdlist))
+                    print('rres=$?')
+                else:
+                    res = os.system(" ".join(cmdlist))
+                    self.rres = res
+                    if res != 0:
+                        break
 
 	else: 
             # just run the exe..
             if self.options.exe == None:
                  sys.stderr.write("No executable specified to run...\n")
                  return
-	    cmdlist = [ self.options.exe ]
-	    cmdlist.extend(self.args)
-	    if self.options.with_gdb:
-		 f = open('.gdbcmds')
-		 f.write('run\nwhere\nquit\n')
-                 f.close()
-		 cmdlist = ['gdb', '-x', '.gdbcmds', '--args' ] + cmdlist
-            if self.options.dry_run:
-                print(" ".join(cmdlist))
-                print('rres=$?')
-            else:
-                res = os.system(" ".join(cmdlist))
-                self.rres = res
+            for i in xrange(len(self.options.exe)):
+                cmdlist = [ self.options.exe[i] ]
+                cmdlist.extend(self.args[i])
+                if self.options.with_gdb:
+                     f = open('.gdbcmds')
+                     f.write('run\nwhere\nquit\n')
+                     f.close()
+                     cmdlist = ['gdb', '-x', '.gdbcmds', '--args' ] + cmdlist
+                if self.options.dry_run:
+                    print("=====\n%s\n=====" % repr(cmdlist)  )
+                    sys.stdout.flush()
+                    print(" ".join(cmdlist))
+                    print('rres=$?')
+                else:
+                    res = os.system(" ".join(cmdlist))
+                    self.rres = res
+                    if res != 0:
+                        break
 
         if self.options.multifile or self.options.getconfig:
             if self.options.dry_run:
@@ -513,7 +545,7 @@ exit
             cplist.append(it)
         cplist.append('.')
         if len(cplist) > 2:
-           if self.dry_run:
+           if self.options.dry_run:
                print("ifdh cp %s" % " ".join(cplist))
            else:
                self.ih.cp(cplist)
@@ -525,7 +557,7 @@ exit
             cplist.append('-f')
             cplist.append(it)
         if len(cplist) > 1:
-           if self.dry_run:
+           if self.options.dry_run:
                print("ifdh cp %s" % " ".join(cplist))
            else:
                self.ih.cp(cplist)
