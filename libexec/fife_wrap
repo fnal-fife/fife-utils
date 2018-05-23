@@ -59,13 +59,13 @@ class Wrapper:
                    sofar = time.time() - start
             except OSError:
                # should be kill failing as parent exited already
-               exit(0)
+               sys.exit(0)
             # we timed out, start shooting things
             signal.signal(15,signal.SIG_IGN) # ... except us
             os.killpg(watchpid,15)
             time.sleep(10)
             os.killpg(watchpid,9)
-            exit(0)
+            sys.exit(0)
         elif res > 0:
             # we forked a job, make a note
             self.timeoutproc = res
@@ -338,6 +338,7 @@ exit
                 print("# pre-scripts")
                 print(cmd)
             else:
+                if self.options.debug: sys.stderr.write("running: %s\n" % cmd)
 	        res = os.system(cmd)
 
         cmdlist=[]
@@ -357,6 +358,7 @@ exit
                 print("# pre-scripts-quoted")
                 print(cmd)
             else:
+                if self.options.debug: sys.stderr.write("running: %s\n" % cmd)
 	        res = os.system(cmd)
 
         if self.options.multifile or self.options.getconfig:
@@ -460,6 +462,7 @@ exit
                     print(" ".join(cmdlist))
                     print('rres=$?')
                 else:
+                    if self.options.debug: sys.stderr.write("Running: %s\n" % " ".join(cmdlist))
                     res = os.system(" ".join(cmdlist))
                     self.rres = res
                     if res != 0:
@@ -484,6 +487,7 @@ exit
                     print(" ".join(cmdlist))
                     print('rres=$?')
                 else:
+                    if self.options.debug: sys.stderr.write("Running: %s\n" % " ".join(cmdlist))
                     res = os.system(" ".join(cmdlist))
                     self.rres = res
                     if res != 0:
@@ -815,11 +819,13 @@ exit
    
 	            if self.options.debug: sys.stderr.write( "DEBUG: metadata: %s\n" % str(metadata))
                     try:
-                        self.ih.declareFile(str(metadata))
+                        res = self.ih.declareFile(str(metadata))
                     except:
-                        sys.stderr.write("error declaring metadata " + repr(sys.exc_info()))
-                        if self.options.debug: sys.stderr.write(traceback.format_exc())
+                        sys.stderr.write("error declaring metadata:" + repr(sys.exc_info()))
                         pass
+
+                    if res != 0:
+                        sys.stderr.write("error declaring metadata:" + self.ih.getErrorText())
 
 	    if self.options.debug: sys.stderr.write( "copybackoutput: %s\n" % self.options.dest)
 
@@ -1152,4 +1158,4 @@ if __name__ == '__main__' :
         if self.options.debug: sys.stderr.write(traceback.format_exc())
         pass
 
-    exit(w.rres)
+    sys.exit(w.rres)
