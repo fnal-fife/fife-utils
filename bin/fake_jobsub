@@ -23,10 +23,11 @@ scan_arguments() {
        case "x$i" in
        x--dataset_definition) using_dag=true;;
        x--dataset_definition=*) using_dag=true;;
+       x-G)        next_is_group=true ;; 
        x--group)   next_is_group=true ;; 
-       x--group=*)   group=`echo $i | sed -e 's/.*=//'`;;
+       x--group=*) group=`echo $i | sed -e 's/.*=//'`;;
        x-*) ;;
-       xfile://*) basecmd=`basename $i`;;
+       xfile://*)  basecmd=`basename $i`;;
        esac
    done
 }
