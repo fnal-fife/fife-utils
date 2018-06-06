@@ -82,7 +82,6 @@ class Wrapper:
 	parser.add_option("-c","--config", help="Specify config file (fcl) for art executable")
 	parser.add_option("-X","--exe", help="Specify executable name for art executable -- default $EXPERIMENT" , default=[], action="append")
 	parser.add_option("-g","--getconfig", action="store_true", help="get config files as inputs from SAM (i.e. for MonteCarlo simulation). Conflicts with --config")
-	parser.add_option("--confbase", help="Base fcl file to prepend to fetched ones if running --getconfig")
 	parser.add_option("-M","--multifile", action="store_true", help="Fetch files in wrapper and run executable once per file")
 	parser.add_option("-G","--with_gdb", action="store_true", help="run executable under gdb and print stack trace")
 	parser.add_option("-L","--limit", type="int", help="Set SAM project file delivery limit", default=0)
@@ -385,7 +384,7 @@ exit
                     print("     if " )
                 for i in xrange(len(self.options.exe)):
                     cmdlist = [ self.options.exe[i] ]
-                    if self.options.getconfig:
+                    if self.options.getconfig and i == 0 :
                         cmdlist.extend(self.args[i])
                         cmdlist.append('-c')
                         cmdlist.append(fname)
@@ -393,10 +392,12 @@ exit
                         cmdlist.extend(self.args[i])
                         cmdlist.append('-c')
                         cmdlist.append(self.options.config)
-                        cmdlist.append(fname)
+                        if i == 0:
+                            cmdlist.append(fname)
                     else:
                         cmdlist.extend(self.args[i])
-                        cmdlist.append(fname)
+                        if i == 0:
+                            cmdlist.append(fname)
 
                     if self.options.with_gdb:
                         f = open('.gdbcmds')
@@ -623,6 +624,8 @@ exit
         return (f, cdate, self.user, sd.st_size, checksum)
 
     def merge_metadata(self, m1, m2):
+        if self.options.debug: sys.stderr.write("DEBUG: merge_metadata(%s,%s)" % (m1, m2))
+       
         dm1 = json.loads(m1)
         dm2 = json.loads(m2)
         if dm2.has_key(dm1['file_name']):

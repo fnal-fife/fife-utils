@@ -23,6 +23,9 @@ class launcher:
         self.jobname = jobname
         self.searchpath = os.environ.get("FIFE_LAUNCH_PATH","").split(":")
  
+        if cfgfilename == None:
+             sys.stderr.write("Error: missing required -c configfile option\n")
+             sys.exit(1)
         # now pull in the config file with includes
         self.do_cfg_includes(cfgfilename)
 
@@ -43,15 +46,20 @@ class launcher:
         if overrides:
             for o in overrides:
                 #print "o is", o
-                k, v = o.split('=',1)
-                s,n = k.split('.',1)
-                self.cfg.set(s,n,v)
+                try:
+                    k, v = o.split('=',1)
+                    s,n = k.split('.',1)
+                    self.cfg.set(s,n,v)
+                except:
+                    sys.stderr.write("Error: cannot parse '-O%s'\n" % o)
+                    sys.stderr.write("   --  expected -Osection.key=value\n")
+                    sys.exit(1)
 
         # arg push/parse replace...
         # - put them in an args list
         # - shuffle as requested
         # - stick back in arg_n config entries
-        args= []
+        args = []
         for i in range(1,30):
             try:
                 v = self.cfg.get('executable','arg_%d'%i, raw=True)
@@ -103,7 +111,6 @@ class launcher:
             for cf in cfls.split(" "): 
                 if cf: 
                      self.do_cfg_includes(cf)
-        print "after includes: ", self.cfg.items('global')
 
     def pre_launch(self, dry_run = False):
         dest = self.cfg_get('job_output','dest', vars= self.cfg_globals)
@@ -283,7 +290,7 @@ class launcher:
                 if i == 0:
                     sname = "executable"
                 else:
-                    sname = "executable%d" % i
+                    sname = "executable_%d" % i
 
                 if not self.cfg.has_section(sname):
                     continue
@@ -360,5 +367,17 @@ if __name__ == '__main__':
     p.add_option('--arg_del', action='append', help='delete a specific argument in the executable section', default=[])
     options, args = p.parse_args()
    
-    l = launcher(options.config, options.override, options.jobname, options.stage, options.fake, options.config_dump, options.arg_push, options.arg_del)
+    try:
+        l = launcher(options.config, options.override, options.jobname, options.stage, options.fake, options.config_dump, options.arg_push, options.arg_del)
+        # evaluate some things to make sure we have them...
+        l.cfg.items('global')
+        l.cfg.items('executable')
+        l.cfg.items('submit')
+    except ConfigParser.Error as e:
+        sys.stderr.write("Error in config file(s): %s\n" % e)
+        sys.exit(1)
+    except Exception as e:
+        sys.stderr.write("Error in setup: %s\n" % e)
+        sys.exit(1)
+
     l.launch(options.dry_run)

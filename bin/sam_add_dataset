@@ -167,13 +167,14 @@ def renameFile(file, do_replace_uuids = False):
   fileName = os.path.basename(file)
   dirName = os.path.dirname(file)
 
+
+  if do_replace_uuids:
+    filename = replace_uuids(fileName)
+
   if not has_uuid_prefix(fileName):
 
 
     logging.info('trying to rename %s on disk with a uuid' % file)
-
-    if do_replace_uuids:
-      filename = replace_uuids(fileName)
 
     uniquifier = str(uuid.uuid4()) + '-'
 
