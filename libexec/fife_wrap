@@ -682,11 +682,12 @@ exit
                 self.options.__dict__[k] = self.options.__dict__.get(k+str(i), None)
 
             # clean out output files from previous pass
-            outfiles_name = self.ih.localPath("/output_files")
-            try:
-                os.unlink(outfile_name)           
-            except:
-                pass
+            if self.ih:
+                outfiles_name = self.ih.localPath("/output_files")
+                try:
+                    os.unlink(outfile_name)           
+                except:
+                    pass
  
         if self.options.debug: sys.stderr.write( "Entering copy_back:\n")
         metadata_d = None
@@ -807,18 +808,18 @@ exit
                             metadata_d["dataset.tag"] = datasetname
                             metadata = json.dumps(metadata_d)
 
-                        # we don't know which job will actually initially 
-                        # create the definition, so we all try
-             
-                        if self.options.debug: sys.stderr.write("creating definition %s\n" % datasetname)
-                        try:
-                            self.ih.createDefinition(
-                                datasetname, 
-                                'Dataset.Tag %s' % datasetname, 
-                                self.user,
-                                self.experiment)
-                        except:
-                            pass
+                            # we don't know which job will actually initially 
+                            # create the definition, so we all try
+                 
+                            if self.options.debug: sys.stderr.write("creating definition %s\n" % datasetname)
+                            try:
+                                self.ih.createDefinition(
+                                    datasetname, 
+                                    'Dataset.Tag %s' % datasetname, 
+                                    self.user,
+                                    self.experiment)
+                            except:
+                                pass
    
 	            if self.options.debug: sys.stderr.write( "DEBUG: metadata: %s\n" % str(metadata))
                     try:

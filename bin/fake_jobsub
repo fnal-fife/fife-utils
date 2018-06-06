@@ -183,9 +183,15 @@ do_work() {
     fi
     jobid=`grep "Use.job.id" $workdir/jobsub.out | sed -e 's/.*id //' -e 's/ .*//'`
     cmdfile=`grep '\.cmd$' $workdir/jobsub.out `
-    cmdfile=`basename $cmdfile`
+    if [ "$cmdfile" != "" ] 
+    then 
+        cmdfile=`basename $cmdfile`
+    fi
     dagfile=`grep '\.dag$' $workdir/jobsub.out`
-    dagfile=`basename $dagfile`
+    if [ "$dagfile" != "" ] 
+    then 
+        dagfile=`basename $dagfile`
+    fi
     n_procs=`grep submitted.to.cluster $workdir/jobsub.out | sed -e 's/ .*//'`
 
     jobsub_fetchlog --group=$group --jobid=$jobid
