@@ -244,3 +244,6 @@ while [ -d $workdir -a ! -r $workdir/done_startup ]
 do
    sleep 1
 done
+echo
+echo "Job output will be in $workdir"
+echo

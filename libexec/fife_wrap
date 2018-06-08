@@ -203,8 +203,9 @@ class Wrapper:
             for s in self.options.setup_unquote:
                 scriptlist.append("setup %s" % urllib.unquote(s))
 
-
-        scriptlist.append('[ -z "$IFDHC_DIR" ] && setup ifdhc')
+        scriptlist.append('[ -z "$PRODUCTS" -a -r /cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups.sh ] && source /cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups.sh')
+        scriptlist.append('[ -z "$PRODUCTS" -a -r /grid/fermiapp/products/common/etc/setups.sh ] && source /grid/fermiapp/products/common/etc/setups.sh')
+        scriptlist.append('[ -z "$IFDHC_DIR" ] && source `ups setup ifdhc`')
 
         if self.options.dry_run:
             print("# setup commands:")
