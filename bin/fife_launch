@@ -49,10 +49,16 @@ class launcher:
                 try:
                     k, v = o.split('=',1)
                     s,n = k.split('.',1)
-                    self.cfg.set(s,n,v)
                 except:
                     sys.stderr.write("Error: cannot parse '-O%s'\n" % o)
                     sys.stderr.write("   --  expected -Osection.key=value\n")
+                    sys.exit(1)
+
+                try:
+                    self.cfg.set(s,n,v)
+                except:
+                    sys.stderr.write("Error: cannot store '-O%s'\n" % o)
+                    sys.stderr.write("   --  no such section in configuration?\n")
                     sys.exit(1)
 
         # arg push/parse replace...
@@ -98,10 +104,17 @@ class launcher:
 
     def do_cfg_includes(self, cffile):
         #print "do_cfg_includes:" , cffile
-        for d in self.searchpath:
+        found = False
+        for d in ['.', '' ] + self.searchpath:
             if os.path.exists("%s/%s" % (d,cffile)):
                 cffile = "%s/%s" % (d,cffile)
+                found = True
                 break
+
+        if not found:
+             sys.stderr.write("Error: -c configfile '%s' not found.\n" % cffile)
+             sys.exit(1)
+             
         if self.included.get(cffile, None):
             return
         self.included[cffile] = 1
@@ -279,7 +292,7 @@ class launcher:
                 if i == 0:
                     sname = "executable"
                 else:
-                    sname = "executable%d" % i
+                    sname = "executable_%d" % i
 
                 if not self.cfg.has_section(sname):
                     continue
