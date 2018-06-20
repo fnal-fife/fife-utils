@@ -104,11 +104,9 @@ class dataset:
         isurl = fullpath.find('://') > 0
         if isurl:
            nslashes = nslashes - 2
-        # if it is a really deep location, start 5 subdirs in
+        # if it is a really deep location, start 2 subdirs in
         # otherwise 1 subdir in
-        if nslashes > 6:
-           trim = 3
-        elif nslashes > 4:
+        if nslashes > 4:
            trim = 2
         else:
            trim = 1
