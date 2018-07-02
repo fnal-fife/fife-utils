@@ -473,7 +473,7 @@ def copy_and_declare(d, cpargs, locargs, dest, subdirf, samweb, just_say, verbos
                     res = 1
     return res
 
-def validate( ds, just_say = False, prune = False, verbose = False, experiment = None , locality = False, list_tapes=False):
+def validate( ds, just_say = False, prune = False, verbose = False, experiment = None , locality = False, list_tapes=False, tapelocs= False):
     samweb = SAMWebClient(experiment=experiment)
     res=0
 
@@ -499,7 +499,7 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
             else:
                 if verbose: print "located: %s" % p
 
-            if locality:
+            if locality or tapelocs:
                
                 if not p.startswith("enstore:/pnfs") and not p.startswith("dcache:/pnfs") and not p.startswith("/pnfs"):
                      continue
@@ -510,14 +510,50 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
                     d = os.path.dirname(p) 
                     f = os.path.basename(p) 
                 
-                    fd = open( "%s/.(get)(%s)(locality)" % (d, f), "r")
-                    loc = fd.read().strip()
-                    fd.close()
-                    if verbose:
-                        print "locality: %s\t%s" % (loc, p)
-                    counts[loc] = counts.get(loc,0) + 1
-                except:
-                    pass
+                    if locality:
+                        fd = open( "%s/.(get)(%s)(locality)" % (d, f), "r")
+                        loc = fd.read().strip()
+                        fd.close()
+                        if verbose:
+                            print "locality: %s\t%s" % (loc, p)
+                        counts[loc] = counts.get(loc,0) + 1
+
+                    if tapeloc:
+                        fd = open( "%s/.(use)(4)(%s)" % (d, f), "r")
+                        l4 = fd.read().strip()
+                        fd.close()
+                        l4s = l4.split("\n")
+                        bfid = l4s[8]
+                        label = l4s[0]
+                        cookie = l4s[1]
+                        checksum = l4s[10]
+                        if label and ':' in label:
+                            label = None
+                            cookie = None
+                            enstore_cmd = "enstore info --bifd=%s" % bfid
+                            pfd = os.popen(enstore_cmd,"r")
+                            ei = pfd.read()
+                            pfd.close()
+                            enstore_info = ast.literal_eval(ei)
+                            if isinstance(enstore_info, list):
+                                enstore_info = enstore_info[0]
+                            label = enstore_info.get('tape_label', None)
+                            cookie = enstore_info.get('cookie',None)
+                        if label:
+                            if cookie:
+                                sequence = int(str(cookie).replace('_',''))
+                            else:
+                                sequence = None
+                            arg = {}
+                            arg['label'] = label
+                            if sequence: arg['sequence'] = sequence
+                            fulloc = "%s(%s@%s)" % (dirname(p), label, sequence)
+                            logging.info('Adding tape label location for %s: %s'(basename(p), fulloc)))
+                            samweb.addLocation( basename(p), fulloc)
+                               
+                except Exception as e:
+                    logging.error("Exception checking PNFS info: %s" % e)
+                    logging.error("continuing...")
        
     if locality:
        print "locality counts:"
