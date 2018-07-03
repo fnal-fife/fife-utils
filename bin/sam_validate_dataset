@@ -27,6 +27,11 @@ if __name__ == '__main__':
 
     (o,a) = parser.parse_args()
 
+    if o.verbose:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.disable(logging.INFO)
+
     if o.experiment:
         os.environ['EXPERIMENT']= o.experiment
         os.environ['SAM_EXPERIMENT']= o.experiment
