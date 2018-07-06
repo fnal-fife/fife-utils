@@ -237,6 +237,12 @@ class dataset:
         self.get_locmap(fulllocflag)
         return self._loc_iterator(self.locmap, fulllocflag, tapeset = tapeset)
 
+def samtapeloc(dir):
+    if dir.find("(") > 0:
+        return dir[dir.find("("):]
+    else:
+        return None
+
 def sampath(dir):
     if dir.find("(") > 0:
        dir = dir[:dir.find("(")]
@@ -483,6 +489,7 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
     else:
         tapeset = None
     for p in ds.fullpath_iterator(fulllocflag = True, tapeset = tapeset):
+        tl = samtapeloc(p)
         sp = sampath(p)
         if just_say and not prune:
             print "I would: ifdh ls %s 0" % sp
@@ -518,7 +525,7 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
                             print "locality: %s\t%s" % (loc, p)
                         counts[loc] = counts.get(loc,0) + 1
 
-                    if tapeloc:
+                    if tapeloc and tl == None:
                         fd = open( "%s/.(use)(4)(%s)" % (d, f), "r")
                         l4 = fd.read().strip()
                         fd.close()
