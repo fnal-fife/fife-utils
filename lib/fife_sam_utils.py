@@ -141,7 +141,7 @@ class dataset:
     def cached_location_has_file(self, fullpath):
         base = self.get_base_dir(fullpath)
         if not self.dircache.has_key(base):
-            fl = self.normalize_list(self.ifdh_handle.ls(base, 10, ''))
+            fl = self.normalize_list(self.ifdh_handle.ls(base, 3, ''))
             #print "got file list: ", fl
             self.dircache[base] = set(fl)
         return fullpath in self.dircache[base]
