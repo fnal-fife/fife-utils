@@ -11,6 +11,7 @@ import sys
 import time
 import traceback
 import logging
+import ast
 
 import ifdh
 from samweb_client import *
@@ -479,7 +480,24 @@ def copy_and_declare(d, cpargs, locargs, dest, subdirf, samweb, just_say, verbos
                     res = 1
     return res
 
-def validate( ds, just_say = False, prune = False, verbose = False, experiment = None , locality = False, list_tapes=False, tapelocs= False):
+def get_enstore_info(bfid , maxdepth = 3):
+    if maxdepth <= 0:
+        return None
+    enstore_cmd = "enstore info --bfid=%s" % bfid
+    pfd = os.popen(enstore_cmd,"r")
+    ei = pfd.read()
+    pfd.close()
+
+    logging.info('enstore info says: "%s"' % ei )
+    enstore_info = ast.literal_eval(ei)
+    if isinstance(enstore_info, list):
+        enstore_info = enstore_info[0]
+    package_id = enstore_info.get('package_id')
+    if package_id and package_id != bfid:
+         enstore_info = get_enstore_info(package_id, maxdepth - 1)
+    return enstore_info
+
+def validate( ds, just_say = False, prune = False, verbose = False, experiment = None , locality = False, list_tapes=False, tapeloc= False):
     samweb = SAMWebClient(experiment=experiment)
     res=0
 
@@ -506,7 +524,7 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
             else:
                 if verbose: print "located: %s" % p
 
-            if locality or tapelocs:
+            if locality or tapeloc:
                
                 if not p.startswith("enstore:/pnfs") and not p.startswith("dcache:/pnfs") and not p.startswith("/pnfs"):
                      continue
@@ -526,6 +544,7 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
                         counts[loc] = counts.get(loc,0) + 1
 
                     if tapeloc and tl == None:
+                        logging.info('checking: %s/.(use)(4)(%s)' % (d,f))
                         fd = open( "%s/.(use)(4)(%s)" % (d, f), "r")
                         l4 = fd.read().strip()
                         fd.close()
@@ -537,29 +556,23 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
                         if label and ':' in label:
                             label = None
                             cookie = None
-                            enstore_cmd = "enstore info --bifd=%s" % bfid
-                            pfd = os.popen(enstore_cmd,"r")
-                            ei = pfd.read()
-                            pfd.close()
-                            enstore_info = ast.literal_eval(ei)
-                            if isinstance(enstore_info, list):
-                                enstore_info = enstore_info[0]
+                            enstore_info = get_enstore_info(bfid)
                             label = enstore_info.get('tape_label', None)
-                            cookie = enstore_info.get('cookie',None)
+                            cookie = enstore_info.get('location_cookie',None)
+                            
                         if label:
                             if cookie:
                                 sequence = int(str(cookie).replace('_',''))
                             else:
-                                sequence = None
-                            arg = {}
-                            arg['label'] = label
-                            if sequence: arg['sequence'] = sequence
-                            fulloc = "%s(%s@%s)" % (dirname(p), label, sequence)
-                            logging.info('Adding tape label location for %s: %s'(basename(p), fulloc)))
-                            samweb.addLocation( basename(p), fulloc)
-                               
+                                sequence = 0
+
+                            fulloc = "%s%s(%s@%s)" % (samprefix(d),d, sequence,label)
+                            logging.info('Adding tape label location for %s: %s'%(f, fulloc))
+                            samweb.addFileLocation( f, fulloc )
+
                 except Exception as e:
                     logging.error("Exception checking PNFS info: %s" % e)
+                    logging.error(traceback.format_exc())
                     logging.error("continuing...")
        
     if locality:
