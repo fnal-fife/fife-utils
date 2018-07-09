@@ -1,19 +1,19 @@
 #!/usr/bin/env python
 
+import datetime
+import fnmatch
+import glob
+import grp
+import json
 import os
 import os.path
+import re
+import signal
+import subprocess
 import sys
 import time
-import subprocess
-import signal
-import grp
-import urllib
-import glob
-import datetime
-import json
-import re
 import traceback
-import fnmatch
+import urllib
 
 #bodily included it below so we don't need it in our include path in the job
 #from path_template import CaseInsensitiveDict, format_path
@@ -39,6 +39,10 @@ class Wrapper:
         self.consumerid = None
         self.timeoutproc = None
         self.rres = 0
+        # regexps to match past renameOutput uniq...
+        self.uuid_re = "-?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-?"
+        self.old_uniq_re = "_?[-.a-zA-Z]*_[0-9]{10}_[0-9][0-9]*_[0-9]"
+        self.uuid_re="(%s|%s)" % (self.uuid_re, self.old_uniq_re)
         self.user = os.environ.get('GRID_USER', os.environ.get('USER','sam'))
 
     def start_self_destruct(self):
@@ -768,10 +772,23 @@ exit
                     if self.furi and self.options.dataset:
                         metadata_d["parents"] = [{"file_name": os.path.basename(self.furi)}]
                         metadata = json.dumps(metadata_d)
+
                     if self.options.metadata_extractor:
 
                         if self.options.metadata_extractor == 'json':
-                            md_cmd = "cat %s.json" % f
+
+                            jfname =  "%s.json" % f
+
+                            # if not there try un-uuid-ing the name
+                            if not os.path.exists(jfname):
+                                jfname = re.sub(self.uuid_re, "", jfname)
+
+                            if os.path.exists(jfname):
+                                md_cmd = "cat %s" % jfname
+                            else:
+                                sys.stderr.write("WARNING: metadata file: %s not found\n" % jfname)
+                                md_cmd = "echo '{}'"
+
                         else:
                             if self.options.metadata_extractor.find("%s") > 0:
                                  md_cmd = self.options.metadata_extractor % f
