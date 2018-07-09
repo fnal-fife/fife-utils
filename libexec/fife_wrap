@@ -120,7 +120,7 @@ class Wrapper:
             else:
                 suffix = str(i)
             parser.add_option("--dest"+suffix, help="Specify destination for copyBackOutput")
-            parser.add_option("--rename"+suffix, action="append", dest="rename", help="Specify output file rename after Art runs", default = [])
+            parser.add_option("--rename"+suffix, action="append", help="Specify output file rename after Art runs", default = [])
             parser.add_option("--addoutput"+suffix,action="append",  help="glob pattern to match and call addOutputFile on", default = [])
             parser.add_option("--declare_metadata"+suffix, help="use given program to extract and declare metadata", action="store_true",  default=None)
             parser.add_option("--add_metadata"+suffix,action="append",  help="single metadata field key=value to add when declaring output files", default = [])
