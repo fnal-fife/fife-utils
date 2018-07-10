@@ -690,7 +690,7 @@ exit
             if self.ih:
                 outfiles_name = self.ih.localPath("/output_files")
                 try:
-                    os.unlink(outfile_name)           
+                    os.unlink(outfiles_name)           
                 except:
                     pass
  
