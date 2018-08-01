@@ -107,12 +107,14 @@ class launcher:
                 p3 = l.find("=",p1)
                 if p3 > 0:
                     # ...--name=value line
-                    name=l[p1:p3]
+                    name=l[p1+2:p3]
                     self.is_boolean_flag[name] = False
                 else:
                     # ...--name line (no value)
-                    name=l[p1:p2]
+                    name=l[p1+2:p2]
                     self.is_boolean_flag[name] = True
+        print("DEBUG: is_boolean_flag: %s" % repr(self.is_boolean_flag))
+        f.close()
      
     def cfg_get(self, section, name, vars={}):
         ''' like cfg.get() except it gives None and not an exception '''
@@ -257,9 +259,8 @@ class launcher:
                      k = k[:-2]
                 if len(k) == 1:
 		    res.append("  -%s '%s'  \\" %( k,v))
-		elif is_boolean_flag[k]:
-                    if v == 'True' or v == True:
-		        res.append("  --%s \\" % k)
+		elif v == 'True' or v == True:
+		    res.append("  --%s \\" % k)
 		else:
 		    res.append("  --%s='%s'  \\" %( k,v))
 
@@ -279,7 +280,7 @@ class launcher:
 		v = self.cfg_get("job_setup",k,vars = self.cfg_globals)
                 if len(k) > 2 and k[-2] == '_' and k[-1] in "0123456789":
                      k = k[:-2]
-		elif is_boolean_flag[k]:
+		if self.is_boolean_flag[k]:
                     if v == 'True' or v == True:
 		        res.append("    --%s \\" % k)   
 		else:
@@ -291,7 +292,7 @@ class launcher:
    
 	    for k,v in self.cfg.items("sam_consumer", raw=1):
 		v = self.cfg_get("sam_consumer",k,vars = self.cfg_globals)
-		if is_boolean_flag[k]:
+		if self.is_boolean_flag[k]:
                     if v == 'True' or v == True:
 		        res.append("  --%s \\" % k)
                 else:
