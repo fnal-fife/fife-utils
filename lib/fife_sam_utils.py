@@ -240,7 +240,7 @@ class dataset:
 
 def samtapeloc(dir):
     if dir.find("(") > 0:
-        return dir[dir.find("("):]
+        return dir[dir.find("("):dir.find(")")+1]
     else:
         return None
 
@@ -509,6 +509,7 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
     for p in ds.fullpath_iterator(fulllocflag = True, tapeset = tapeset):
         tl = samtapeloc(p)
         sp = sampath(p)
+        f = os.path.basename(p) 
         if just_say and not prune:
             print "I would: ifdh ls %s 0" % sp
         else:
@@ -532,20 +533,18 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
                 p = p[p.find(':/')+1:]
 
                 try:
-                    d = os.path.dirname(p) 
-                    f = os.path.basename(p) 
                 
                     if locality:
-                        fd = open( "%s/.(get)(%s)(locality)" % (d, f), "r")
+                        fd = open( "%s/.(get)(%s)(locality)" % (sp, f), "r")
                         loc = fd.read().strip()
                         fd.close()
                         if verbose:
-                            print "locality: %s\t%s" % (loc, p)
+                            print "locality: %s\t%s" % (loc, f)
                         counts[loc] = counts.get(loc,0) + 1
 
                     if tapeloc and tl == None:
-                        logging.info('checking: %s/.(use)(4)(%s)' % (d,f))
-                        fd = open( "%s/.(use)(4)(%s)" % (d, f), "r")
+                        logging.info('checking: %s/.(use)(4)(%s)' % (sp,f))
+                        fd = open( "%s/.(use)(4)(%s)" % (sp, f), "r")
                         l4 = fd.read().strip()
                         fd.close()
                         l4s = l4.split("\n")
@@ -566,7 +565,7 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
                             else:
                                 sequence = 0
 
-                            fulloc = "%s%s(%s@%s)" % (samprefix(d),d, sequence,label)
+                            fulloc = "%s%s(%s@%s)" % (samprefix(sp),sp, sequence,label)
                             logging.info('Adding tape label location for %s: %s'%(f, fulloc))
                             samweb.addFileLocation( f, fulloc )
 
