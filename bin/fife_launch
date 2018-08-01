@@ -18,6 +18,7 @@ class launcher:
         self.cfg = ConfigParser.SafeConfigParser()
         self.stages = stages
         self.cfg.optionxform = str
+        self.is_boolean_flag = {}
         self.included = {}
         self.fake = fake
         self.jobname = jobname
@@ -93,6 +94,25 @@ class launcher:
            sys.stderr.write("config after expansion:\n================\n")
            self.cfg.write(sys.stderr)
            sys.stderr.write("\n================\n")
+
+        self.get_fife_wrap_booleans()
+
+    def get_fife_wrap_booleans(self):
+        f = os.popen("%s/libexec/fife_wrap --help" % os.environ.get("FIFE_UTILS_DIR",os.path.dirname(os.path.dirname(sys.argv[0]))))
+        for l in f:
+            p1 = l.find("--")
+            if p1 > 0:
+                # we have a --option
+                p2 = l.find(" ",p1)
+                p3 = l.find("=",p1)
+                if p3 > 0:
+                    # ...--name=value line
+                    name=l[p1:p3]
+                    self.is_boolean_flag[name] = False
+                else:
+                    # ...--name line (no value)
+                    name=l[p1:p2]
+                    self.is_boolean_flag[name] = True
      
     def cfg_get(self, section, name, vars={}):
         ''' like cfg.get() except it gives None and not an exception '''
@@ -237,10 +257,9 @@ class launcher:
                      k = k[:-2]
                 if len(k) == 1:
 		    res.append("  -%s '%s'  \\" %( k,v))
-		elif v == 'True' or v == True:
-		    res.append("  --%s \\" % k)
-		elif v == 'False' or v == False or v == None:
-                    pass
+		elif is_boolean_flag[k]:
+                    if v == 'True' or v == True:
+		        res.append("  --%s \\" % k)
 		else:
 		    res.append("  --%s='%s'  \\" %( k,v))
 
@@ -260,10 +279,9 @@ class launcher:
 		v = self.cfg_get("job_setup",k,vars = self.cfg_globals)
                 if len(k) > 2 and k[-2] == '_' and k[-1] in "0123456789":
                      k = k[:-2]
-		if v == 'True' or v == True:
-		    res.append("    --%s \\" % k)   
-		elif v == 'False' or v == False or v == None:
-		    pass
+		elif is_boolean_flag[k]:
+                    if v == 'True' or v == True:
+		        res.append("    --%s \\" % k)   
 		else:
                     if k in ['export','source','setup','prescript','postscript'] and urllib.quote(v) != v:
                          k = '%s-unquote' % k
@@ -273,10 +291,9 @@ class launcher:
    
 	    for k,v in self.cfg.items("sam_consumer", raw=1):
 		v = self.cfg_get("sam_consumer",k,vars = self.cfg_globals)
-		if v == 'True' or v == True:
-		    res.append("  --%s \\" % k)
-		elif v == 'False' or v == False or v == None:
-                    pass
+		if is_boolean_flag[k]:
+                    if v == 'True' or v == True:
+		        res.append("  --%s \\" % k)
                 else:
 		    res.append("    --%s '%s' \\" % (k,v))   
 
@@ -293,10 +310,9 @@ class launcher:
 
                 for k,v in self.cfg.items("job_output"+ssuffix, raw=1):
                     v = self.cfg_get("job_output"+ssuffix,k,vars = self.cfg_globals)
-                    if v == 'True' or v == True:
-                        res.append("    --%s%s \\" % (k,osuffix))   
-                    elif v == 'False' or v == False or v == None:
-                        pass
+                    if is_boolean_flag[k]:
+                        if v == 'True' or v == True:
+                            res.append("  --%s \\" % k)
                     else:
                         res.append("    --%s%s '%s' \\" % (k,osuffix, v))
 
