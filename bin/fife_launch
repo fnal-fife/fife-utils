@@ -293,11 +293,13 @@ class launcher:
 
                 for k,v in self.cfg.items("job_output"+ssuffix, raw=1):
                     v = self.cfg_get("job_output"+ssuffix,k,vars = self.cfg_globals)
-                    if v == 'True' or v == True:
-                        res.append("    --%s%s \\" % (k,osuffix))   
-                    elif v == 'False' or v == False or v == None:
-                        pass
+                    if self.is_boolean_flag[k]:
+                        if  v == 'True' or v == True:
+                            res.append("    --%s%s \\" % (k,osuffix))   
                     else:
+                        if k in ['metadata_extractor'] and urllib.quote(v) != v:
+                            k = '%s_unquote' % k
+                            v = urllib.quote(v)
                         res.append("    --%s%s '%s' \\" % (k,osuffix, v))
 
             for i in xrange(9):

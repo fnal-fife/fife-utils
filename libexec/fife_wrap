@@ -129,6 +129,7 @@ class Wrapper:
             parser.add_option("--declare_metadata"+suffix, help="use given program to extract and declare metadata", action="store_true",  default=None)
             parser.add_option("--add_metadata"+suffix,action="append",  help="single metadata field key=value to add when declaring output files", default = [])
             parser.add_option("--metadata_extractor"+suffix, help="use given program to extract and declare metadata", default=None)
+            parser.add_option("--metadata_extractor_unqote"+suffix, help="use given program to extract and declare metadata", default=None)
             parser.add_option("--add_to_dataset"+suffix, help="Add files to named dataset using Dataset.Tag", default=None)
             parser.add_option("--dataset_exclude"+suffix,action="append",  help="glob pattern of output files to exclude from the --add_to_dataset dataset", default = [])
             parser.add_option("--add_location"+suffix, action="store_true", default=None, help="Add locations of output files to SAM")
@@ -148,15 +149,17 @@ class Wrapper:
 
         self.args = newargs
 
-        while len(self.options.exe) < len(self.args) :
-            self.options.exe.append(self.experiment)
-
         if self.options.dry_run:
             self.options.debug = False
 
         if self.options.debug:
             sys.stderr.write( "Options: %s\n" % self.options)
             sys.stderr.write( "Args: %s\n" % self.args)
+
+        if len(self.options.exe) != len(self.args) + 1:
+            sys.stderr.write("warning: mismatched --exe vs '-- args' lists\n")
+            sys.stderr.write( "exe: %s\n" % repr(self.options.exe))
+            sys.stderr.write( "Args: %s\n" % repr(self.args))
 
     def do_setup(self):
         #
@@ -682,7 +685,7 @@ exit
         if i > 0:
             # this moves the dest3 -> dest , etc. when i is 3...
             for k in ('dest', 'rename', 'addoutput', 'declare_metadata', 
-                    'add_metadata', 'metadata_extractor', 'add_to_dataset', 
+                    'add_metadata', 'metadata_extractor', 'metadata_extractor_unquote', 'add_to_dataset', 
                     'dataset_exclude', 'add_location'):
                 self.options.__dict__[k] = self.options.__dict__.get(k+str(i), None)
 
@@ -772,6 +775,9 @@ exit
                     if self.furi and self.options.dataset:
                         metadata_d["parents"] = [{"file_name": os.path.basename(self.furi)}]
                         metadata = json.dumps(metadata_d)
+
+                    if self.options.metadata_extractor_unquote:
+                       self.options.metadata_extractor = urllib.unquote(self.options.metadata_extractor)
 
                     if self.options.metadata_extractor:
 
