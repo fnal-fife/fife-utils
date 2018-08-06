@@ -307,6 +307,7 @@ test_move2archive_double() {
     ifdh mkdir ${pnfs_dir}_alt
     sam_clone_dataset --name $dataset --dest ${pnfs_dir}_1
     count_report_files "after clone:" locs2
+    
     sam_move2archive_dataset -v --name $dataset --dest ${pnfs_dir}_2
     count_report_files "after archive:" locs3
     echo counts $locs1 $locs2 $locs3
