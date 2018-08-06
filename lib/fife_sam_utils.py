@@ -135,8 +135,11 @@ class dataset:
             return 1
         else:
             #print "double-checking: " , fullpath
-            res = self.ifdh_handle.ls(fullpath, 0, '')
-            return len(res) != 0
+            try:
+                res = self.ifdh_handle.ls(fullpath, 1, '')
+                return len(res) != 0
+            except:
+                return False
 
     def cached_location_has_file(self, fullpath):
         base = self.get_base_dir(fullpath)
@@ -511,16 +514,17 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
         sp = sampath(p)
         f = os.path.basename(p) 
         if just_say and not prune:
-            print "I would: ifdh ls %s 0" % sp
+            print "I would: ifdh ls %s/%s 0" % (sp, f)
         else:
-            if not ds.location_has_file( sp ):
-                print "missing: %s" % sp
+            print "doing: ifdh ls %s/%s 0" % (sp, f)
+            if not ds.location_has_file( "%s/%s" % (sp, f) ):
+                print "missing: %s" % p
                 res = 1
                 if prune:
                     if just_say:
-                       print "I would remove location: %s for %s " % (dirname(p), basename(p))
+                       print "I would remove location: %s for %s " % (dirname(p), f)
                     else:
-                        samweb.removeFileLocation(basename(p), dirname(p))
+                        samweb.removeFileLocation(f, dirname(p))
                         print "-- location removed"
             else:
                 if verbose: print "located: %s" % p
