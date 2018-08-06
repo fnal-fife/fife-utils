@@ -4,12 +4,13 @@
 
 count_report_files() {
     echo
-    echo "$1"
+    echo "$1 $dataset:"
     echo "----------------------------------"
     sam_validate_dataset -v --name $dataset 2>/dev/null | tee /tmp/v$$
     echo "----------------------------------"
     eval "$2=`grep located: /tmp/v$$ | wc -l`"
     rm /tmp/v$$
+    eval echo "count: \$$2"
 }
 
 setup_tests() {
@@ -224,14 +225,17 @@ EOF
 }
 
 test_validate_1() {
+    ls -l $workdir
     sam_validate_dataset --name $dataset
 }
 
 test_audit_1() {
+    ls -l $workdir
     sam_audit_dataset --name $dataset --dest=$workdir
 }
 
 test_audit_2() {
+    ls -l $workdir
     sam_audit_dataset --name $dataset --dest=$workdir | tee /tmp/sadout$$
     echo "------"
     grep "Present and declared: 9" /tmp/sadout$$
@@ -240,6 +244,7 @@ test_audit_2() {
 test_audit_3() {
     mkdir $workdir/hide
     mv *_f2 $workdir/hide
+    ls -l $workdir
     sam_audit_dataset --name $dataset --dest=$workdir | tee /tmp/sadout$$
     mv $workdir/hide/*_f2 .
     echo "------"
@@ -249,6 +254,7 @@ test_audit_3() {
 
 
 test_validate_2() {
+    ls -l $workdir
     mv ${dataset}_f2 ${dataset}_f2_hide
     if sam_validate_dataset --name $dataset
     then
@@ -416,7 +422,6 @@ testsuite test_utils \
         add_dataset \
         test_unclone \
         test_unclone_slashes \
-        test_pin \
         test_retire \
         add_dataset \
 	test_clone_n  \

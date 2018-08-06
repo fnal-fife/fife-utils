@@ -248,8 +248,8 @@ def samtapeloc(dir):
         return None
 
 def sampath(dir):
-    if dir.find("(") > 0:
-       dir = dir[:dir.find("(")]
+    if dir.find("(") > 0 and dir.find(")") > dir.find("("):
+       dir = dir[:dir.find("(")] + dir[dir.find(")")+1:]
 
     if dir.find("s3://") == 0:
        return dir
@@ -509,32 +509,37 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
         tapeset = set()
     else:
         tapeset = None
+
     for p in ds.fullpath_iterator(fulllocflag = True, tapeset = tapeset):
         tl = samtapeloc(p)
-        sp = sampath(p)
+        sp = os.path.dirname(sampath(p))
         f = os.path.basename(p) 
+        fp = "%s/%s" % (sp,f)
+        samloc = dirname(p)
+
         if just_say and not prune:
             print "I would: ifdh ls %s/%s 0" % (sp, f)
         else:
-            print "doing: ifdh ls %s/%s 0" % (sp, f)
-            if not ds.location_has_file( "%s/%s" % (sp, f) ):
+            if not ds.location_has_file(fp):
                 print "missing: %s" % p
                 res = 1
                 if prune:
                     if just_say:
-                       print "I would remove location: %s for %s " % (dirname(p), f)
+                        print "I would remove location: %s for %s " % (samloc, f)
                     else:
-                        samweb.removeFileLocation(f, dirname(p))
-                        print "-- location removed"
+                        print "removing location: %s for %s " % (samloc, f)
+                        try:
+                            samweb.removeFileLocation(f, samloc)
+                            print "-- location %s removed for %s" %(samloc,f)
+                        except:
+                            logging.exception("Error: Removing file location: %s %s " % (f, samloc))
             else:
                 if verbose: print "located: %s" % p
 
             if locality or tapeloc:
                
-                if not p.startswith("enstore:/pnfs") and not p.startswith("dcache:/pnfs") and not p.startswith("/pnfs"):
+                if not p.startswith("enstore:/pnfs") and not p.startswith("dcache:/pnfs") and not fp.startswith("/pnfs"):
                      continue
-
-                p = p[p.find(':/')+1:]
 
                 try:
                 
@@ -542,8 +547,7 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
                         fd = open( "%s/.(get)(%s)(locality)" % (sp, f), "r")
                         loc = fd.read().strip()
                         fd.close()
-                        if verbose:
-                            print "locality: %s\t%s" % (loc, f)
+                        logging.info("locality: %s\t%s" % (loc, f))
                         counts[loc] = counts.get(loc,0) + 1
 
                     if tapeloc and tl == None:
@@ -740,12 +744,15 @@ def clean_one(d, path, full, keep, exp):
             res = 0
         else:
             res = d.ifdh_handle.rm(path, '')
+            if res != 0:
+                logging.error("Error: rm %s failed" % path)
     except:
         err = d.ifdh_handle.getErrorText()
         if err.find("No such file") >= 0 or err.find("No match") >= 0:
             print("rm failed due to missing file, ignoring...")
             res = 0
         else:
+            logging.error("Error: rm %s failed" % path)
             res = 2
 
     if res == 0:
@@ -753,7 +760,7 @@ def clean_one(d, path, full, keep, exp):
             samweb.removeFileLocation(filename, loc)
             res = 0
         except: 
-            traceback.print_exc()
+            log.exception("Error: removeFileLocation %s %s failed" % (filename, loc))
             res = 3
 
     sys.stdout.flush()
@@ -773,7 +780,7 @@ def unclone( d, just_say = False, delete_match = '.*', verbose = False, experime
         if just_say:
             if re.match(delete_match, full) or re.match(delete_match, spath):
                 print "I would 'ifdh rm %s'" % sampath(full)
-                print "I would remove location %s for %s" % (  dirname(full), file )
+                print "I would remove location %s for %s" % (dirname(full), file )
         else:
             if re.match(delete_match, full) or re.match(delete_match, spath):
                 if verbose: print "matches: " , delete_match
@@ -810,7 +817,7 @@ def unclone( d, just_say = False, delete_match = '.*', verbose = False, experime
 		    while proccount >= nparallel:
 		       (wpid, wstat) = os.wait()
 		       #print "child ", wpid, " completed status ", wstat
-                       if wstat != 0:
+                       if os.WIFEXITED(wstat) and os.WEXITSTATUS(wstat) != 0 or os.WIFSIGNALED(wstat):
                            fail = fail + 1
                        else:
                            succeed = succeed + 1
@@ -822,7 +829,8 @@ def unclone( d, just_say = False, delete_match = '.*', verbose = False, experime
     # clean up rm threads
     while proccount > 0:
        (wpid, wstat) = os.wait()
-       if wstat != 0:
+       if os.WIFEXITED(wstat) and os.WEXITSTATUS(wstat) != 0 or os.WIFSIGNALLED(wstat):
+
            fail = fail + 1
        else:
            succeed = succeed + 1

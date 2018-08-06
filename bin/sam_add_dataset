@@ -153,10 +153,10 @@ def declareFile(samweb, metadata):
   try:
     samweb.declareFile( metadata )
   except Exception, e:
-    logging.error(str(e))
+    logging.error("Error declaring metadata for %s: %s" (metadata['file_name'],str(e)))
     return 0
   else:
-    logging.info('the metadata was declared to sam')
+    logging.info('the metadata for %s was declared to sam' % metadata['file_name'])
    
   return 1
 
@@ -186,9 +186,10 @@ def renameFile(file, do_replace_uuids = False):
     try:
       os.rename(file, newFileName)
     except Exception, e:
-      sys.exit('oops: %s' % e)
+      logging.error("ERROR: could not rename %s to %s\n... may not be unique" % (file, newFileName))
+      newFileName = file
 
-    print 'renamed ' + fileName + ' to ' + os.path.basename(newFileName)
+    logging.warning('renamed ' + fileName + ' to ' + os.path.basename(newFileName))
     logging.info('its location is %s' % dirName)
 
   else:
@@ -227,17 +228,16 @@ def declareFileLocation(samweb, fileName, location):
 
   try:
     samweb.addFileLocation(fileName, location)
+    logging.info('file %s location %s was declared to SAM' % (fileName,location))
+    return True
   except Exception, e:
     if "Location" and "not found" in str(e):
       data_disks = samweb.listDataDisks()
       logging.error("Valid data disks are:\n")
       for item in data_disks:
         logging.error(item['mount_point'])
-      sys.exit('Error: %s is not a valid sam path' % location)
-    else:
-      raise
-  logging.info('file location was declared to sam')
-
+    logging.error('Error: %s is not a valid sam path' % location)
+  return False
 
 def get_tag(options, datasetName):
   logging.info('trying to resolve a tag')
@@ -435,7 +435,7 @@ def main():
         os.environ['IFDH_BASE_URI'] = "http://samweb.fnal.gov:8480/sam/%s/api" % o.experiment
         experiment = o.experiment
   else: 
-        sys.stderr.write("Error: Need either --experiment or $EXPERIMENT $SAM_EXPERIMENT in environment")
+        logging.error("Error: Need either --experiment or $EXPERIMENT $SAM_EXPERIMENT in environment")
         os.exit(1)
 
   if o.user:
@@ -495,6 +495,7 @@ def main():
       exit(1)
 
     failedfiles = 0
+    failedlocations = 0
     totfiles = 0
 
     for filename in fileList:
@@ -524,7 +525,8 @@ def main():
       totfiles = totfiles + 1
       if declareFile(samweb, fileMD):
           # don't try to declare the location if you could not declare the filename
-          declareFileLocation(samweb, fileMD["file_name"], fileLocation)
+          if not declareFileLocation(samweb, fileMD["file_name"], fileLocation):
+              failedlocations = failedlocations + 1
       else:
           logging.error("Could not declare file: %s " % filename)
           failedfiles = failedfiles + 1
@@ -538,9 +540,12 @@ def main():
     logging.info('createDefinition returned %s' % repr(res))
 
     logging.info('PROGRAM SUCCESS')
-    print 'the dataset with name ' + datasetName + ' was created'
+    logging.warning('the dataset with name ' + datasetName + ' was created')
     if failedfiles > 0:
         logging.error("...however %d files out of %d failed to declare" % (failedfiles, totfiles))
+
+    if failedlocations > 0:
+        logging.error("...however %d file locations failed to add")
 
   else:
     #p.print_help()
