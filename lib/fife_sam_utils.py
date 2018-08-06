@@ -506,31 +506,37 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
         tapeset = set()
     else:
         tapeset = None
+
     for p in ds.fullpath_iterator(fulllocflag = True, tapeset = tapeset):
         tl = samtapeloc(p)
         sp = sampath(p)
         f = os.path.basename(p) 
+        fp = "%s/%s" % (sp,f)
+        samloc = dirname(p)
+
         if just_say and not prune:
             print "I would: ifdh ls %s 0" % sp
         else:
-            if not ds.location_has_file( sp ):
-                print "missing: %s" % sp
+            if not ds.location_has_file(fp):
+                print "missing: %s" % p
                 res = 1
                 if prune:
                     if just_say:
-                       print "I would remove location: %s for %s " % (dirname(p), basename(p))
+                        print "I would remove location: %s for %s " % (samloc, f)
                     else:
-                        samweb.removeFileLocation(basename(p), dirname(p))
-                        print "-- location removed"
+                        print "removing location: %s for %s " % (samloc, f)
+                        try:
+                            samweb.removeFileLocation(f, samloc)
+                            print "-- location %s removed for %s" %(samloc,f)
+                        except:
+                            logging.exception("Error: Removing file location: %s %s " % (f, samloc))
             else:
                 if verbose: print "located: %s" % p
 
             if locality or tapeloc:
                
-                if not p.startswith("enstore:/pnfs") and not p.startswith("dcache:/pnfs") and not p.startswith("/pnfs"):
+                if not p.startswith("enstore:/pnfs") and not p.startswith("dcache:/pnfs") and not fp.startswith("/pnfs"):
                      continue
-
-                p = p[p.find(':/')+1:]
 
                 try:
                 
@@ -538,8 +544,7 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
                         fd = open( "%s/.(get)(%s)(locality)" % (sp, f), "r")
                         loc = fd.read().strip()
                         fd.close()
-                        if verbose:
-                            print "locality: %s\t%s" % (loc, f)
+                        logging.info("locality: %s\t%s" % (loc, f))
                         counts[loc] = counts.get(loc,0) + 1
 
                     if tapeloc and tl == None:
@@ -769,7 +774,7 @@ def unclone( d, just_say = False, delete_match = '.*', verbose = False, experime
         if just_say:
             if re.match(delete_match, full) or re.match(delete_match, spath):
                 print "I would 'ifdh rm %s'" % sampath(full)
-                print "I would remove location %s for %s" % (  dirname(full), file )
+                print "I would remove location %s for %s" % (dirname(full), file )
         else:
             if re.match(delete_match, full) or re.match(delete_match, spath):
                 if verbose: print "matches: " , delete_match
