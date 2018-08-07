@@ -479,6 +479,10 @@ def main():
             gflist.append(f2)
     fileList = gflist
 
+    for fname in fileList:
+        if fname[0] == '/' and not os.access(fname, os.ROK):
+            logging.error("WARNING: file %s not accessible" % fname)
+
     logging.info('entering for loop to process all the files to create the dataset')
     if o.no_rename:
         fname_limit = 154
