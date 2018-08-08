@@ -174,7 +174,7 @@ class launcher:
                 self.nfiles_in_dataset = samweb.countFiles(defname = dataset)
                 if self.nfiles_in_dataset  == 0:
                      print("Ignoring launch request on empty dataset")
-                     os.exit(1)
+                     sys.exit(1)
 
     def launch(self, dry_run = False):
         cmd = self.build_launch()
