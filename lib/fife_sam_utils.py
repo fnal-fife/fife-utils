@@ -134,13 +134,15 @@ class dataset:
         if self.cached_location_has_file(fullpath):
             return 1
         else:
-            #print "double-checking: " , fullpath
-            try:
-                res = self.ifdh_handle.ls(fullpath, 1, '')
-                return len(res) != 0
-            except:
-                return False
-
+            for attempt in xrange(3):
+                try:
+                    res = self.ifdh_handle.ls(fullpath, 1, '')
+                    return len(res) != 0
+                except:
+                    logger.exception("exception in ifdh ls('%s'):", fullpath)
+                    pass
+            return False
+                 
     def cached_location_has_file(self, fullpath):
         base = self.get_base_dir(fullpath)
         if not self.dircache.has_key(base):
