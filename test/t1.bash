@@ -112,7 +112,7 @@ EOF
 
 test_add_dataset_flist_glob() {
    mkdir data
-   rm file_list
+   rm -f file_list
    for i in 1 2 3 
    do
        fname="f${i}.txt"

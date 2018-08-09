@@ -547,8 +547,6 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
                             samweb.removeFileLocation(f, samloc)
                             ds.uncache_location(fp)
                             print "-- location %s removed for %s" %(samloc,f)
-                        except FileLocationNotFound:
-                            logging.warning("Huh? file not there...")
                         except:
                             logging.exception("Error: Removing file location: %s %s " % (f, samloc))
             else:
