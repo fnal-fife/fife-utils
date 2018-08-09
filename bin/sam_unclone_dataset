@@ -19,7 +19,7 @@ if __name__ == '__main__':
     parser.add_option('-n', '--name',     help="dataset name to clean", )
     parser.add_option('-d', '--dest',     help="destination pattern to match", )
     parser.add_option('-k', '--keep', action='store_true', default=False,   help="don't actually remove files, just undeclare the location")
-    parser.add_option('-N', '--ncopies',  default=4, help="number of copies to run in parallel")
+    parser.add_option('-N', '--ncopies',  default=3, help="number of copies to run in parallel")
 
     (o,a) = parser.parse_args()
 

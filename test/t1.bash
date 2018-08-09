@@ -303,13 +303,18 @@ test_move2archive() {
 
 test_move2archive_double() {
     count_report_files "before:" locs1
+
     # make a *second* copy
-    ifdh mkdir ${pnfs_dir}_alt
+    ifdh mkdir ${pnfs_dir}_1
     sam_clone_dataset --name $dataset --dest ${pnfs_dir}_1
     count_report_files "after clone:" locs2
     
+    # move to third place
+    ifdh mkdir ${pnfs_dir}_2
     sam_move2archive_dataset -v --name $dataset --dest ${pnfs_dir}_2
     count_report_files "after archive:" locs3
+   
+    # should be back to first count
     echo counts $locs1 $locs2 $locs3
     [ "$locs2" -gt "$locs1"  -a "$locs3" -eq "$locs1" ]
 }

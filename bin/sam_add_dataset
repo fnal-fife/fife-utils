@@ -480,7 +480,7 @@ def main():
     fileList = gflist
 
     for fname in fileList:
-        if fname[0] == '/' and not os.access(fname, os.ROK):
+        if fname[0] == '/' and not os.access(fname, os.R_OK):
             logging.error("WARNING: file %s not accessible" % fname)
 
     logging.info('entering for loop to process all the files to create the dataset')
