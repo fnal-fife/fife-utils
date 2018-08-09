@@ -21,10 +21,10 @@ setup_tests() {
    export IFDH_BASE_URI="http://samweb.fnal.gov:8480/sam/samdev/api"
    export IFDH_CP_MAXRETRIES=0
 
-   workdir=/nova/data/$USER/work.$$
+   workdir=/pnfs/uboone/scratch/users/$USER/fife_utils_test/work.$$
    if [ ! -r $workdir ]
    then
-       mkdir $workdir
+       mkdir -p $workdir
    fi
    cd $workdir
    if [ ! -r dataset ] 
@@ -49,13 +49,13 @@ setup_tests() {
 test_add_dataset_flist_norename() {
    rm -rf data
    mkdir data
-   : > file_list
+   rm -f file_list
    for i in 1 2 3 
    do
        fname="f${i}_$$.txt"
        echo "file $i" > data/$fname
-       echo `pwd`/data/$fname >> file_list
-   done
+       echo `pwd`/data/$fname 
+   done > file_list
 
    cat > meta.json <<EOF
 {
@@ -81,13 +81,13 @@ EOF
 test_add_dataset_flist() {
    rm -rf data
    mkdir data
-   : > file_list
+   rm -f file_list
    for i in 1 2 3 
    do
        fname="f${i}.txt"
        echo "file $i" > data/$fname
-       echo `pwd`/data/$fname >> file_list
-   done
+       echo `pwd`/data/$fname 
+   done > file_list
 
    cat > meta.json <<EOF
 {
@@ -112,13 +112,13 @@ EOF
 
 test_add_dataset_flist_glob() {
    mkdir data
-   : > file_list
+   rm file_list
    for i in 1 2 3 
    do
        fname="f${i}.txt"
        echo "file $i" > data/$fname
    done
-   echo `pwd`/data/f*.txt >> file_list
+   echo `pwd`/data/f*.txt >  file_list
 
    cat > meta.json <<EOF
 {
@@ -210,6 +210,7 @@ add_dataset() {
 }
 EOF
        case `pwd` in
+       /pnfs/*/scratch/*) location="dcache:`pwd`";;
        /pnfs/*) location="enstore:`pwd`";;
        /grid/*) location="${EXPERIMENT}data:`pwd`";;
        /nova/*) location="samdevdata:`pwd`";;
