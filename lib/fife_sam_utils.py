@@ -94,6 +94,19 @@ class dataset:
         self.name = name
         self.flush()
 
+    def wrap_ls(self, path, n, force):
+        for attempt in xrange(3):
+            if attempt > 0:
+                logging.warning("retrying ifdh ls ('%s')" % path)
+            try:
+                res = self.ifdh_handle.ls(path,n,force)
+                return res
+            except:
+                logging.exception("exception in ifdh ls('%s'):"% path)
+                pass
+        logging.warning("no more ls retries.")
+        return []
+
     def flush(self):
         self.flist = None
         self.dircache = {}
@@ -134,19 +147,19 @@ class dataset:
         if self.cached_location_has_file(fullpath):
             return 1
         else:
-            for attempt in xrange(3):
-                try:
-                    res = self.ifdh_handle.ls(fullpath, 1, '')
-                    return len(res) != 0
-                except:
-                    logger.exception("exception in ifdh ls('%s'):", fullpath)
-                    pass
-            return False
+            res = self.wrap_ls(fullpath,1,'')
+            return len(res) != 0
+
+    def uncache_location(self,fullpath):
+        base = self.get_base_dir(fullpath)
+        if self.dircache.has_key(base):
+            self.dircache[base].remove(fullpath)
+        self.remove_path_for(os.path.basename(filename),os.path.dirname(fullpath))
                  
     def cached_location_has_file(self, fullpath):
         base = self.get_base_dir(fullpath)
         if not self.dircache.has_key(base):
-            fl = self.normalize_list(self.ifdh_handle.ls(base, 3, ''))
+            fl = self.normalize_list(self.wrap_ls(base, 3, ''))
             #print "got file list: ", fl
             self.dircache[base] = set(fl)
         return fullpath in self.dircache[base]
@@ -473,7 +486,7 @@ def copy_and_declare(d, cpargs, locargs, dest, subdirf, samweb, just_say, verbos
                          if cpdest.find("s3:/") == 0 and cpdest.find("s3://") != 0:
                             cpdest="s3://"+cpdest[4:]
 
-                         if len(d.ifdh_handle.ls(cpdest,1,'')) == 0:
+                         if len(d.wrap_ls(cpdest,1,'')) == 0:
                             print "unable to verify copy to ", cpdest, " not declaring."
                             continue
 
@@ -532,7 +545,10 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
                         print "removing location: %s for %s " % (samloc, f)
                         try:
                             samweb.removeFileLocation(f, samloc)
+                            ds.uncache_location(fp)
                             print "-- location %s removed for %s" %(samloc,f)
+                        except FileLocationNotFound:
+                            logging.warning("Huh? file not there...")
                         except:
                             logging.exception("Error: Removing file location: %s %s " % (f, samloc))
             else:

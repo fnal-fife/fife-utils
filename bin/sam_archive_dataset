@@ -67,7 +67,7 @@ if __name__ == '__main__':
     parser.add_option('-e','--experiment', default=experiment, help='use this experiment server defaults to $SAM_EXPERIMENT if not set')
     parser.add_option('-b','--batch_size',default = 1, type='int', help="copy then declare in batches of this size")
     parser.add_option('-n', '--name',     help="dataset name to copy" )
-    parser.add_option('-N', '--ncopies',  help="number of copy threads", default=4)
+    parser.add_option('-N', '--ncopies',  help="number of copy threads", default=3)
     parser.add_option('-P', '--paranoid', action='store_const', const=True, default = False, help ="Do not believe copy status, check for existence before declaring a location")
     parser.add_option('-k', '--keep',     help="keep existing copies", action='store_true' )
     parser.add_option('--getawscreds', action='store_true', help="get AWS S3 credentials from /pnfs file", default = False)
