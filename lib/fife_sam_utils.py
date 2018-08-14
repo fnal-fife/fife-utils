@@ -153,7 +153,8 @@ class dataset:
     def uncache_location(self,fullpath):
         base = self.get_base_dir(fullpath)
         if self.dircache.has_key(base):
-            self.dircache[base].remove(fullpath)
+            if self.dircache[base].hask_key(fullpath):
+                self.dircache[base].remove(fullpath)
         self.remove_path_for(os.path.basename(filename),os.path.dirname(fullpath))
                  
     def cached_location_has_file(self, fullpath):
@@ -774,9 +775,10 @@ def clean_one(d, path, full, keep, exp):
     if res == 0:
         try:
             samweb.removeFileLocation(filename, loc)
+            d.uncache_location(fp)
             res = 0
         except: 
-            log.exception("Error: removeFileLocation %s %s failed" % (filename, loc))
+            logging.exception("Error: removeFileLocation %s %s failed" % (filename, loc))
             res = 3
 
     sys.stdout.flush()
