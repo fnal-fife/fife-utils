@@ -21,7 +21,7 @@ setup_tests() {
    export IFDH_BASE_URI="http://samweb.fnal.gov:8480/sam/samdev/api"
    export IFDH_CP_MAXRETRIES=0
 
-   workdir=/pnfs/uboone/scratch/users/$USER/fife_utils_test/work.$$
+   workdir=/pnfs/dune/scratch/users/$USER/fife_utils_test/work.$$
    if [ ! -r $workdir ]
    then
        mkdir -p $workdir
