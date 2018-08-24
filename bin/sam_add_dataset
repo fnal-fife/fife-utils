@@ -144,7 +144,34 @@ def getFileListFromDir(directory, recurse):
   return fileList
 
 
+def getFileListFromGridFTP(directory_url, recurse):
+    #logging.info('trying to create a python list of files from gridftp accessible directory %s with recurse level set to %s' % (directory, recurse))
+    logging.info('trying to create a python list of files from gridftp accessible directory %s with recurse level set to NOT IMPLEMENTED' % directory_url)
 
+    file_uri_list = []
+    file_stats = {}
+
+    cmd = ['gfal-ls', directory_url]
+    gfal_ls_proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+    gfal_ls_output, err = gfal_ls_proc.communicate()
+    ls_out = gfal_ls_output.split('\n')[:-1] # Take the slice that corresponds to gfal-ls output excluding the extra '' on the end due split()
+    # NEED TO CHECK FOR ERRORS HERE (Try no voms on the x509 for testing)
+
+    for ls_result in ls_out: 
+        stat_url = directory_url + '/' + ls_result
+        cmd = ['gfal-stat', stat_url]
+        gfal_stat_proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+        gfal_stat_output, err = gfal_stat_proc.communicate()
+        # NEED TO CHECK FOR ERRORS HERE
+        
+        if 'regular file' in gfal_stat_output:
+            file_uri_list.append(stat_url)
+            file_stats[ls_result] = gfal_stat_output
+
+    # 7.   if it is a directory:
+    # 8.     recursion
+
+    return file_uri_list, file_stats
 
 
 def declareFile(samweb, metadata):
@@ -162,7 +189,7 @@ def declareFile(samweb, metadata):
 
 
 
-def renameFile(file, do_replace_uuids = False):
+def renameFile(file, do_replace_uuids = False, gridftp_location=False):
 
   fileName = os.path.basename(file)
   dirName = os.path.dirname(file)
@@ -183,11 +210,22 @@ def renameFile(file, do_replace_uuids = False):
     else:
       newFileName = dirName + '/' + uniquifier + fileName
 
-    try:
-      os.rename(file, newFileName)
-    except Exception, e:
-      logging.error("ERROR: could not rename %s to %s\n... may not be unique" % (file, newFileName))
-      newFileName = file
+    if not gridftp_location:
+        try:
+          os.rename(file, newFileName)
+        except Exception, e:
+          logging.error("ERROR: could not rename %s to %s\n... may not be unique" % (file, newFileName))
+          newFileName = file
+    else:
+        # Need to rename (i.e. copy and delete) the file with gridftp commands
+        cmd = ['gfal-copy', file, newFileName]
+        cp_proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+        ouput, err = cp_proc.communicate()
+        # Only remove the original file if the copy operation was succesful 
+        if err is None:
+            cmd = ['gfal-rm', file]
+            rm_proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+            output, err = rm_proc.communicate()
 
     logging.warning('renamed ' + fileName + ' to ' + os.path.basename(newFileName))
     logging.info('its location is %s' % dirName)
@@ -210,7 +248,6 @@ def statBuildMetaData(file):
     statinfo = os.stat(file)
   except Exception, e:
     sys.exit('oops: %s' % e)
-
   size = statinfo.st_size
         
   metadata = {"file_name": file, "file_type": "unknown", "file_size": size}
@@ -219,6 +256,14 @@ def statBuildMetaData(file):
   
   return metadata
 
+
+def gfalStatBuildMetaData(filename, stat):
+  size_start, size_end = stat.find('Size:'), stat.find('\t')
+  size = stat[size_start:size_end]
+  size = size[6:]
+  metadata = { "file_name" : filename, "file_type" : "unknown", "file_size" : size }
+
+  return metadata
 
 
 def declareFileLocation(samweb, fileName, location):
@@ -458,6 +503,8 @@ def main():
 
 
   if 5 > 3:  #still need to figure out this condition
+    gridftp_location = False
+    fileStats = None
 
     if jsonFile:
       universalMD = getJSONMetadata(o.metadata, tag)
@@ -465,23 +512,27 @@ def main():
       universalMD = {"Dataset.Tag": tag}
 
     if o.directory:
+      gridftp_location = o.directory.startswith('gsiftp:')
       if os.path.isdir(o.directory):
-        fileList = getFileListFromDir(o.directory, o.recurse)
+        fileList, fileStats = getFileListFromDir(o.directory, o.recurse)
+      if gridftp_location:
+        fileList, fileStats = getFileListFromGridFTP(o.directory, o.recurse)
     elif o.file == '-':
       fileList = getFileListFromPipe()
     else:
       fileList = getFileList(o.file)
 
-    # expand globs
-    gflist = []
-    for filename in fileList:
-        for f2 in glob.glob(filename):
-            gflist.append(f2)
-    fileList = gflist
+    if not gridftp_location:
+        # expand globs
+        gflist = []
+        for filename in fileList:
+            for f2 in glob.glob(filename):
+                gflist.append(f2)
+        fileList = gflist
 
-    for fname in fileList:
-        if fname[0] == '/' and not os.access(fname, os.R_OK):
-            logging.error("WARNING: file %s not accessible" % fname)
+        for fname in fileList:
+            if fname[0] == '/' and not os.access(fname, os.R_OK):
+                logging.error("WARNING: file %s not accessible" % fname)
 
     logging.info('entering for loop to process all the files to create the dataset')
     if o.no_rename:
@@ -505,23 +556,34 @@ def main():
     for filename in fileList:
       logging.info('processing %s' % filename)
 
-      
       fileMD = {}
       
       if o.subprocess:
-        dumperObject = Sam_Metadata_Dumper_Parser(filename, samweb, o.subprocess)
-        dumperObject.get_json()
-        sam_metadata_dumper_metadata = dumperObject.format_json()
-        fileMD.update(sam_metadata_dumper_metadata) 
-        
-      fileMD.update( statBuildMetaData(filename) )
+        if not gridftp_location:
+            dumperObject = Sam_Metadata_Dumper_Parser(filename, samweb, o.subprocess)
+            dumperObject.get_json()
+            sam_metadata_dumper_metadata = dumperObject.format_json()
+            fileMD.update(sam_metadata_dumper_metadata)
+        else:
+            logging.error('Subprocess not supported for directories accessed via gridftp')
+            exit(1)
+       
+      if gridftp_location:
+          fname = os.path.basename(filename) # if gridftp_location, filelist is a bunch of gsiftp://blahblahblah's
+          fileMD.update( gfalStatBuildMetaData(fname, fileStats[fname]) )
+      else:
+          fileMD.update( statBuildMetaData(filename) )
 
       if o.no_rename:
           renamedFile =  {"file_name": os.path.basename(filename), "location":os.path.dirname(filename)} 
       else:
-          renamedFile = renameFile(filename, o.replace_uuids)
+          renamedFile = renameFile(filename, o.replace_uuids, gridftp_location)
 
       fileLocation = renamedFile.pop("location")
+      if gridftp_location:
+          # Truncate 'gsiftp://fndca1.fnal.gov:2811/pnfs/fnal.gov/usr' and massage a bit to look like a normal path that samprefix() can work with
+          fileLocation = fileLocation[47:]
+          fileLocation = '/pnfs' + fileLocation
             
       fileMD.update(renamedFile)
       fileMD.update(universalMD)
