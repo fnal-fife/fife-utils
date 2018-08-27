@@ -157,21 +157,28 @@ def getFileListFromGridFTP(directory_url, recurse):
         ls_out = ifdh_handle.ls(directory_url, 3, '')
     else:
         ls_out = ifdh_handle.ls(directory_url, 1, '')
-    # NEED TO CHECK FOR ERRORS HERE (Try no voms on the x509 for testing)
 
     for ls_result in ls_out:
         identifier = os.path.basename(ls_result)
-        #stat_url = directory_url + '/' + identifier 
         cmd = ['gfal-stat', ls_result]
         gfal_stat_proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
         gfal_stat_output, err = gfal_stat_proc.communicate()
-        # NEED TO CHECK FOR ERRORS HERE
-        
+        if err: raise ValueError('Value of err for gfal-stat set to %s' % err)
+
         if 'regular file' in gfal_stat_output:
             file_uri_list.append(ls_result)
             file_stats[identifier] = gfal_stat_output
 
     return file_uri_list, file_stats
+
+
+def getFileLocationFromGridFTPUrl(gridftp_url):
+    if gridftp_url.startswith('gsiftp://fndca1.fnal.gov'):
+        loc = gridftp_url[47:]
+        return '/pnfs' + loc
+    if gridftp_url.startswith('gsiftp://eospublicftp.cern.ch'):
+        loc = gridftp_url[57:]
+        return '/eos' + loc 
 
 
 def declareFile(samweb, metadata):
@@ -569,7 +576,7 @@ def main():
             exit(1)
        
       if gridftp_location:
-          fname = os.path.basename(filename) # if gridftp_location, filelist is a bunch of gsiftp://blahblahblah's
+          fname = os.path.basename(filename) # filelist in this case is a bunch of gsiftp://blahblahblah's
           fileMD.update( gfalStatBuildMetaData(fname, fileStats[fname]) )
       else:
           fileMD.update( statBuildMetaData(filename) )
@@ -582,9 +589,9 @@ def main():
       fileLocation = renamedFile.pop("location")
       if gridftp_location:
           # Truncate 'gsiftp://fndca1.fnal.gov:2811/pnfs/fnal.gov/usr' and massage a bit to look like a normal path that samprefix() can work with
-          fileLocation = fileLocation[47:]
-          fileLocation = '/pnfs' + fileLocation
-            
+          fileLocation = getFileLocationFromGridFTPUrl(fileLocation)
+          if not fileLocation: raise ValueError('Unable to deduce a file location from the gsiftp url.') 
+
       fileMD.update(renamedFile)
       fileMD.update(universalMD)
     
