@@ -16,6 +16,7 @@ import time
 import socket
 import exceptions
 import grp
+import ifdh
 #
 # old python compatability hacks
 #
@@ -151,25 +152,24 @@ def getFileListFromGridFTP(directory_url, recurse):
     file_uri_list = []
     file_stats = {}
 
-    cmd = ['gfal-ls', directory_url]
-    gfal_ls_proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-    gfal_ls_output, err = gfal_ls_proc.communicate()
-    ls_out = gfal_ls_output.split('\n')[:-1] # Take the slice that corresponds to gfal-ls output excluding the extra '' on the end due split()
+    ifdh_handle = ifdh.ifdh()
+    if recurse:
+        ls_out = ifdh_handle.ls(directory_url, 3, '')
+    else:
+        ls_out = ifdh_handle.ls(directory_url, 1, '')
     # NEED TO CHECK FOR ERRORS HERE (Try no voms on the x509 for testing)
 
-    for ls_result in ls_out: 
-        stat_url = directory_url + '/' + ls_result
-        cmd = ['gfal-stat', stat_url]
+    for ls_result in ls_out:
+        identifier = os.path.basename(ls_result)
+        #stat_url = directory_url + '/' + identifier 
+        cmd = ['gfal-stat', ls_result]
         gfal_stat_proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
         gfal_stat_output, err = gfal_stat_proc.communicate()
         # NEED TO CHECK FOR ERRORS HERE
         
         if 'regular file' in gfal_stat_output:
-            file_uri_list.append(stat_url)
-            file_stats[ls_result] = gfal_stat_output
-
-    # 7.   if it is a directory:
-    # 8.     recursion
+            file_uri_list.append(ls_result)
+            file_stats[identifier] = gfal_stat_output
 
     return file_uri_list, file_stats
 
