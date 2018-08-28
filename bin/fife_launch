@@ -1,10 +1,14 @@
 #!/usr/bin/env python
 
-import ConfigParser
+try:
+   from six import  *
+except:
+   pass
+import configparser
 import sys
 import os
 import optparse
-import urllib
+import urllib.request, urllib.parse, urllib.error
 import shutil
 from samweb_client import *
 try:
@@ -12,10 +16,10 @@ try:
 except:
     pass
 
-class launcher:
+class launcher(object):
  
     def __init__(self, cfgfilename, overrides, jobname = None, stages = [], fake=None, config_dump = None , arg_push = [], arg_del = []):
-        self.cfg = ConfigParser.SafeConfigParser()
+        self.cfg = configparser.SafeConfigParser()
         self.stages = stages
         self.cfg.optionxform = str
         self.is_boolean_flag = {}
@@ -190,12 +194,12 @@ class launcher:
             print("-----")
         else:
             self.pre_launch()
-            print( "running:\n %s" , cmd)
-	    os.system(cmd)
+            print(( "running:\n %s" , cmd))
+            os.system(cmd)
 
     def build_launch(self):
-	res = []
-	self.cfg_globals = dict(self.cfg.items('global'))
+        res = []
+        self.cfg_globals = dict(self.cfg.items('global'))
 
         res.append("set -x")
 
@@ -204,16 +208,16 @@ class launcher:
         # version of jobsub_submit, by pushing jobsub_client's bin
         # back on the front of the path.
         #
-	if self.cfg.has_section("poms_get_task_id"):
+        if self.cfg.has_section("poms_get_task_id"):
             res.append( "PATH=$JOBSUB_CLIENT_DIR:$PATH")
 
-	res.append( "GROUP=%s; export GROUP" % self.cfg_get('global','group', vars = self.cfg_globals))
+        res.append( "GROUP=%s; export GROUP" % self.cfg_get('global','group', vars = self.cfg_globals))
 
-	#for k,v in self.cfg.items("env_pass", raw = 1):
-	#    v = self.cfg_get("env_pass",k,vars = self.cfg_globals)
-	#    res.append("%s='%s'; export %s" % (k, v, k))
+        #for k,v in self.cfg.items("env_pass", raw = 1):
+        #    v = self.cfg_get("env_pass",k,vars = self.cfg_globals)
+        #    res.append("%s='%s'; export %s" % (k, v, k))
 
-	if self.cfg.has_section("submit"):
+        if self.cfg.has_section("submit"):
 
             njpf = self.cfg_get("submit","n_jobs_per_file",vars = self.cfg_globals)
             if njpf != None:
@@ -228,13 +232,13 @@ class launcher:
                         
 
             if self.fake:
-	        res.append("fake_jobsub \\")
+                res.append("fake_jobsub \\")
             else:
-	        res.append("jobsub_submit \\")
+                res.append("jobsub_submit \\")
 
-	    for k,v in self.cfg.items("env_pass", raw = 1):
-		v = self.cfg_get("env_pass",k,vars = self.cfg_globals)
-		res.append( "  -e %s='%s' \\" % (k,v) )
+            for k,v in self.cfg.items("env_pass", raw = 1):
+                v = self.cfg_get("env_pass",k,vars = self.cfg_globals)
+                res.append( "  -e %s='%s' \\" % (k,v) )
 
             if self.cfg.has_section("poms_campaign_layer"):
                 #
@@ -244,7 +248,7 @@ class launcher:
                 #
                 campaign_kwargs = {}
                 for k,v in self.cfg.items("poms_campaign_layer", raw = 1):
-	 	     v = self.cfg_get("poms_campaign_layer",k,vars = self.cfg_globals)
+                     v = self.cfg_get("poms_campaign_layer",k,vars = self.cfg_globals)
                      campaign_kwargs[k] = v
 
                 campaign_id = poms_client.register_poms_campaign(**campaign_kwargs)
@@ -253,16 +257,16 @@ class launcher:
                 poms_get_id_kwargs = {}
                 
 
-	    for k,v in self.cfg.items("submit", raw = 1):
-		v = self.cfg_get("submit",k,vars = self.cfg_globals)
+            for k,v in self.cfg.items("submit", raw = 1):
+                v = self.cfg_get("submit",k,vars = self.cfg_globals)
                 if len(k) > 2 and k[-2] == '_' and k[-1] in "0123456789":
                      k = k[:-2]
                 if len(k) == 1:
-		    res.append("  -%s '%s'  \\" %( k,v))
-		elif v == 'True' or v == True:
-		    res.append("  --%s \\" % k)
-		else:
-		    res.append("  --%s='%s'  \\" %( k,v))
+                    res.append("  -%s '%s'  \\" %( k,v))
+                elif v == 'True' or v == True:
+                    res.append("  --%s \\" % k)
+                else:
+                    res.append("  --%s='%s'  \\" %( k,v))
 
             wrapfile = os.path.expandvars(self.cfg.get('global','wrapper',vars = self.cfg_globals))
             if wrapfile.startswith("file:///"):
@@ -272,31 +276,31 @@ class launcher:
                 jobwrapfile = "/tmp/%s_%d" % (jobname, getpid())
                 shutil.copy(wrapfile, jobfile)
             else:  
-	        jobwrapfile = wrapfile
+                jobwrapfile = wrapfile
 
-	    res.append("  file://%s \\" % jobwrapfile)
+            res.append("  file://%s \\" % jobwrapfile)
 
-	    for k,v in self.cfg.items("job_setup", raw=1):
-		v = self.cfg_get("job_setup",k,vars = self.cfg_globals)
+            for k,v in self.cfg.items("job_setup", raw=1):
+                v = self.cfg_get("job_setup",k,vars = self.cfg_globals)
                 if len(k) > 2 and k[-2] == '_' and k[-1] in "0123456789":
                      k = k[:-2]
-		if self.is_boolean_flag[k]:
+                if self.is_boolean_flag[k]:
                     if v == 'True' or v == True:
-		        res.append("    --%s \\" % k)   
-		else:
-                    if k in ['export','source','setup','prescript','postscript'] and urllib.quote(v) != v:
+                        res.append("    --%s \\" % k)   
+                else:
+                    if k in ['export','source','setup','prescript','postscript'] and urllib.parse.quote(v) != v:
                          k = '%s-unquote' % k
-                         v = urllib.quote(v)
-		    res.append("    --%s '%s' \\" % (k,v))   
+                         v = urllib.parse.quote(v)
+                    res.append("    --%s '%s' \\" % (k,v))   
 
    
-	    for k,v in self.cfg.items("sam_consumer", raw=1):
-		v = self.cfg_get("sam_consumer",k,vars = self.cfg_globals)
-		if self.is_boolean_flag[k]:
+            for k,v in self.cfg.items("sam_consumer", raw=1):
+                v = self.cfg_get("sam_consumer",k,vars = self.cfg_globals)
+                if self.is_boolean_flag[k]:
                     if v == 'True' or v == True:
-		        res.append("  --%s \\" % k)
+                        res.append("  --%s \\" % k)
                 else:
-		    res.append("    --%s '%s' \\" % (k,v))   
+                    res.append("    --%s '%s' \\" % (k,v))   
 
             for i in range(10):
                 if i == 0:
@@ -315,12 +319,12 @@ class launcher:
                         if  v == 'True' or v == True:
                             res.append("    --%s%s \\" % (k,osuffix))   
                     else:
-                        if k in ['metadata_extractor'] and urllib.quote(v) != v:
+                        if k in ['metadata_extractor'] and urllib.parse.quote(v) != v:
                             k = '%s_unquote' % k
-                            v = urllib.quote(v)
+                            v = urllib.parse.quote(v)
                         res.append("    --%s%s '%s' \\" % (k,osuffix, v))
 
-            for i in xrange(9):
+            for i in range(9):
                 if i == 0:
                     sname = "executable"
                 else:
@@ -329,9 +333,9 @@ class launcher:
                 if not self.cfg.has_section(sname):
                     continue
 
-  	        res.append("  --exe  %s \\" % self.cfg_get(sname,'name', vars = self.cfg_globals))
+                res.append("  --exe  %s \\" % self.cfg_get(sname,'name', vars = self.cfg_globals))
 
-            for i in xrange(9):
+            for i in range(9):
                 if i == 0:
                     sname = "executable"
                 else:
@@ -357,7 +361,7 @@ class launcher:
                 poms_get_id_kwargs['command_executed'] = '\n'.join(res)
 
                 for k,v in self.cfg.items("poms_get_task_id", raw = 1):
-		    v = self.cfg_get("poms_get_task_id",k,vars = self.cfg_globals)
+                    v = self.cfg_get("poms_get_task_id",k,vars = self.cfg_globals)
                     poms_get_id_kwargs[k] = v
 
                 #
@@ -373,25 +377,25 @@ class launcher:
                 res.insert(n,' -e POMS_CAMPAIGN_ID=%s \\' % campaign_id)
                 res.insert(n,' -e POMS_TASK_ID=%s \\' % task_id)
                 res.insert(n,''' -l "+FIFE_CATEGORIES='\\"POMS_TASK_ID_%s,POMS_CAMPAIGN_ID_%s,%s\\"'"  \\''' % (
-			task_id, campaign_id, os.environ.get("POMS_CAMPAIGN_TAGS","")
+                        task_id, campaign_id, os.environ.get("POMS_CAMPAIGN_TAGS","")
                    ))
                 res.insert(n,' -l "+POMS_TASK_ID=%s"  \\' % task_id)
                 res.insert(n,' -l "+POMS_CAMPAIGN_ID=%s"  \\' % campaign_id)
 
-	    res.append("")
+            res.append("")
 
             if self.jobname != None:
                 res.append("rm %s" % jobwrapfile)
 
-	elif self.cfg.has_section("submit_dag"):
-	    # XXX not doing dags -- yet
-            print "submit_dag not yet implemented..."
-	    pass
-	else:
-	    raise KeyError("Need [submit] or [submit_dag] sections...")
+        elif self.cfg.has_section("submit_dag"):
+            # XXX not doing dags -- yet
+            print("submit_dag not yet implemented...")
+            pass
+        else:
+            raise KeyError("Need [submit] or [submit_dag] sections...")
 
 
-	return "\n".join(res)
+        return "\n".join(res)
 
 if __name__ == '__main__':
     p = optparse.OptionParser(description='launch a job with parameters'
@@ -416,7 +420,7 @@ if __name__ == '__main__':
         l = launcher(options.config, options.override, options.jobname, options.stage, options.fake, options.config_dump, options.arg_push, options.arg_del)
         # evaluate some things to make sure we have them...
         l.cfg.items('global')
-    except ConfigParser.Error as e:
+    except configparser.Error as e:
         sys.stderr.write("Error in config file(s): %s\n" % e)
         sys.exit(1)
     except Exception as e:

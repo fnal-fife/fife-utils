@@ -14,6 +14,7 @@ import sys
 import time
 import traceback
 import urllib
+from builtins import bytes
 
 #bodily included it below so we don't need it in our include path in the job
 #from path_template import CaseInsensitiveDict, format_path
@@ -81,41 +82,41 @@ class Wrapper:
         import optparse
         parser = optparse.OptionParser()
     
-	parser.add_option("-q","--quals", help="Set qualifiers for ifdh_art setup")
-	parser.add_option("-v","--vers", help="Set version for ifdh_art setup")
-	parser.add_option("-c","--config", help="Specify config file (fcl) for art executable")
-	parser.add_option("-X","--exe", help="Specify executable name for art executable -- default $EXPERIMENT" , default=[], action="append")
-	parser.add_option("-g","--getconfig", action="store_true", help="get config files as inputs from SAM (i.e. for MonteCarlo simulation). Conflicts with --config")
-	parser.add_option("-M","--multifile", action="store_true", help="Fetch files in wrapper and run executable once per file")
-	parser.add_option("-G","--with_gdb", action="store_true", help="run executable under gdb and print stack trace")
-	parser.add_option("-L","--limit", type="int", help="Set SAM project file delivery limit", default=0)
-	parser.add_option("-S","--schema",  help="Set SAM file delivery schema", default="")
-	parser.add_option("-I","--inputfile", action="append", help="Input file to copy to job area before running the executable", default = [])
-	parser.add_option("-T","--inputtar", action="append", help="Input tar file to copy to job area and unpack running the executable", default = [])
-	parser.add_option("--inputlist", action="append", help="ifdh cp -f file to run to fetch inputs", default = [])
-	parser.add_option("--export",action="append",  help="export environment variable before running", default= [])
-	parser.add_option("--export-unquote",action="append",  help="export environment variable before running", default= [])
-	parser.add_option("--setup",action="append",  help="setup product before running", default=[])
-	parser.add_option("--setup-unquote",action="append",  help="setup product before running", default=[])
-	parser.add_option("--source",action="append",  help="source setup file before running", default = [])
-	parser.add_option("--source-unquote",action="append",  help="source setup file before running", default = [])
-	parser.add_option("--self_destruct_timer", type="int", help="After this many seconds, suicide the job so we get output back")
-	parser.add_option("--prescript", action="append", help="script to run before Art executable", default = [])
-	parser.add_option("--prescript-unquote",action="append",  help="script to run before Art executable", default = [])
-	parser.add_option("--postscript",action="append",  help="script to run after Art executable", default = [])
-	parser.add_option("--postscript-unquote",action="append",  help="script to run after Art executable", default = [])
-	parser.add_option("--debug", action="count", help="Turn on debugging")
-	parser.add_option("--ifdh_art", action="store_true", help="executable can run the ifdh_art getNextFile loop ")
+        parser.add_option("-q","--quals", help="Set qualifiers for ifdh_art setup")
+        parser.add_option("-v","--vers", help="Set version for ifdh_art setup")
+        parser.add_option("-c","--config", help="Specify config file (fcl) for art executable")
+        parser.add_option("-X","--exe", help="Specify executable name for art executable -- default $EXPERIMENT" , default=[], action="append")
+        parser.add_option("-g","--getconfig", action="store_true", help="get config files as inputs from SAM (i.e. for MonteCarlo simulation). Conflicts with --config")
+        parser.add_option("-M","--multifile", action="store_true", help="Fetch files in wrapper and run executable once per file")
+        parser.add_option("-G","--with_gdb", action="store_true", help="run executable under gdb and print stack trace")
+        parser.add_option("-L","--limit", type="int", help="Set SAM project file delivery limit", default=0)
+        parser.add_option("-S","--schema",  help="Set SAM file delivery schema", default="")
+        parser.add_option("-I","--inputfile", action="append", help="Input file to copy to job area before running the executable", default = [])
+        parser.add_option("-T","--inputtar", action="append", help="Input tar file to copy to job area and unpack running the executable", default = [])
+        parser.add_option("--inputlist", action="append", help="ifdh cp -f file to run to fetch inputs", default = [])
+        parser.add_option("--export",action="append",  help="export environment variable before running", default= [])
+        parser.add_option("--export-unquote",action="append",  help="export environment variable before running", default= [])
+        parser.add_option("--setup",action="append",  help="setup product before running", default=[])
+        parser.add_option("--setup-unquote",action="append",  help="setup product before running", default=[])
+        parser.add_option("--source",action="append",  help="source setup file before running", default = [])
+        parser.add_option("--source-unquote",action="append",  help="source setup file before running", default = [])
+        parser.add_option("--self_destruct_timer", type="int", help="After this many seconds, suicide the job so we get output back")
+        parser.add_option("--prescript", action="append", help="script to run before Art executable", default = [])
+        parser.add_option("--prescript-unquote",action="append",  help="script to run before Art executable", default = [])
+        parser.add_option("--postscript",action="append",  help="script to run after Art executable", default = [])
+        parser.add_option("--postscript-unquote",action="append",  help="script to run after Art executable", default = [])
+        parser.add_option("--debug", action="count", help="Turn on debugging")
+        parser.add_option("--ifdh_art", action="store_true", help="executable can run the ifdh_art getNextFile loop ")
          
         parser.add_option("--appname", help="application name for SAM", default="demo")
         parser.add_option("--appfamily", help="application family for SAM", default="demo")
         parser.add_option("--appvers", help="application version for SAM", default=os.environ.get("ART_VERSION","1"))
         parser.add_option("--userscript", action="append", help="extra user script to run after main executable" , default = [])
-	parser.add_option("--find_setups", action="store_true", help="look in the 'usual places' for the ups setups script at startup")
-	parser.add_option("--start_project_on", default=None, help="start a sam project on this dataset ")
-	parser.add_option("--end_project", action="store_true", help="look in the 'usual places' for the ups setups script at startup")
-	parser.add_option("--dry_run", action="store_true", help="Don't run commands, just print them")
-	parser.add_option("--nosetup", action="store_true", help="do not run setup actions (used internally)")
+        parser.add_option("--find_setups", action="store_true", help="look in the 'usual places' for the ups setups script at startup")
+        parser.add_option("--start_project_on", default=None, help="start a sam project on this dataset ")
+        parser.add_option("--end_project", action="store_true", help="look in the 'usual places' for the ups setups script at startup")
+        parser.add_option("--dry_run", action="store_true", help="Don't run commands, just print them")
+        parser.add_option("--nosetup", action="store_true", help="do not run setup actions (used internally)")
 
         # output options
         for  i in range(10):
@@ -133,15 +134,15 @@ class Wrapper:
             parser.add_option("--add_to_dataset"+suffix, help="Add files to named dataset using Dataset.Tag", default=None)
             parser.add_option("--dataset_exclude"+suffix,action="append",  help="glob pattern of output files to exclude from the --add_to_dataset dataset", default = [])
             parser.add_option("--add_location"+suffix, action="store_true", default=None, help="Add locations of output files to SAM")
-	    parser.add_option("--outputlist"+suffix, action="append", help="ifdh cp -f file to run to copy out outputs", default = [])
+            parser.add_option("--outputlist"+suffix, action="append", help="ifdh cp -f file to run to copy out outputs", default = [])
 
 
-	(self.options, self.args) = parser.parse_args()
+        (self.options, self.args) = parser.parse_args()
 
         # split args on -- 
         newargs = []
         start = 0
-        for i in xrange(len(self.args)):
+        for i in range(len(self.args)):
             if self.args[i] == '--':
                 newargs.append(self.args[start:i])
                 start = i+1
@@ -172,7 +173,7 @@ class Wrapper:
              if self.options.debug: sys.stderr.write("path is: %s\n" % os.environ['PATH'])
              try:
                  import ifdh
-                 print "imported ifdh"
+                 print("imported ifdh")
              except:
                  sys.stderr.write("fife_wrap: import ifdh failed\n")
                  if self.options.debug: sys.stderr.write(traceback.format_exc())
@@ -235,8 +236,9 @@ for v in os.environ.keys():
 EOF
 exit
 """ % cuthere )
-            p = subprocess.Popen("/bin/bash" , stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-            p.stdin.write("\n".join(scriptlist))
+            p = subprocess.Popen("/bin/bash" , stdin=subprocess.PIPE, stdout=subprocess.PIPE, encoding='utf-8')
+            cmds = "\n".join(scriptlist)
+            print(cmds, file=p.stdin)
             found = False
             evallist = []
             for l in p.stdout.readlines():
@@ -248,7 +250,7 @@ exit
             p.stdout.close()
             p.wait()
             if self.options.debug: sys.stderr.write('inhaled environment: %s' % repr(evallist))
-            exec '\n'.join(evallist)
+            exec('\n'.join(evallist))
             # just assume the setup stuff made a different python environment(?)
             sys.argv = [ 'python' , sys.argv[0] , '--nosetup' ] + sys.argv[1:]
             if self.options.debug: sys.stderr.write( "about to exec, args: %s\n" % sys.argv)
@@ -284,14 +286,14 @@ exit
             self.cpurl = "$cpurl"
             print( 'cpurl=`ifdh findProject "%s" "%s"`' %('$SAM_PROJECT',os.environ.get('SAM_STATION', os.environ.get('EXPERIMENT',''))))
             print( 'consumerid=`ifdh establishProcess "%s" "%s" "%s" "%s" "%s" "%s" "%s" "%s" "%s"`' %  ( 
-		   self.cpurl, 
-		   self.options.appname, 
-		   self.options.appvers, 
+                   self.cpurl, 
+                   self.options.appname, 
+                   self.options.appvers, 
                    hostname,
                    os.environ.get('GRID_USER',os.environ.get('USER')),
-		   self.options.appfamily,
-		   description,
-		   int(self.options.limit),
+                   self.options.appfamily,
+                   description,
+                   int(self.options.limit),
                    self.options.schema
                 )
             )
@@ -340,13 +342,13 @@ exit
                         pass
                 if self.options.debug: sys.stderr.write("prescript: %s\n" % s)
                 cmdlist.append(s)
-	    cmd = "\n".join(cmdlist)
+            cmd = "\n".join(cmdlist)
             if self.options.dry_run:
                 print("# pre-scripts")
                 print(cmd)
             else:
                 if self.options.debug: sys.stderr.write("running: %s\n" % cmd)
-	        res = os.system(cmd)
+                res = os.system(cmd)
 
         cmdlist=[]
         if self.options.prescript_unquote:
@@ -360,13 +362,13 @@ exit
                         pass
                 if self.options.debug: sys.stderr.write("prescript: %s\n" % s)
                 cmdlist.append(urllib.unquote(s))
-	    cmd = "\n".join(cmdlist)
+            cmd = "\n".join(cmdlist)
             if self.options.dry_run:
                 print("# pre-scripts-quoted")
                 print(cmd)
             else:
                 if self.options.debug: sys.stderr.write("running: %s\n" % cmd)
-	        res = os.system(cmd)
+                res = os.system(cmd)
 
         if self.options.multifile or self.options.getconfig:
             if self.options.dry_run:
@@ -378,7 +380,7 @@ exit
                 self.furi=self.ih.getNextFile(self.cpurl,self.consumerid)
 
             lastfuri = ""
-	    while self.furi and self.furi != lastfuri:
+            while self.furi and self.furi != lastfuri:
                 if self.options.dry_run:
                     print('    fname=`ifdh fetchInput "$furi"')
                     print('    ifdh updateFileStatus "$cpurl" "$consumerid" "$fname" "transferred"')
@@ -447,10 +449,10 @@ exit
                 self.furi=self.ih.getNextFile(self.cpurl,self.consumerid)
 
 
-	elif self.options.ifdh_art:
+        elif self.options.ifdh_art:
 
             # file loop is actually in the art executable
-	    # so we have to pass options in to it to
+            # so we have to pass options in to it to
             # invoke the loop
 
             for i in xrange(len(self.options.exe)):
@@ -477,7 +479,7 @@ exit
                     if res != 0:
                         break
 
-	else: 
+        else: 
             # just run the exe..
             if self.options.exe == None:
                  sys.stderr.write("No executable specified to run...\n")
@@ -519,11 +521,11 @@ exit
                         pass
                 if self.options.debug: sys.stderr.write("postscript: %s\n" % s)
                 cmdlist.append(urllib.unquote(s))
-	    cmd = "\n".join(cmdlist)
+            cmd = "\n".join(cmdlist)
             if self.options.dry_run:
                 print(cmd)
             else:
-	        res = os.system(cmd)
+                res = os.system(cmd)
 
         if self.options.postscript_unquote:
             cmdlist=[]
@@ -537,11 +539,11 @@ exit
                         pass
                 if self.options.debug: sys.stderr.write("postscript: %s\n" % s)
                 cmdlist.append(urllib.unquote(s))
-	    cmd = "\n".join(cmdlist)
+            cmd = "\n".join(cmdlist)
             if self.options.dry_run:
                 print(cmd)
             else:
-	        res = os.system(cmd)
+                res = os.system(cmd)
 
     def fetch_inputs(self):
         # first copy any tarfiles,inputlists, and outputlists here
@@ -708,22 +710,22 @@ exit
                 if self.options.debug: sys.stderr.write(traceback.format_exc())
                 pass
         
-	if self.options.dest and self.options.addoutput:
-	    for g in self.options.addoutput:
+        if self.options.dest and self.options.addoutput:
+            for g in self.options.addoutput:
                 if self.options.dry_run:
                     print ("ifdh addOutputFile %s" % g)
                 else:
                     for f in glob.glob(g):
                         if self.options.debug: sys.stderr.write( "addoutput: %s\n"% f)
-		        self.ih.addOutputFile(f)
+                        self.ih.addOutputFile(f)
                   
             if self.options.rename:
                 if self.options.debug: sys.stderr.write( "rename: %s\n" % self.options.rename)
-	        for r in self.options.rename:
+                for r in self.options.rename:
                     if self.options.dry_run:
                         print ("ifdh renameOutput %s" % r)
                     else:
-		        self.ih.renameOutput(r)
+                        self.ih.renameOutput(r)
 
             if self.options.dry_run:
                 if self.options.add_location:
@@ -748,7 +750,7 @@ exit
 
             for f in oflist:
                 
-	        if self.options.debug: sys.stderr.write("output file: %s\n" % f)
+                if self.options.debug: sys.stderr.write("output file: %s\n" % f)
 
                 if self.options.declare_metadata or self.options.metadata_extractor:
                     rt = self.file_stats(f)
@@ -845,7 +847,7 @@ exit
                             except:
                                 pass
    
-	            if self.options.debug: sys.stderr.write( "DEBUG: metadata: %s\n" % str(metadata))
+                    if self.options.debug: sys.stderr.write( "DEBUG: metadata: %s\n" % str(metadata))
                     try:
                         res = self.ih.declareFile(str(metadata))
                     except:
@@ -856,7 +858,7 @@ exit
                     if res != 0 and res != 1:
                         sys.stderr.write("error declaring metadata:" + self.ih.getErrorText()+"\n")
 
-	    if self.options.debug: sys.stderr.write( "copybackoutput: %s\n" % self.options.dest)
+            if self.options.debug: sys.stderr.write( "copybackoutput: %s\n" % self.options.dest)
 
             actualdest = self.options.dest
 
@@ -871,7 +873,7 @@ exit
             if do_mkdir_p:
                 self.ih.mkdir_p(actualdest)
 
-	    self.ih.copyBackOutput(actualdest)
+            self.ih.copyBackOutput(actualdest)
 
             if self.options.add_location:
                 for of in oflist:
@@ -901,7 +903,7 @@ exit
             print('exit $rres')
 
         if self.ih and self.cpurl and self.consumerid:
-	    self.ih.setStatus(self.cpurl, self.consumerid, "completed" if 0 == self.rres else "bad")
+            self.ih.setStatus(self.cpurl, self.consumerid, "completed" if 0 == self.rres else "bad")
 
         if self.ih:
             self.ih.cleanup()
@@ -914,12 +916,12 @@ exit
             self.ih = ifdh.ifdh()
 
         self.cpurl = self.ih.startProject(
-		os.environ['SAM_PROJECT'],
-		os.environ.get('SAM_STATION', 
-		os.environ.get('EXPERIMENT','')), 
+                os.environ['SAM_PROJECT'],
+                os.environ.get('SAM_STATION', 
+                os.environ.get('EXPERIMENT','')), 
                 self.start_project_on,
                 os.environ.get('GRID_USER',os.environ.get('USER','unknown')),
-		os.environ.get('EXPERIMENT',''))
+                os.environ.get('EXPERIMENT',''))
 
     def end_project(self):
         if self.cpurl == None:
@@ -1164,16 +1166,16 @@ if __name__ == '__main__' :
     w = Wrapper()
     w.parse_arguments()
     try:
-	w.do_setup()
+        w.do_setup()
         if w.options.start_project_on:
              w.start_project()
-	w.start_self_destruct()
+        w.start_self_destruct()
         w.fetch_inputs()
         if w.options.ifdh_art or w.options.multifile or w.options.getconfig:
-	    w.start_client()
-	w.file_loop()   
+            w.start_client()
+        w.file_loop()   
         w.userscripts()
-	w.copy_back()
+        w.copy_back()
     except:
         if w.options.debug: sys.stderr.write(traceback.format_exc())
         raise
@@ -1181,8 +1183,8 @@ if __name__ == '__main__' :
         w.cleanup()
 
     try:
-	if w.options.end_project:
-	   w.end_project()
+        if w.options.end_project:
+           w.end_project()
     except:
         if self.options.debug: sys.stderr.write(traceback.format_exc())
         pass

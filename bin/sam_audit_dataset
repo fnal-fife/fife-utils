@@ -1,4 +1,8 @@
 #!/usr/bin/env python
+try:
+    from six import *
+except:
+    pass
 
 from samweb_client import *
 from fife_sam_utils import *
@@ -61,7 +65,7 @@ def audit( ds, dest,  verbose = False, experiment = None, keeplists=None ):
                 num_declared_at_dest += 1
                 if  sp in full_set:
                     num_present_declared_at_dest += 1
-                    if verbose: print "located: %s" % sp
+                    if verbose: print("located: %s" % sp)
                 else:
                     if f in fnameset:
                         num_present_wrong_loc += 1
@@ -69,8 +73,8 @@ def audit( ds, dest,  verbose = False, experiment = None, keeplists=None ):
                             if pp.find(f):
                                 if keeplists != None:
                                     wronglist.write("wrong path: %s at %s not %s" % ( f, pp, sp))
-                                if verbose: print "wrong path: %s at %s not %s" % ( f, pp, sp)
-                    if verbose: print "missing: %s" % sp
+                                if verbose: print("wrong path: %s at %s not %s" % ( f, pp, sp))
+                    if verbose: print("missing: %s" % sp)
                     res = 1
         if found == 0:
            if keeplists != None:
@@ -80,16 +84,16 @@ def audit( ds, dest,  verbose = False, experiment = None, keeplists=None ):
                num_present_undeclared_at_dest += 1
         if len(spl) == 0:
            num_no_locations += 1
-           if verbose: print "file %s has 0 locations" % f
+           if verbose: print("file %s has 0 locations" % f)
         
-    print "Dataset ", ds.name, "at location", dest, ":"
-    print "               Total Files:", num_in_dataset 
-    print "      Present and declared:", num_present_declared_at_dest
-    print "                  Declared:", num_declared_at_dest
-    print "              Not Declared:", num_undeclared_at_dest
-    print "  Present but not Declared:", num_present_undeclared_at_dest
-    print " Present at wrong location:", num_present_wrong_loc
-    print "    Files with no location:", num_no_locations
+    print("Dataset ", ds.name, "at location", dest, ":")
+    print("               Total Files:", num_in_dataset) 
+    print("      Present and declared:", num_present_declared_at_dest)
+    print("                  Declared:", num_declared_at_dest)
+    print("              Not Declared:", num_undeclared_at_dest)
+    print("  Present but not Declared:", num_present_undeclared_at_dest)
+    print(" Present at wrong location:", num_present_wrong_loc)
+    print("    Files with no location:", num_no_locations)
     if keeplists != None:
         flistf.close()
         loclist.close()
