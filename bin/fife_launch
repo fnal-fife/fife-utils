@@ -215,12 +215,12 @@ class launcher:
 
 	if self.cfg.has_section("submit"):
 
-            njpf = self.cfg_get("submit","n_jobs_per_file",vars = self.cfg_globals)
-            if njpf != None:
+            nfpj = self.cfg_get("submit","n_files_per_job",vars = self.cfg_globals)
+            if nfpj != None and nfpj > 0:
                 # we already counted the dataset files in pre_launch, 
                 # so just compute 
                 if self.nfiles_in_dataset != None:
-                    self.cfg.set("submit","N",str(njpf * self.nfiles_in_dataset))
+                    self.cfg.set("submit","N",str(self.nfiles_in_dataset/nfpj))
 
                 else:
                     sys.stderr.write("Error in config [submit]: n_jobs_per_file requires dataset\n")
