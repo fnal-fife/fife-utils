@@ -3,6 +3,16 @@
 #DATE:  04/14/2014
 
 try:
+    from six import *
+except:
+    pass
+
+try:
+    from past.utils import old_div
+except:
+    def old_div(x,y):
+        return x / y 
+try:
     import json
 except:
     import simplejson as json
@@ -70,14 +80,14 @@ def ApplicationFamily(appFamily=None, appName=None, appVersion=None):
     return {'family': appFamily, 'name': appName, 'version': appVersion}
 
 def Params(a):
-    for key, value in a.iteritems():
+    for key, value in a.items():
         category = key
         if isinstance(value, dict):
-            for k,v in value.iteritems():
+            for k,v in value.items():
                 params_dict[category + '.' + k] = v
 
 def RunDescriptor(runType=None, runNumber=None):
-    first_part = int(runNumber / 10000)
+    first_part = int(old_div(runNumber, 10000))
     second_part = runNumber % 10000
     return [first_part, second_part, runType]
 
@@ -86,7 +96,7 @@ def RunDescriptorList(a):
 ######################################################
 #AUXILLARY CLASS AND FUNCTIONS USED BY OLDER PY FILES#
 ######################################################
-class Generic:
+class Generic(object):
     pass
 SAM = Generic()  #create an empty generic record
 SAM.DataFileType_ImportedDetector = 'importedDetector'
@@ -119,10 +129,10 @@ if len(sys.argv) > 1:
     try:
         file = open(sys.argv[1])
     except IOError:
-        print "Cannot open file."
+        print("Cannot open file.")
         sys.exit("Goodbye.")
 else:
-    print "Please specify a filename as an argument."
+    print("Please specify a filename as an argument.")
     sys.exit("Goodbye.")
 
 ################################################
@@ -144,7 +154,7 @@ file.close()
 #MAIN GOAL IS TO DO KEY TRANSLATION#
 ####################################
 
-for k,v in metadata.iteritems():
+for k,v in metadata.items():
     newKey = translate.get(k)
     if newKey != None:
         metadata[newKey] = metadata.pop(k)
@@ -177,7 +187,7 @@ if "runNumber" and "runType" in metadata:
     runs = RunDescriptorList([RunDescriptor(runType=runtype, runNumber=runnumber)])
     metadata['runs'] = runs
 #print '**********************'
-print metadata
+print(metadata)
 #print '**********************'
 
 #############################
@@ -191,7 +201,7 @@ if file_name.find(".dat") > -1:
 elif file_name.find(".root") > -1:
     new_json_file_name = file_name.replace('.root', '.root.metadata.json')
 else:
-    print file_name + ": has unsupported extension in the script you are running but will write file without json extension anyway"
+    print(file_name + ": has unsupported extension in the script you are running but will write file without json extension anyway")
 
 f = open(new_json_file_name, 'w')
 

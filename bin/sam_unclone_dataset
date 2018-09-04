@@ -1,4 +1,10 @@
 #!/usr/bin/env python
+
+try:
+    from six import *
+except:
+    pass
+
 from fife_sam_utils import *
 from samweb_client import *
 import sys

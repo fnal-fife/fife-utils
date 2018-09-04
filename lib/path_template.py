@@ -25,7 +25,11 @@ ${run_number[=2]} gives 56
 ${run_number[8/2]} gives 00/12/34/56
 
 """
+from __future__ import print_function
 
+from builtins import str
+from past.builtins import basestring
+from builtins import object
 import string, re, os.path
 from datetime import datetime
 import collections
@@ -55,7 +59,7 @@ class CaseInsensitiveDict(collections.MutableMapping):
 
     def __iter__(self):
         # Return the original, cased, keys
-        return (key for key, _ in self._data.itervalues() )
+        return (key for key, _ in self._data.values() )
 
     def __len__(self):
         return len(self._data)
@@ -65,17 +69,17 @@ class CaseInsensitiveDict(collections.MutableMapping):
         n._data = self._data.copy()
         return n
     def __repr__(self):
-        return '%s(%r)' % (self.__class__.__name__, dict(self.items()))
+        return '%s(%r)' % (self.__class__.__name__, dict(list(self.items())))
 
     def __eq__(self, other):
         if isinstance(other, CaseInsensitiveDict):
-            other_data = dict( (lk, v) for lk, (k,v) in other._data.iteritems() )
+            other_data = dict( (lk, v) for lk, (k,v) in other._data.items() )
         if isinstance(other, collections.Mapping):
-            other_data = dict( (self._get_lkey(k),v) for k,v in other.iteritems() )
+            other_data = dict( (self._get_lkey(k),v) for k,v in other.items() )
         else:
             return NotImplemented
         # compare lower cased keys
-        return dict( (lk, v) for (lk, (k,v)) in self._data.iteritems() ) == other_data 
+        return dict( (lk, v) for (lk, (k,v)) in self._data.items() ) == other_data 
 
 class _MDTemplate(string.Template):
     idpattern = r'[_a-z][_a-z0-9]*(?:\.[_a-z0-9]+)?(?:[%/][0-9]+)?(?:\[=?[0-9]+(?:/[0-9]+)?\])?'
@@ -135,7 +139,7 @@ class _MDMapping(object):
                 denom = int(m.group(3))
                 val = self._getValue(m.group(1))
                 try:
-                    val = long(val)
+                    val = int(val)
                 except ValueError:
                     pass
                 else:
@@ -149,7 +153,7 @@ class _MDMapping(object):
             if length:
                 # formats are only supported for integer values
                 try:
-                    val = long(val)
+                    val = int(val)
                 except ValueError: pass
                 else:
                     val = '%0*d' % (length, val)
@@ -157,7 +161,7 @@ class _MDMapping(object):
                     if sublength:
                         import itertools
                         # Split the results into chunks of size sublength. The use of reversed is so any padding is applied at the beginning, not the end
-                        val = '/'.join( reversed([''.join(reversed(i)) for i in itertools.izip_longest(fillvalue='0', *([iter(reversed(val))] * sublength))]))
+                        val = '/'.join( reversed([''.join(reversed(i)) for i in itertools.zip_longest(fillvalue='0', *([iter(reversed(val))] * sublength))]))
 
             return val 
         except KeyError:
@@ -228,39 +232,39 @@ if __name__ == '__main__':
     import time
     template = '/test/path/${year}/${month}/${day}/${runnumber/1000000[=2]}/${Runnumber/10000[=2]}/${runnumber/100[=2]}/${runnumber[=2]}/${missing[3]}'
     metadata = CaseInsensitiveDict({ 'Runnumber' : '123456' })
-    print format_path(template, metadata, time.time())
+    print(format_path(template, metadata, time.time()))
     
     template = '/test/path/${year}/${month}/${day}/${runnumber/100[6]}/${runnumber%100}/${missing[3]}'
     metadata = CaseInsensitiveDict({ 'runnumber' : '123456' })
-    print format_path(template, metadata, time.time())
+    print(format_path(template, metadata, time.time()))
     
     template = '/test/path/${year}/${month}/${day}/${runnumber/100[6]}/${runnumber[=2]}/${missing[3]}'
     metadata = CaseInsensitiveDict({ 'runnumber' : '123456' })
-    print format_path(template, metadata, time.time())
+    print(format_path(template, metadata, time.time()))
 
     template = '/test/path/${year}/${month}/${day}/${runnumber[8/2]}/${missing[3]}'
     metadata = CaseInsensitiveDict({ 'runnumber' : '123456' })
-    print format_path(template, metadata, time.time())
+    print(format_path(template, metadata, time.time()))
 
     template = '/test/path/${year}/${month}/${day}/${runnumber[6/2]}/${missing[3]}'
     metadata = CaseInsensitiveDict({ 'runnumber' : '0123456' })
-    print format_path(template, metadata, time.time())
+    print(format_path(template, metadata, time.time()))
     template = '/test/path/${year}/${month}/${day}/${runnumber[6/2]}/${missing[3]}'
     metadata = CaseInsensitiveDict({ 'runnumber' : '1123456' })
-    print format_path(template, metadata, time.time())
+    print(format_path(template, metadata, time.time()))
 
     template = '/test/path/${run_number}/${subrun_number}/${run_type}'
     metadata = CaseInsensitiveDict({ 'runs' : [] })
-    print format_path(template, metadata, time.time())
+    print(format_path(template, metadata, time.time()))
 
     metadata = CaseInsensitiveDict({ 'runs' : [ [123456, "run_type"] ] })
-    print format_path(template, metadata, time.time())
+    print(format_path(template, metadata, time.time()))
 
     metadata = CaseInsensitiveDict({ 'runs' : [ [123456, 78, "run_type"] ] })
-    print format_path(template, metadata, time.time())
+    print(format_path(template, metadata, time.time()))
 
-    print format_path('/some/path', metadata, time.time(), '/original/path/to/dir', '/original')
-    print format_path('${srcpath}', metadata, time.time(), '/original/path/to/dir', '/original')
-    print format_path('${basepath}', metadata, time.time(), '/original/path/to/dir', '/original')
-    print format_path('/newpath/${relpath}', metadata, time.time(), '/original/path/to/dir', '/original')
-    print format_path('/newpath/${relpath}', metadata, time.time(), '/original/path/to/dir')
+    print(format_path('/some/path', metadata, time.time(), '/original/path/to/dir', '/original'))
+    print(format_path('${srcpath}', metadata, time.time(), '/original/path/to/dir', '/original'))
+    print(format_path('${basepath}', metadata, time.time(), '/original/path/to/dir', '/original'))
+    print(format_path('/newpath/${relpath}', metadata, time.time(), '/original/path/to/dir', '/original'))
+    print(format_path('/newpath/${relpath}', metadata, time.time(), '/original/path/to/dir'))
