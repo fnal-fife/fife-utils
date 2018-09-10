@@ -423,6 +423,7 @@ exit
                         print("     " + cmd )
                     else:
                         res = os.system(cmd)
+                        self.rres = res
  
                     if res != 0:
                         break;
@@ -444,7 +445,6 @@ exit
                 else:
                     if self.options.debug: sys.stderr.write( "Failed, marking skipped\n")
                     self.ih.updateFileStatus(self.cpurl, self.consumerid, os.path.basename(self.furi), 'skipped')
-                self.rres = res
                 lastfuri = self.furi
                 self.furi=self.ih.getNextFile(self.cpurl,self.consumerid)
 
