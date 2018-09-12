@@ -13,8 +13,14 @@ import subprocess
 import sys
 import time
 import traceback
-import urllib
-from builtins import bytes
+try:
+    import urllib.parse, urllib.error
+    def urllib_unquote(x):
+        return urllib.parse.unquote(x)
+except:
+    import urllib
+    def urllib_unquote(x):
+        return urllib.unquote(x)
 
 #bodily included it below so we don't need it in our include path in the job
 #from path_template import CaseInsensitiveDict, format_path
@@ -132,7 +138,7 @@ class Wrapper:
             parser.add_option("--metadata_extractor"+suffix, help="use given program to extract and declare metadata", default=None)
             parser.add_option("--metadata_extractor_unquote"+suffix, help="use given program to extract and declare metadata", default=None)
             parser.add_option("--add_to_dataset"+suffix, help="Add files to named dataset using Dataset.Tag", default=None)
-            parser.add_option("--dataset_exclude"+suffix,action="append",  help="glob pattern of output files to exclude from the --add_to_dataset dataset", default = [])
+            parser.add_option("--dataset_exclude"+suffix,action="append",  help="glob pattern of output files to exclude from the --add_to_dataset=dataset", default = [])
             parser.add_option("--add_location"+suffix, action="store_true", default=None, help="Add locations of output files to SAM")
             parser.add_option("--outputlist"+suffix, action="append", help="ifdh cp -f file to run to copy out outputs", default = [])
 
@@ -193,7 +199,7 @@ class Wrapper:
 
         if self.options.export_unquote:
             for e in self.options.export_unquote:
-                scriptlist.append("export %s" % urllib.unquote(e))
+                scriptlist.append("export %s" % urllib_unquote(e))
 
         if self.options.source:
             for s in self.options.source:
@@ -201,7 +207,7 @@ class Wrapper:
 
         if self.options.source_unquote:
             for s in self.options.source:
-                scriptlist.append("source %s" % urllib.unquote(s))
+                scriptlist.append("source %s" % urllib_unquote(s))
 
         if self.options.setup:
             for s in self.options.setup:
@@ -209,7 +215,7 @@ class Wrapper:
 
         if self.options.setup_unquote:
             for s in self.options.setup_unquote:
-                scriptlist.append("setup %s" % urllib.unquote(s))
+                scriptlist.append("setup %s" % urllib_unquote(s))
 
         scriptlist.append('[ -z "$PRODUCTS" -a -r /cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups.sh ] && source /cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups.sh')
         scriptlist.append('[ -z "$PRODUCTS" -a -r /grid/fermiapp/products/common/etc/setups.sh ] && source /grid/fermiapp/products/common/etc/setups.sh')
@@ -236,9 +242,12 @@ for v in os.environ.keys():
 EOF
 exit
 """ % cuthere )
-            p = subprocess.Popen("/bin/bash" , stdin=subprocess.PIPE, stdout=subprocess.PIPE, encoding='utf-8')
+            if sys.version_info[0] > 2:
+                p = subprocess.Popen("/bin/bash" , stdin=subprocess.PIPE, stdout=subprocess.PIPE, encoding='utf-8')
+            else:
+                p = subprocess.Popen("/bin/bash" , stdin=subprocess.PIPE, stdout=subprocess.PIPE)
             cmds = "\n".join(scriptlist)
-            print(cmds, file=p.stdin)
+            p.stdin.write(cmds)
             found = False
             evallist = []
             for l in p.stdout.readlines():
@@ -361,7 +370,7 @@ exit
                     except:
                         pass
                 if self.options.debug: sys.stderr.write("prescript: %s\n" % s)
-                cmdlist.append(urllib.unquote(s))
+                cmdlist.append(urllib_unquote(s))
             cmd = "\n".join(cmdlist)
             if self.options.dry_run:
                 print("# pre-scripts-quoted")
@@ -520,7 +529,7 @@ exit
                     except:
                         pass
                 if self.options.debug: sys.stderr.write("postscript: %s\n" % s)
-                cmdlist.append(urllib.unquote(s))
+                cmdlist.append(urllib_unquote(s))
             cmd = "\n".join(cmdlist)
             if self.options.dry_run:
                 print(cmd)
@@ -538,7 +547,7 @@ exit
                     except:
                         pass
                 if self.options.debug: sys.stderr.write("postscript: %s\n" % s)
-                cmdlist.append(urllib.unquote(s))
+                cmdlist.append(urllib_unquote(s))
             cmd = "\n".join(cmdlist)
             if self.options.dry_run:
                 print(cmd)
@@ -783,7 +792,7 @@ exit
                         metadata = json.dumps(metadata_d)
 
                     if self.options.metadata_extractor_unquote:
-                       self.options.metadata_extractor = urllib.unquote(self.options.metadata_extractor_unquote)
+                       self.options.metadata_extractor = urllib_unquote(self.options.metadata_extractor_unquote)
 
                     if self.options.metadata_extractor:
 

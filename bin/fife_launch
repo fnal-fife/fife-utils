@@ -4,11 +4,25 @@ try:
    from six import  *
 except:
    pass
-import configparser
+
+try:
+    import configparser
+except:
+    import ConfigParser as configparser
+
+import traceback
 import sys
 import os
 import optparse
-import urllib.request, urllib.parse, urllib.error
+try:
+    import urllib.parse, urllib.error
+    def urllib_quote(x):
+        return urllib.parse.quote(x)
+except:
+    import urllib
+    def urllib_quote(x):
+        return urllib.quote(x)
+
 import shutil
 from samweb_client import *
 try:
@@ -105,10 +119,11 @@ class launcher(object):
         f = os.popen("%s/libexec/fife_wrap --help" % os.environ.get("FIFE_UTILS_DIR",os.path.dirname(os.path.dirname(sys.argv[0]))))
         for l in f:
             p1 = l.find("--")
-            if p1 > 0:
+            if p1 >= 0:
                 # we have a --option
                 p2 = l.find(" ",p1)
                 p3 = l.find("=",p1)
+                print("DEBUG: line : %s p1 %d p2 %d p3 %d" % (l, p1, p2, p3))
                 if p3 > 0:
                     # ...--name=value line
                     name=l[p1+2:p3]
@@ -118,6 +133,7 @@ class launcher(object):
                     name=l[p1+2:p2]
                     self.is_boolean_flag[name] = True
         print("DEBUG: is_boolean_flag: %s" % repr(self.is_boolean_flag))
+        print("DEBUG: is_boolean_flag['add_to_dataset']: %s" % repr(self.is_boolean_flag['add_to_dataset']))
         f.close()
      
     def cfg_get(self, section, name, vars={}):
@@ -288,9 +304,9 @@ class launcher(object):
                     if v == 'True' or v == True:
                         res.append("    --%s \\" % k)   
                 else:
-                    if k in ['export','source','setup','prescript','postscript'] and urllib.parse.quote(v) != v:
+                    if k in ['export','source','setup','prescript','postscript'] and urllib_quote(v) != v:
                          k = '%s-unquote' % k
-                         v = urllib.parse.quote(v)
+                         v = urllib_quote(v)
                     res.append("    --%s '%s' \\" % (k,v))   
 
    
@@ -313,15 +329,22 @@ class launcher(object):
                 if not self.cfg.has_section("job_output"+ssuffix):
                     break
 
+              
+                print("DEBUG: section [%s]" % ("job_output"+ssuffix))
+
                 for k,v in self.cfg.items("job_output"+ssuffix, raw=1):
                     v = self.cfg_get("job_output"+ssuffix,k,vars = self.cfg_globals)
+                    print("DEBUG: %s: %s" % (k,v))
+ 
                     if self.is_boolean_flag[k]:
+                        print("DEBUG: boolean case")
                         if  v == 'True' or v == True:
                             res.append("    --%s%s \\" % (k,osuffix))   
                     else:
-                        if k in ['metadata_extractor'] and urllib.parse.quote(v) != v:
+                        print("DEBUG: non-boolean case")
+                        if k in ['metadata_extractor'] and urllib_quote(v) != v:
                             k = '%s_unquote' % k
-                            v = urllib.parse.quote(v)
+                            v = urllib_quote(v)
                         res.append("    --%s%s '%s' \\" % (k,osuffix, v))
 
             for i in range(9):
@@ -425,6 +448,7 @@ if __name__ == '__main__':
         sys.exit(1)
     except Exception as e:
         sys.stderr.write("Error in setup: %s\n" % e)
+        traceback.print_exc()
         sys.exit(1)
 
     l.launch(options.dry_run)
