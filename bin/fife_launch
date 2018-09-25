@@ -61,7 +61,7 @@ class launcher(object):
         for stage in stages:
             stagetag = 'stage_' + stage
             if self.cfg.has_section(stagetag):
-                for k,v in self.cfg.items(stagetag, raw=1):
+                for k,v in self.cfg_items(stagetag, raw=1):
                     s,n = k.split('.',1)
                     self.cfg.set(s,n,v)
                
@@ -119,7 +119,7 @@ class launcher(object):
 
         self.get_fife_wrap_booleans()
 
-        self.cfg_globals = dict(self.cfg.items('global'))
+        self.cfg_globals = dict(self.cfg_items('global'))
 
     def get_fife_wrap_booleans(self):
         f = os.popen("%s/libexec/fife_wrap --help" % os.environ.get("FIFE_UTILS_DIR",os.path.dirname(os.path.dirname(sys.argv[0]))))
@@ -148,6 +148,14 @@ class launcher(object):
             res = self.cfg.get(section, name, vars=vars)
         except:
             res = None
+        return res
+
+    def cfg_items(self, section, raw = None):
+        ''' like cfg.items() except it gives [] and not an exception '''
+        try:
+            res = self.cfg.items(section, raw = raw)
+        except:
+            res = []
         return res
 
     def do_cfg_includes(self, cffile):
@@ -235,7 +243,7 @@ class launcher(object):
 
         res.append( "GROUP=%s; export GROUP" % self.cfg_get('global','group', vars = self.cfg_globals))
 
-        #for k,v in self.cfg.items("env_pass", raw = 1):
+        #for k,v in self.cfg_items("env_pass", raw = 1):
         #    v = self.cfg_get("env_pass",k,vars = self.cfg_globals)
         #    res.append("%s='%s'; export %s" % (k, v, k))
 
@@ -258,7 +266,7 @@ class launcher(object):
             else:
                 res.append("jobsub_submit \\")
 
-            for k,v1 in self.cfg.items("env_pass", raw = 1):
+            for k,v1 in self.cfg_items("env_pass", raw = 1):
                 v = self.cfg_get("env_pass",k,vars = self.cfg_globals)
                 check_exp_err(k, v1, v)
                 res.append( "  -e %s='%s' \\" % (k,v) )
@@ -270,7 +278,7 @@ class launcher(object):
                 # -- request a task_id
                 #
                 campaign_kwargs = {}
-                for k,v1 in self.cfg.items("poms_campaign_layer", raw = 1):
+                for k,v1 in self.cfg_items("poms_campaign_layer", raw = 1):
                      v = self.cfg_get("poms_campaign_layer",k,vars = self.cfg_globals)
                      check_exp_err(k, v1, v)
                      campaign_kwargs[k] = v
@@ -281,7 +289,7 @@ class launcher(object):
                 poms_get_id_kwargs = {}
                 
 
-            for k,v1 in self.cfg.items("submit", raw = 1):
+            for k,v1 in self.cfg_items("submit", raw = 1):
                 if k == "n_files_per_job":
                    continue
                 v = self.cfg_get("submit",k,vars = self.cfg_globals)
@@ -310,7 +318,7 @@ class launcher(object):
 
             res.append("  file://%s \\" % jobwrapfile)
 
-            for k,v1 in self.cfg.items("job_setup", raw=1):
+            for k,v1 in self.cfg_items("job_setup", raw=1):
                 v = self.cfg_get("job_setup",k,vars = self.cfg_globals)
                 check_exp_err(k, v1, v)
                 if len(k) > 2 and k[-2] == '_' and k[-1] in "0123456789":
@@ -325,7 +333,7 @@ class launcher(object):
                     res.append("    --%s '%s' \\" % (k,v))   
 
    
-            for k,v1 in self.cfg.items("sam_consumer", raw=1):
+            for k,v1 in self.cfg_items("sam_consumer", raw=1):
                 v = self.cfg_get("sam_consumer",k,vars = self.cfg_globals)
                 check_exp_err(k, v1, v)
                 if self.is_boolean_flag[k]:
@@ -348,7 +356,7 @@ class launcher(object):
               
                 print("DEBUG: section [%s]" % ("job_output"+ssuffix))
 
-                for k,v1 in self.cfg.items("job_output"+ssuffix, raw=1):
+                for k,v1 in self.cfg_items("job_output"+ssuffix, raw=1):
                     v = self.cfg_get("job_output"+ssuffix,k,vars = self.cfg_globals)
                     check_exp_err(k, v1, v)
                     print("DEBUG: %s: %s" % (k,v))
@@ -386,7 +394,7 @@ class launcher(object):
 
                 res.append(" -- \\") # end options to wrapper
 
-                for k,v1 in self.cfg.items(sname, raw=1):
+                for k,v1 in self.cfg_items(sname, raw=1):
                     v = self.cfg_get(sname,k,vars = self.cfg_globals)
                     check_exp_err(k, v1, v)
                     if k.startswith('arg_'):
@@ -401,7 +409,7 @@ class launcher(object):
                     poms_get_id_kwargs['parent_task_id'] = os.environ["POMS_PARENT_TASK_ID"]
                 poms_get_id_kwargs['command_executed'] = '\n'.join(res)
 
-                for k,v1 in self.cfg.items("poms_get_task_id", raw = 1):
+                for k,v1 in self.cfg_items("poms_get_task_id", raw = 1):
                     v = self.cfg_get("poms_get_task_id",k,vars = self.cfg_globals)
                     check_exp_err(k, v1, v)
                     poms_get_id_kwargs[k] = v
