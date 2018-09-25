@@ -13,6 +13,7 @@ import subprocess
 import sys
 import time
 import traceback
+import uuid
 try:
     import urllib.parse, urllib.error
     def urllib_unquote(x):
@@ -131,6 +132,7 @@ class Wrapper:
             else:
                 suffix = str(i)
             parser.add_option("--dest"+suffix, help="Specify destination for copyBackOutput")
+            parser.add_option("--dest_uniq_rename"+suffix, help="Copy to unique-ified dest dir, rename to dest directory afterwards", action="store_true", default=None)
             parser.add_option("--rename"+suffix, action="append", help="Specify output file rename after Art runs", default = [])
             parser.add_option("--addoutput"+suffix,action="append",  help="glob pattern to match and call addOutputFile on", default = [])
             parser.add_option("--declare_metadata"+suffix, help="use given program to extract and declare metadata", action="store_true",  default=None)
@@ -141,6 +143,7 @@ class Wrapper:
             parser.add_option("--dataset_exclude"+suffix,action="append",  help="glob pattern of output files to exclude from the --add_to_dataset=dataset", default = [])
             parser.add_option("--add_location"+suffix, action="store_true", default=None, help="Add locations of output files to SAM")
             parser.add_option("--outputlist"+suffix, action="append", help="ifdh cp -f file to run to copy out outputs", default = [])
+            
 
 
         (self.options, self.args) = parser.parse_args()
@@ -723,6 +726,13 @@ exit
                 if self.options.debug: sys.stderr.write(traceback.format_exc())
                 pass
         
+        if self.options.dest_uniq_rename:
+            self.options.dest = self.options.dest + str(uuid.uuid1())
+            if self.options.dry_run:
+                print "I would make a unique output directory '%s' " % (self.options.dest + str(uuid.uuid1()))
+            else:
+                self.ih.mkdir(self.options.dest)
+
         if self.options.dest and self.options.addoutput:
             for g in self.options.addoutput:
                 if self.options.dry_run:
@@ -887,6 +897,14 @@ exit
                 self.ih.mkdir_p(actualdest)
 
             self.ih.copyBackOutput(actualdest)
+
+            if self.options.dest_uniq_rename:
+                src = self.options.dest
+                self.options.dest = re.sub(self.uuid_re, "", self.options.dest)
+                if self.dry_run:
+                    print("I would rename %s to %s" % (src, self.options.dest))
+                else:
+                    self.ih.rename(src, self.options.dest)
 
             if self.options.add_location:
                 for of in oflist:

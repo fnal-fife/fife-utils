@@ -470,6 +470,8 @@ if __name__ == '__main__':
         l = launcher(options.config, options.override, options.jobname, options.stage, options.fake, options.config_dump, options.arg_push, options.arg_del)
         # evaluate some things to make sure we have them...
         l.cfg.items('global')
+        l.cfg.items('submit')
+        l.cfg.items('executable')
     except configparser.Error as e:
         sys.stderr.write("Error in config file(s): %s\n" % e)
         sys.exit(1)
