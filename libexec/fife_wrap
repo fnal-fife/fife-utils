@@ -125,6 +125,11 @@ class Wrapper:
         parser.add_option("--dry_run", action="store_true", help="Don't run commands, just print them")
         parser.add_option("--nosetup", action="store_true", help="do not run setup actions (used internally)")
 
+        for  i in range(10):
+            suffix = str(i)
+            parser.add_option("--exe_stdout"+suffix, help = "Specify output redirect for executable")
+            parser.add_option("--exe_stderr"+suffix, help = "Specify error output redirect for executable")
+
         # output options
         for  i in range(10):
             if i == 0:
@@ -143,8 +148,6 @@ class Wrapper:
             parser.add_option("--dataset_exclude"+suffix,action="append",  help="glob pattern of output files to exclude from the --add_to_dataset=dataset", default = [])
             parser.add_option("--add_location"+suffix, action="store_true", default=None, help="Add locations of output files to SAM")
             parser.add_option("--outputlist"+suffix, action="append", help="ifdh cp -f file to run to copy out outputs", default = [])
-            
-
 
         (self.options, self.args) = parser.parse_args()
 
@@ -430,7 +433,11 @@ exit
                         f.write('run\nwhere\nquit\n')
                         f.close()
                         cmdlist = ['gdb', '-x', '.gdbcmds', '--args' ] + cmdlist
-
+                   
+                    if self.options.getattr('exe_stderr'+str(i))
+                        cmdlist.append("2>%s" % options.getattr('exe_stderr'+str(i)))
+                    if self.options.getattr('exe_stdout'+str(i)):
+                        cmdlist.append(">%s" % options.getattr('exe_stdout'+str(i)))
                     cmd = " ".join(cmdlist)
 
                     if self.options.debug: sys.stderr.write("Running: %s\n" % cmd)

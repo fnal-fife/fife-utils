@@ -389,6 +389,11 @@ class launcher(object):
                     continue
 
                 res.append("  --exe  %s \\" % self.cfg_get(sname,'name', vars = self.cfg_globals))
+                if self.cfg_get(sname,'stdout'):
+                    res.append("  --stdout%d %s \\" % (i, self.cfg_get(sname,'stdout', vars = self.cfg_globals))
+
+                if self.cfg_get(sname,'stderr'):
+                    res.append("  --stderr%d %s \\" % (i, self.cfg_get(sname,'stdout', vars = self.cfg_globals))
 
             for i in range(9):
                 if i == 0:
