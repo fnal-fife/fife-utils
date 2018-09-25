@@ -528,7 +528,7 @@ def main():
     if o.directory:
       gridftp_location = o.directory.startswith('gsiftp:')
       if os.path.isdir(o.directory):
-        fileList, fileStats = getFileListFromDir(o.directory, o.recurse)
+        fileList = getFileListFromDir(o.directory, o.recurse)
       if gridftp_location:
         fileList, fileStats = getFileListFromGridFTP(o.directory, o.recurse)
     elif o.file == '-':

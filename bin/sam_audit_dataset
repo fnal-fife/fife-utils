@@ -86,14 +86,14 @@ def audit( ds, dest,  verbose = False, experiment = None, keeplists=None ):
            num_no_locations += 1
            if verbose: print("file %s has 0 locations" % f)
         
-    print("Dataset ", ds.name, "at location", dest, ":")
-    print("               Total Files:", num_in_dataset) 
-    print("      Present and declared:", num_present_declared_at_dest)
-    print("                  Declared:", num_declared_at_dest)
-    print("              Not Declared:", num_undeclared_at_dest)
-    print("  Present but not Declared:", num_present_undeclared_at_dest)
-    print(" Present at wrong location:", num_present_wrong_loc)
-    print("    Files with no location:", num_no_locations)
+    print_("Dataset ", ds.name, "at location", dest, ":")
+    print_("               Total Files:", num_in_dataset) 
+    print_("      Present and declared:", num_present_declared_at_dest)
+    print_("                  Declared:", num_declared_at_dest)
+    print_("              Not Declared:", num_undeclared_at_dest)
+    print_("  Present but not Declared:", num_present_undeclared_at_dest)
+    print_(" Present at wrong location:", num_present_wrong_loc)
+    print_("    Files with no location:", num_no_locations)
     if keeplists != None:
         flistf.close()
         loclist.close()
