@@ -554,6 +554,10 @@ exit
             self.run_extracting_environment(cmdlist)
 
     def fetch_inputs(self):
+        if self.options.nosetup:
+            # this means we're re-exec-ed after setups, and we did 
+            # input fetching before setups, so do not do it again...
+            return
         # first copy any tarfiles,inputlists, and outputlists here
         cplist = ['-D']
         if self.options.inputtar == None:
@@ -601,11 +605,7 @@ exit
     def userscripts(self):
         if not self.options.userscript:
             return
-        for s in self.options.userscript:
-            if self.options.dry_run:
-                print(s)
-            else:
-                os.system(s)
+        self.run_extracting_environment(self.options.userscript)
 
     def sam_prefix(self, path):
         '''figure out a SAM prefix for a path...'''
@@ -1193,11 +1193,11 @@ if __name__ == '__main__' :
     w = Wrapper()
     w.parse_arguments()
     try:
+        w.fetch_inputs()
         w.do_setup()
+        w.start_self_destruct()
         if w.options.start_project_on:
              w.start_project()
-        w.start_self_destruct()
-        w.fetch_inputs()
         if w.options.ifdh_art or w.options.multifile or w.options.getconfig:
             w.start_client()
         w.file_loop()   
