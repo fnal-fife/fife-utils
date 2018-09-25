@@ -207,6 +207,7 @@ class launcher(object):
             if dry_run:
                 print("I would: samweb count_definition_files %s" % dataset)
                 print("and make sure its non-zero...")
+                self.nfiles_in_dataset = 5
             else:
                 experiment = self.cfg_get('submit','G', vars = self.cfg_globals)
                 samweb = SAMWebClient(experiment = experiment)

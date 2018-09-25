@@ -434,10 +434,10 @@ exit
                         f.close()
                         cmdlist = ['gdb', '-x', '.gdbcmds', '--args' ] + cmdlist
                    
-                    if self.options.getattr('exe_stderr'+str(i)):
-                        cmdlist.append("2>%s" % options.getattr('exe_stderr'+str(i)))
-                    if self.options.getattr('exe_stdout'+str(i)):
-                        cmdlist.append(">%s" % options.getattr('exe_stdout'+str(i)))
+                    if getattr(self.options,'exe_stderr'+str(i)):
+                        cmdlist.append("2>%s" % getattr(self.options,'exe_stderr'+str(i)))
+                    if getattr(self.options,'exe_stdout'+str(i)):
+                        cmdlist.append(">%s" % getattr(self.options, 'exe_stdout'+str(i)))
                     cmd = " ".join(cmdlist)
 
                     if self.options.debug: sys.stderr.write("Running: %s\n" % cmd)
