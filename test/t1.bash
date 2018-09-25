@@ -31,7 +31,7 @@ setup_tests() {
    then
        echo "testds_`hostname --fqdn`_`date +%s`_$$" > dataset
    fi
-   pnfs_dir=/pnfs/nova/scratch/users/$USER/fife_util_test 
+   pnfs_dir=/pnfs/dune/scratch/users/$USER/fife_util_test 
    ifdh ls $pnfs_dir || ifdh mkdir $pnfs_dir || true
    read dataset < dataset
    export dataset
@@ -391,6 +391,10 @@ test_retire() {
         while read loc path
         do
             path=`echo $path | sed -e 's/[a-z]*://'`
+            if [ -z "$path" ]
+            then
+               continue
+            fi
             if [ -r $path ] 
             then
                 echo Ouch -- $path still there

@@ -1,5 +1,11 @@
 #!/usr/bin/env python
 
+
+try:
+    from six import *
+except:
+    pass
+
 from fife_sam_utils import *
 import sys
 import os
@@ -21,7 +27,7 @@ def modify_dataset_metadata( d, mdfilename,  just_say = False, verbose = False, 
     mdfile = open(mdfilename, "r")
     for f in d.file_iterator():
         if just_say:
-             print "I would modify metadata for %s with metadata file %s" % (f, mdfile)
+             print("I would modify metadata for %s with metadata file %s" % (f, mdfile))
         else:
             mdfile.seek(0,0)
             samweb.modifyFileMetadata(f, mdfile=mdfile)

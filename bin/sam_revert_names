@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 
+try:
+    from six import *
+except:
+    pass
 
 
 import optparse
@@ -24,7 +28,7 @@ def get_file_list(txt_file):
       if line[0] != '#':
         file_list.append( os.path.abspath(line.strip('\n')) )
     f.close()
-  except Exception, e:
+  except Exception as e:
     sys.exit('oops: %s' % e)
 
   logging.info('the python list is %s' % file_list)
@@ -59,7 +63,7 @@ def get_file_list_from_pipe():
   try:
     for line in sys.stdin:
       file_list.append( os.path.abspath(line.strip('\n')) )
-  except Exception, e:
+  except Exception as e:
     sys.exit('oops: %s' % e)
 
   logging.info('the python list is %s' % file_list)
@@ -79,10 +83,10 @@ def rename_file(file, do_nothing):
 
   try:
     if not do_nothing:  os.rename(file, new_file_name)
-  except Exception, e:
+  except Exception as e:
     sys.exit('oops: %s' % e)
 
-  print 'renamed ' + file_name + ' to ' + os.path.basename(new_file_name)
+  print('renamed ' + file_name + ' to ' + os.path.basename(new_file_name))
 
   return os.path.basename(new_file_name)
 
@@ -182,12 +186,12 @@ def main():
         renamed_file = rename_file(file, DO_NOTHING)
         count += 1
     else:
-      print 'path/file does not exist: ' + file
+      print('path/file does not exist: ' + file)
   logging.info('for loop is done')
     
 
-  print str(count) + ' files renamed.'
-  print 'finished'
+  print(str(count) + ' files renamed.')
+  print('finished')
 
 
 

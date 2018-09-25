@@ -1,8 +1,11 @@
 #!/usr/bin/env python
 try:
-   from fife_sam_utils import *
+    from six import *
 except:
-   pass
+    pass
+
+from fife_sam_utils import *
+
 import sys
 import os
 from samweb_client import *
@@ -16,15 +19,15 @@ def do_setup(s, debug=False):
     sys.path.insert(0,'/grid/fermiapp/products/common/etc')
     import setups
     ups = setups.setups()
-    if debug: print "found: UPS_DIR:", os.environ['UPS_DIR']
+    if debug: print("found: UPS_DIR:", os.environ['UPS_DIR'])
     os.environ['PATH'] = "%s/bin:%s" % (os.environ['UPS_DIR'], os.environ['PATH'])
-    if debug: print "setting up:", o.setup
+    if debug: print("setting up:", o.setup)
     sys.stdout.flush()
     ups.setup("-R " + o.setup.replace('@',' '))
     # make sure stuff gets in our PATH...
     os.environ['PATH'] = "%s/bin:%s" % (os.environ['AWSCLI_DIR'], os.environ['PATH'])
     sys.path.insert(0,os.environ['IFDHC_DIR']+'/lib/python')
-    if debug: print "IFDHC_DIR is ", os.environ["IFDHC_DIR"]
+    if debug: print("IFDHC_DIR is ", os.environ["IFDHC_DIR"])
     sys.stdout.flush()
 
 def startjobs(o):
@@ -37,7 +40,7 @@ def startjobs(o):
         hostname = socket.gethostname()
         ds = time.strftime('%Y-%m-%dT%H-%M-%S')
         os.environ['SAM_PROJECT']=os.environ.get('SAM_PROJECT',"clone-%s-%s-%s-%d"%
-	    (uname, hostname, ds, os.getpid()))
+            (uname, hostname, ds, os.getpid()))
         o.connect_project = os.environ['SAM_PROJECT']
 
     if not o.connect_project:
@@ -57,7 +60,7 @@ def startjobs(o):
       "--getawscreds" if o.getawscreds else "",
       "--verbose" if o.verbose else ""
     )
-    if o.debug: print "running: " , cmd
+    if o.debug: print("running: " , cmd)
     os.system(cmd)
 
 if __name__ == '__main__':

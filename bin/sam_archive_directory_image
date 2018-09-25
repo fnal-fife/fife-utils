@@ -1,4 +1,9 @@
 #!/usr/bin/env python
+try:
+    from six import *
+except:
+    pass
+
 import optparse
 import grp
 import sys
@@ -11,7 +16,7 @@ from fife_sam_utils import log_startup, log_finish
 try:
    import uuid
 except:
-   class uuid:
+   class uuid(object):
        def uuid4():
          return "%s-%s-%s-%s-%s" % (
               hex(int(time.time()))[2:],
@@ -31,22 +36,22 @@ def check_dest(dest, default_dest):
 
     h = ifdh.ifdh()
     for d in [ destp , dest]:
-	res = h.ls(d, 1, "")
-	if len(res) == 0:
+        res = h.ls(d, 1, "")
+        if len(res) == 0:
             try:
-	        h.mkdir(d,"")
+                h.mkdir(d,"")
             except:
                 pass
-	res = h.ls(d, 1, "")
-	if len(res) == 0:
+        res = h.ls(d, 1, "")
+        if len(res) == 0:
             if default_dest == dest:
                 if dest.find("none") > 0:
                     
-	            sys.stderr.write("\nERROR: no destination specified to " + sys.argv[0])
+                    sys.stderr.write("\nERROR: no destination specified to " + sys.argv[0])
                 else:
-	            sys.stderr.write("\nERROR: Cannot find or create %s:\n-- please contect servicedesk to request it be made" % d)
+                    sys.stderr.write("\nERROR: Cannot find or create %s:\n-- please contect servicedesk to request it be made" % d)
             else:
-	        sys.stderr.write("\nERROR: Cannot find or create %s:\n-- please check spelling, permissions, etc" % d)
+                sys.stderr.write("\nERROR: Cannot find or create %s:\n-- please check spelling, permissions, etc" % d)
             
             exit(1)
 
@@ -59,7 +64,7 @@ if __name__ == '__main__':
     default_dataset = dname + '_archive_images' 
     datedir = time.strftime("%Y/%m-%d")
     default_dest = "/pnfs/%s/archive/sam_managed_users/%s/image/%s" % ( 
-	    experiment, dname, datedir )
+            experiment, dname, datedir )
     parser.add_option('-v','--verbose',   action='count')
     parser.add_option('-j','--just_say',  action='store_true', help="do not actually copy, just say what you would do")
     parser.add_option('-e','--experiment', default=experiment, help='use this experiment server defaults to $SAM_EXPERIMENT if not set')
@@ -71,7 +76,7 @@ if __name__ == '__main__':
     (o,a) = parser.parse_args()
 
     if o.experiment:
-        print "seting experiment to: " , o.experiment
+        print("seting experiment to: " , o.experiment)
         os.environ['EXPERIMENT']= o.experiment
         os.environ['SAM_EXPERIMENT']= o.experiment
         os.environ['IFDH_BASE_URI'] = "http://samweb.fnal.gov:8480/sam/%s/api" % o.experiment
@@ -102,17 +107,17 @@ if __name__ == '__main__':
     res = os.system("tar czf %s/%s %s" % ( tmpdir, tarfilename, o.src))
 
     if (res != 0): 
-	raise logicError("tar failed")
+        raise logicError("tar failed")
 
     statinfo =  os.stat("%s/%s" % (tmpdir, tarfilename))
 
     metadata = { 
-	"file_name":      tarfilename, 
-	"file_type":      "unknown", 
-	"file_format":    "tar", 
+        "file_name":      tarfilename, 
+        "file_type":      "unknown", 
+        "file_format":    "tar", 
         "file_size":      statinfo.st_size,
-	"Archive.source": o.src, 
-	"Dataset.Tag":    o.name,
+        "Archive.source": o.src, 
+        "Dataset.Tag":    o.name,
     }
 
     samweb.declareFile(metadata)
@@ -120,12 +125,12 @@ if __name__ == '__main__':
     # if we are not going direct via nfs4, we need to copy
     # the tarfile there.
     if not o.nfs4:
-	ih = ifdh.ifdh()
+        ih = ifdh.ifdh()
 
-	res = ih.cp(["%s/%s" % (tmpdir,tarfilename) , 
-	      "%s/%s" % (o.dest,  tarfilename)])
+        res = ih.cp(["%s/%s" % (tmpdir,tarfilename) , 
+              "%s/%s" % (o.dest,  tarfilename)])
 
-	if (res != 0): raise logicError("ifdh::cp failed")
+        if (res != 0): raise logicError("ifdh::cp failed")
 
     samweb.addFileLocation(tarfilename, o.dest);
 

@@ -1,4 +1,9 @@
 #!/usr/bin/env python
+try:
+    from six import *
+except:
+    pass
+
 import optparse
 import grp
 import sys
@@ -14,22 +19,22 @@ def check_dest(dest, default_dest):
 
     h = ifdh.ifdh()
     for d in [ destp , dest]:
-	res = h.ls(d, 1, "")
-	if len(res) == 0:
+        res = h.ls(d, 1, "")
+        if len(res) == 0:
             try:
-	        h.mkdir(d,"")
+                h.mkdir(d,"")
             except:
                 pass
-	res = h.ls(d, 1, "")
-	if len(res) == 0:
+        res = h.ls(d, 1, "")
+        if len(res) == 0:
             if default_dest == dest:
                 if dest.find("none") > 0:
                     
-	            sys.stderr.write("\nERROR: no destination specified to " + sys.argv[0])
+                    sys.stderr.write("\nERROR: no destination specified to " + sys.argv[0])
                 else:
-	            sys.stderr.write("\nERROR: Cannot find or create %s:\n-- please contect servicedesk to request it be made" % d)
+                    sys.stderr.write("\nERROR: Cannot find or create %s:\n-- please contect servicedesk to request it be made" % d)
             else:
-	        sys.stderr.write("\nERROR: Cannot find or create %s:\n-- please check spelling, permissions, etc" % d)
+                sys.stderr.write("\nERROR: Cannot find or create %s:\n-- please check spelling, permissions, etc" % d)
             
             exit(1)
 
@@ -78,7 +83,7 @@ if __name__ == '__main__':
     # rough guess at dest, for usage message..
     #
     dest = "/pnfs/%s/%s/sam_managed_users/%s%s" % ( 
-	    '$EXPERIMENT', type, os.environ.get('USER',os.environ.get('GRID_USER')), sdir)
+            '$EXPERIMENT', type, os.environ.get('USER',os.environ.get('GRID_USER')), sdir)
 
     if type == "none":
         parser.add_option('-d', '--dest',     help="destination to move to")
@@ -107,7 +112,7 @@ if __name__ == '__main__':
         edir = o.experiment
 
     dest = "/pnfs/%s/%s/sam_managed_users/%s%s" % ( 
-	    edir, type, os.environ.get('USER',os.environ.get('GRID_USER')), sdir)
+            edir, type, os.environ.get('USER',os.environ.get('GRID_USER')), sdir)
 
     if not o.dest:
         o.dest = dest
