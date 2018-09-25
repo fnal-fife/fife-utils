@@ -30,6 +30,10 @@ try:
 except:
     pass
 
+def check_exp_err(k, v1, v):
+    if v1 and not v:
+        sys.stderr.write("Error: expanding:\n %s: %s \n error in expansion!")
+
 class launcher(object):
  
     def __init__(self, cfgfilename, overrides, jobname = None, stages = [], fake=None, config_dump = None , arg_push = [], arg_del = []):
@@ -115,6 +119,8 @@ class launcher(object):
 
         self.get_fife_wrap_booleans()
 
+        self.cfg_globals = dict(self.cfg.items('global'))
+
     def get_fife_wrap_booleans(self):
         f = os.popen("%s/libexec/fife_wrap --help" % os.environ.get("FIFE_UTILS_DIR",os.path.dirname(os.path.dirname(sys.argv[0]))))
         for l in f:
@@ -197,13 +203,13 @@ class launcher(object):
                      sys.exit(1)
 
     def launch(self, dry_run = False):
-        cmd = self.build_launch()
         if dry_run:
             print("Pre-launch checks:")
             self.pre_launch(dry_run = True)
             print("Then I would run: \n-----\n%s\n-----" % cmd)
             print("... which would, in the job, do:\n-----")
             # trim down to command and args from jobsub line
+            cmd = self.build_launch()
             cmd = cmd[cmd.find("file://")+8:]
             cmd = cmd.replace(" "," --dry_run ",1)
             os.system(cmd)
@@ -211,11 +217,11 @@ class launcher(object):
         else:
             self.pre_launch()
             print(( "running:\n %s" , cmd))
+            cmd = self.build_launch()
             os.system(cmd)
 
     def build_launch(self):
         res = []
-        self.cfg_globals = dict(self.cfg.items('global'))
 
         res.append("set -x")
 
@@ -240,7 +246,7 @@ class launcher(object):
                 # we already counted the dataset files in pre_launch, 
                 # so just compute 
                 if self.nfiles_in_dataset != None:
-                    self.cfg.set("submit","N",str(self.nfiles_in_dataset/nfpj))
+                    self.cfg.set("submit","N",str(self.nfiles_in_dataset/int(nfpj)))
 
                 else:
                     sys.stderr.write("Error in config [submit]: n_jobs_per_file requires dataset\n")
@@ -252,8 +258,9 @@ class launcher(object):
             else:
                 res.append("jobsub_submit \\")
 
-            for k,v in self.cfg.items("env_pass", raw = 1):
+            for k,v1 in self.cfg.items("env_pass", raw = 1):
                 v = self.cfg_get("env_pass",k,vars = self.cfg_globals)
+                check_exp_err(k, v1, v)
                 res.append( "  -e %s='%s' \\" % (k,v) )
 
             if self.cfg.has_section("poms_campaign_layer"):
@@ -263,8 +270,9 @@ class launcher(object):
                 # -- request a task_id
                 #
                 campaign_kwargs = {}
-                for k,v in self.cfg.items("poms_campaign_layer", raw = 1):
+                for k,v1 in self.cfg.items("poms_campaign_layer", raw = 1):
                      v = self.cfg_get("poms_campaign_layer",k,vars = self.cfg_globals)
+                     check_exp_err(k, v1, v)
                      campaign_kwargs[k] = v
 
                 campaign_id = poms_client.register_poms_campaign(**campaign_kwargs)
@@ -273,8 +281,11 @@ class launcher(object):
                 poms_get_id_kwargs = {}
                 
 
-            for k,v in self.cfg.items("submit", raw = 1):
+            for k,v1 in self.cfg.items("submit", raw = 1):
+                if k == "n_files_per_job":
+                   continue
                 v = self.cfg_get("submit",k,vars = self.cfg_globals)
+                check_exp_err(k, v1, v)
                 if len(k) > 2 and k[-2] == '_' and k[-1] in "0123456789":
                      k = k[:-2]
                 if len(k) == 1:
@@ -288,6 +299,9 @@ class launcher(object):
             if wrapfile.startswith("file:///"):
                 wrapfile=wrapfile[7:]
 
+            if not self.jobname and self.cfg.get('global','jobname'):
+                self.jobname = self.cfg.get('global','jobname')
+
             if self.jobname != None:
                 jobwrapfile = "/tmp/%s_%d" % (jobname, getpid())
                 shutil.copy(wrapfile, jobfile)
@@ -296,22 +310,24 @@ class launcher(object):
 
             res.append("  file://%s \\" % jobwrapfile)
 
-            for k,v in self.cfg.items("job_setup", raw=1):
+            for k,v1 in self.cfg.items("job_setup", raw=1):
                 v = self.cfg_get("job_setup",k,vars = self.cfg_globals)
+                check_exp_err(k, v1, v)
                 if len(k) > 2 and k[-2] == '_' and k[-1] in "0123456789":
                      k = k[:-2]
                 if self.is_boolean_flag[k]:
                     if v == 'True' or v == True:
                         res.append("    --%s \\" % k)   
                 else:
-                    if k in ['export','source','setup','prescript','postscript'] and urllib_quote(v) != v:
+                    if k in ['export','source','setup','prescript','postscript'] and v and urllib_quote(v) != v:
                          k = '%s-unquote' % k
                          v = urllib_quote(v)
                     res.append("    --%s '%s' \\" % (k,v))   
 
    
-            for k,v in self.cfg.items("sam_consumer", raw=1):
+            for k,v1 in self.cfg.items("sam_consumer", raw=1):
                 v = self.cfg_get("sam_consumer",k,vars = self.cfg_globals)
+                check_exp_err(k, v1, v)
                 if self.is_boolean_flag[k]:
                     if v == 'True' or v == True:
                         res.append("  --%s \\" % k)
@@ -332,8 +348,9 @@ class launcher(object):
               
                 print("DEBUG: section [%s]" % ("job_output"+ssuffix))
 
-                for k,v in self.cfg.items("job_output"+ssuffix, raw=1):
+                for k,v1 in self.cfg.items("job_output"+ssuffix, raw=1):
                     v = self.cfg_get("job_output"+ssuffix,k,vars = self.cfg_globals)
+                    check_exp_err(k, v1, v)
                     print("DEBUG: %s: %s" % (k,v))
  
                     if self.is_boolean_flag[k]:
@@ -342,7 +359,7 @@ class launcher(object):
                             res.append("    --%s%s \\" % (k,osuffix))   
                     else:
                         print("DEBUG: non-boolean case")
-                        if k in ['metadata_extractor'] and urllib_quote(v) != v:
+                        if k in ['metadata_extractor'] and v and urllib_quote(v) != v:
                             k = '%s_unquote' % k
                             v = urllib_quote(v)
                         res.append("    --%s%s '%s' \\" % (k,osuffix, v))
@@ -369,8 +386,9 @@ class launcher(object):
 
                 res.append(" -- \\") # end options to wrapper
 
-                for k,v in self.cfg.items(sname, raw=1):
+                for k,v1 in self.cfg.items(sname, raw=1):
                     v = self.cfg_get(sname,k,vars = self.cfg_globals)
+                    check_exp_err(k, v1, v)
                     if k.startswith('arg_'):
                         res.append("      %s \\" % v)
 
@@ -383,8 +401,9 @@ class launcher(object):
                     poms_get_id_kwargs['parent_task_id'] = os.environ["POMS_PARENT_TASK_ID"]
                 poms_get_id_kwargs['command_executed'] = '\n'.join(res)
 
-                for k,v in self.cfg.items("poms_get_task_id", raw = 1):
+                for k,v1 in self.cfg.items("poms_get_task_id", raw = 1):
                     v = self.cfg_get("poms_get_task_id",k,vars = self.cfg_globals)
+                    check_exp_err(k, v1, v)
                     poms_get_id_kwargs[k] = v
 
                 #
