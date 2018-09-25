@@ -182,20 +182,27 @@ class launcher(object):
                      self.do_cfg_includes(cf)
 
     def pre_launch(self, dry_run = False):
-        dest = self.cfg_get('job_output','dest', vars= self.cfg_globals)
-
-        ## do mkdir with the right experiment set...
-        exp = self.cfg_get('env_pass','SAM_EXPERIMENT', vars= self.cfg_globals)
-        if exp and not os.environ.get('EXPERIMENT', None):
-            os.environ['EXPERIMENT'] = exp
-
-        if dest and not dest.find('$') >= 0:
-            if dry_run:
-                print("I would: ifdh mkdir_p %s" % dest)
+        for i in range(10):
+            if i > 0: 
+                suffix="_%d" % i
             else:
-                import ifdh
-                ih = ifdh.ifdh()
-                ih.mkdir_p(dest)
+                suffix=""
+
+            dest = self.cfg_get('job_output'+suffix,'dest', vars= self.cfg_globals)
+            uniqflag = self.cfg_get('job_output'+suffix,'dest_uniq_rename', vars= self.cfg_globals)
+
+            ## do mkdir with the right experiment set...
+            exp = self.cfg_get('env_pass','SAM_EXPERIMENT', vars= self.cfg_globals)
+            if exp and not os.environ.get('EXPERIMENT', None):
+                os.environ['EXPERIMENT'] = exp
+
+            if dest and not uniqflag and not dest.find('$') >= 0:
+                if dry_run:
+                    print("I would: ifdh mkdir_p %s" % dest)
+                else:
+                    import ifdh
+                    ih = ifdh.ifdh()
+                    ih.mkdir_p(dest)
 
         dataset = self.cfg_get('submit','dataset',vars = self.cfg_globals)
         if dataset:
@@ -250,7 +257,7 @@ class launcher(object):
         if self.cfg.has_section("submit"):
 
             nfpj = self.cfg_get("submit","n_files_per_job",vars = self.cfg_globals)
-            if nfpj != None and nfpj > 0:
+            if nfpj and int(nfpj) > 0:
                 # we already counted the dataset files in pre_launch, 
                 # so just compute 
                 if self.nfiles_in_dataset != None:

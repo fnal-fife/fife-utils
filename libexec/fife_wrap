@@ -226,9 +226,27 @@ class Wrapper:
 
         if self.options.dry_run:
             print("# setup commands:")
-            print("\n".join(scriptlist))
+
+        self.run_extracting_environment(scriptlist)
+
+        if self.options.dry_run:
             print("# end setup commands")
             print("# note: later commands are paraphrased from python")
+
+        if self.options.dry_run:
+            print("# I would exec python again... with --nosetup")
+        else:
+            # just assume the setup stuff made a different python environment(?)
+            sys.argv = [ 'python' , sys.argv[0] , '--nosetup' ] + sys.argv[1:]
+            if self.options.debug: sys.stderr.write( "about to exec, args: %s\n" % sys.argv)
+            os.execvp('python', sys.argv)
+            raise(Exception("Could not restart under new python"))
+
+    def run_extracting_environment(self, scriptlist):
+
+        if self.options.dry_run:
+            print("# I would run:")
+            print("\n".join(scriptlist))
         else:
             cuthere="--------------cut here-------------"
             scriptlist.append("""
@@ -246,7 +264,7 @@ EOF
 exit
 """ % cuthere )
             if sys.version_info[0] > 2:
-                p = subprocess.Popen("/bin/bash" , stdin=subprocess.PIPE, stdout=subprocess.PIPE, encoding='utf-8')
+                p = subprocess.Popen("/bin/bash" , stdin=subprocess.PIPE, stdout=subprocess.PIPE, encoding='utf-8', errors='replace')
             else:
                 p = subprocess.Popen("/bin/bash" , stdin=subprocess.PIPE, stdout=subprocess.PIPE)
             cmds = "\n".join(scriptlist)
@@ -263,12 +281,6 @@ exit
             p.wait()
             if self.options.debug: sys.stderr.write('inhaled environment: %s' % repr(evallist))
             exec('\n'.join(evallist))
-            # just assume the setup stuff made a different python environment(?)
-            sys.argv = [ 'python' , sys.argv[0] , '--nosetup' ] + sys.argv[1:]
-            if self.options.debug: sys.stderr.write( "about to exec, args: %s\n" % sys.argv)
-            #os.execvpe( 'python', sys.argv, os.environ)
-            os.execvp( 'python', sys.argv)
-            raise(Exception("Could not restart under new python"))
 
     def start_client(self):
         if self.options.debug: sys.stderr.write( "entering start_client\n" )
@@ -354,13 +366,9 @@ exit
                         pass
                 if self.options.debug: sys.stderr.write("prescript: %s\n" % s)
                 cmdlist.append(s)
-            cmd = "\n".join(cmdlist)
             if self.options.dry_run:
                 print("# pre-scripts")
-                print(cmd)
-            else:
-                if self.options.debug: sys.stderr.write("running: %s\n" % cmd)
-                res = os.system(cmd)
+            self.run_extracting_environment(cmdlist)
 
         cmdlist=[]
         if self.options.prescript_unquote:
@@ -374,13 +382,9 @@ exit
                         pass
                 if self.options.debug: sys.stderr.write("prescript: %s\n" % s)
                 cmdlist.append(urllib_unquote(s))
-            cmd = "\n".join(cmdlist)
             if self.options.dry_run:
                 print("# pre-scripts-quoted")
-                print(cmd)
-            else:
-                if self.options.debug: sys.stderr.write("running: %s\n" % cmd)
-                res = os.system(cmd)
+            self.run_extracting_environment(cmdlist)
 
         if self.options.multifile or self.options.getconfig:
             if self.options.dry_run:
@@ -533,11 +537,7 @@ exit
                         pass
                 if self.options.debug: sys.stderr.write("postscript: %s\n" % s)
                 cmdlist.append(urllib_unquote(s))
-            cmd = "\n".join(cmdlist)
-            if self.options.dry_run:
-                print(cmd)
-            else:
-                res = os.system(cmd)
+            self.run_extracting_environment(cmdlist)
 
         if self.options.postscript_unquote:
             cmdlist=[]
@@ -551,11 +551,7 @@ exit
                         pass
                 if self.options.debug: sys.stderr.write("postscript: %s\n" % s)
                 cmdlist.append(urllib_unquote(s))
-            cmd = "\n".join(cmdlist)
-            if self.options.dry_run:
-                print(cmd)
-            else:
-                res = os.system(cmd)
+            self.run_extracting_environment(cmdlist)
 
     def fetch_inputs(self):
         # first copy any tarfiles,inputlists, and outputlists here
@@ -731,7 +727,7 @@ exit
             if self.options.dry_run:
                 print "I would make a unique output directory '%s' " % (self.options.dest + str(uuid.uuid1()))
             else:
-                self.ih.mkdir(self.options.dest)
+                self.ih.mkdir_p(self.options.dest)
 
         if self.options.dest and self.options.addoutput:
             for g in self.options.addoutput:
