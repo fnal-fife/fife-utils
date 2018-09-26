@@ -230,8 +230,8 @@ class launcher(object):
             print("-----")
         else:
             self.pre_launch()
-            print(( "running:\n %s" , cmd))
             cmd = self.build_launch()
+            print(( "running:\n %s" , cmd))
             os.system(cmd)
 
         if self.jobname != None:
