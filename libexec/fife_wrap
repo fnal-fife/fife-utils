@@ -251,7 +251,7 @@ class Wrapper:
             print("# I would run:")
             print("\n".join(scriptlist))
         else:
-            cuthere="--------------cut here-------------"
+            cuthere="--------------cut here------------- "
             scriptlist.append("""
 echo
 echo "%s"
@@ -560,7 +560,21 @@ exit
                 cmdlist.append(urllib_unquote(s))
             self.run_extracting_environment(cmdlist)
 
+    def find_ifdhc(self):
+        '''
+           We need ifdhc, and general setups haven't been done yet,
+           so get the python path addition for the current version 
+           in the common products area and shove it in sys.path
+        '''
+        pf = os.popen("source /cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups || source /grid/fermiapp/products/common/etc/setups; source `ups setup ifdhc $IFDH_VERSION`; echo $IFDHC_DIR/lib/python")
+        l = pf.readlines()
+        if len(l):
+            p = l[0][:-1]
+            sys.path.append(p)
+        pf.close()
+
     def fetch_inputs(self):
+        self.find_ifdhc()
         if self.options.nosetup:
             # this means we're re-exec-ed after setups, and we did 
             # input fetching before setups, so do not do it again...
@@ -1223,4 +1237,5 @@ if __name__ == '__main__' :
         if self.options.debug: sys.stderr.write(traceback.format_exc())
         pass
 
-    sys.exit(w.rres)
+    print("trying to exit %d" % os.WEXITSTATUS(w.rres))
+    sys.exit(os.WEXITSTATUS(w.rres))

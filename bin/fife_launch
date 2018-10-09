@@ -37,7 +37,10 @@ def check_exp_err(k, v1, v):
 class launcher(object):
  
     def __init__(self, cfgfilename, overrides, jobname = None, stages = [], fake=None, config_dump = None , arg_push = [], arg_del = []):
-        self.cfg = configparser.SafeConfigParser()
+        self.cfg = configparser.SafeConfigParser(
+            inline_comment_prefixes = ("#",),
+            comment_prefixes=("#",)
+        )
         self.stages = stages
         self.cfg.optionxform = str
         self.is_boolean_flag = {}
@@ -121,6 +124,7 @@ class launcher(object):
         self.get_fife_wrap_booleans()
 
         self.cfg_globals = dict(self.cfg.items('global'))
+
 
     def get_fife_wrap_booleans(self):
         f = os.popen("%s/libexec/fife_wrap --help" % os.environ.get("FIFE_UTILS_DIR",os.path.dirname(os.path.dirname(sys.argv[0]))))
