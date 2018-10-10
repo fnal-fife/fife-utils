@@ -570,6 +570,7 @@ exit
         l = pf.readlines()
         if len(l):
             p = l[0][:-1]
+            os.environ['IFDHC_CONFIG_DIR'] = os.path.dirname(os.path.dirname(p))
             sys.path.append(p)
         pf.close()
 
