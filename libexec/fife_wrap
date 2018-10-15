@@ -251,7 +251,7 @@ class Wrapper:
             print("# I would run:")
             print("\n".join(scriptlist))
         else:
-            cuthere="--------------cut here------------- "
+            cuthere="--------------cut here-------------"
             scriptlist.append("""
 echo
 echo "%s"

@@ -37,10 +37,10 @@ def check_exp_err(k, v1, v):
 class launcher(object):
  
     def __init__(self, cfgfilename, overrides, jobname = None, stages = [], fake=None, config_dump = None , arg_push = [], arg_del = []):
-        self.cfg = configparser.SafeConfigParser(
-            inline_comment_prefixes = ("#",),
-            comment_prefixes=("#",)
-        )
+        self.cfg = configparser.SafeConfigParser()
+        # for 3.6..
+        #self.cfg.comment_prefixes = ("#",)
+        #self.cfg.inline_comment_prefixes = ("#",)
         self.stages = stages
         self.cfg.optionxform = str
         self.is_boolean_flag = {}
@@ -95,9 +95,10 @@ class launcher(object):
         args = []
         for i in range(1,30):
             try:
-                v = self.cfg_get('executable','arg_%d'%i, raw=True)
+                v = self.cfg.get('executable','arg_%d'%i, raw=True)
             except:
                 v = None
+
             if v != None:
                 args.append(v)
 
