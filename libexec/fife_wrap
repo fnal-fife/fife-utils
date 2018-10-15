@@ -885,7 +885,17 @@ exit
                                     'Dataset.Tag %s' % datasetname, 
                                     self.user,
                                     self.experiment)
+                                # in case there are more dependencies
+                                for i in range(2,5):
+                                    datasetname2 = 'poms_depends_%s_%i' % os.environ.get("POMS_TASK_ID")
+                                    self.ih.createDefinition(
+                                        datasetname2, 
+                                        'defname:%s' % datasetname, 
+                                        self.user,
+                                        self.experiment)
+                       
                             except:
+                                sys.stderr.write("NOTICE: error creating definitions: %s" % traceback.format_exc())
                                 pass
    
                     if self.options.debug: sys.stderr.write( "DEBUG: metadata: %s\n" % str(metadata))
