@@ -85,8 +85,7 @@ def check_project(o, projname, user, started, delivered, wanted, subs):
 def kick_project(o, projname, user):
     ''' register as a consumer to project, and then quit to keep it awake'''
 
-    print("I would kick %s\n" % projname)
-    return
+    print("kicking %s\n" % projname)
 
     puri = ih.findProject(projname, o.station)
     cid = ih.establishProcess(puri, 'demo', 'demo', 'nowhere', user, 'demo', 'sam_projet_caffiene', 1, '')
