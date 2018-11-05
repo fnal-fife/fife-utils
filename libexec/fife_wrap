@@ -575,12 +575,12 @@ exit
         pf.close()
 
     def fetch_inputs(self):
-        self.find_ifdhc()
         if self.options.nosetup:
             # this means we're re-exec-ed after setups, and we did 
             # input fetching before setups, so do not do it again...
             return
         # first copy any tarfiles,inputlists, and outputlists here
+        self.find_ifdhc()
         cplist = ['-D']
         if self.options.inputtar == None:
             self.options.inputtar = []

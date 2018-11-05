@@ -184,6 +184,13 @@ class launcher(object):
                 if cf: 
                      self.do_cfg_includes(cf)
 
+    def get_experiment(self):
+        if self.cfg.has_option('env_pass','SAM_EXPERIMENT'):
+            experiment = self.cfg_get('env_pass','SAM_EXPERIMENT', vars= self.cfg_globals)
+        else:
+            experiment = self.cfg_get('submit','G', vars = self.cfg_globals)
+        return experiment
+
     def pre_launch(self, dry_run = False):
         for i in range(10):
             if i > 0: 
@@ -195,7 +202,7 @@ class launcher(object):
             uniqflag = self.cfg_get('job_output'+suffix,'dest_uniq_rename', vars= self.cfg_globals)
 
             ## do mkdir with the right experiment set...
-            exp = self.cfg_get('env_pass','SAM_EXPERIMENT', vars= self.cfg_globals)
+            exp = self.get_experiment()
             if exp and not os.environ.get('EXPERIMENT', None):
                 os.environ['EXPERIMENT'] = exp
 
@@ -214,8 +221,7 @@ class launcher(object):
                 print("and make sure its non-zero...")
                 self.nfiles_in_dataset = 5
             else:
-                experiment = self.cfg_get('submit','G', vars = self.cfg_globals)
-                samweb = SAMWebClient(experiment = experiment)
+                samweb = SAMWebClient(experiment = self.get_experiment())
                 self.nfiles_in_dataset = samweb.countFiles(defname = dataset)
                 if self.nfiles_in_dataset  == 0:
                      print("Ignoring launch request on empty dataset")

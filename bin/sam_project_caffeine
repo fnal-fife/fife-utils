@@ -138,5 +138,4 @@ if __name__ == "__main__":
                 if user == produser:
                     if check_project(o,projname, user, started, delivered, wanted, subs):
                          kick_project(o, projname, user)
-        break
-        #time.sleep(3600)
+        time.sleep(3600)
