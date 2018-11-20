@@ -145,6 +145,7 @@ class Wrapper:
             parser.add_option("--metadata_extractor"+suffix, help="use given program to extract and declare metadata", default=None)
             parser.add_option("--metadata_extractor_unquote"+suffix, help="use given program to extract and declare metadata", default=None)
             parser.add_option("--add_to_dataset"+suffix, help="Add files to named dataset using Dataset.Tag", default=None)
+            parser.add_option("--filter_metadata"+suffix, help="fields to filter out from metadata extractor, comma separated", default=None)
             parser.add_option("--dataset_exclude"+suffix,action="append",  help="glob pattern of output files to exclude from the --add_to_dataset=dataset", default = [])
             parser.add_option("--add_location"+suffix, action="store_true", default=None, help="Add locations of output files to SAM")
             parser.add_option("--outputlist"+suffix, action="append", help="ifdh cp -f file to run to copy out outputs", default = [])
@@ -212,7 +213,7 @@ class Wrapper:
                 scriptlist.append("source %s" % s)
 
         if self.options.source_unquote:
-            for s in self.options.source:
+            for s in self.options.source_unquote:
                 scriptlist.append("source %s" % urllib_unquote(s))
 
         if self.options.setup:
@@ -277,6 +278,8 @@ exit
             for l in p.stdout.readlines():
                  if found:
                      evallist.append(l)
+                 else:
+                     print l
                  if l.rstrip() == cuthere:
                      found = True
             p.stdin.close()
@@ -566,12 +569,13 @@ exit
            so get the python path addition for the current version 
            in the common products area and shove it in sys.path
         '''
-        pf = os.popen("source /cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups || source /grid/fermiapp/products/common/etc/setups; source `ups setup ifdhc $IFDH_VERSION`; echo $IFDHC_DIR/lib/python")
-        l = pf.readlines()
+        pf = os.popen("source /cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups || source /grid/fermiapp/products/common/etc/setups; source `ups setup ifdhc $IFDH_VERSION`; echo $IFDHC_DIR/lib/python; echo $IFDHC_CONFIG_DIR")
+        ll = pf.readlines()
         if len(l):
             p = l[0][:-1]
-            os.environ['IFDHC_CONFIG_DIR'] = os.path.dirname(os.path.dirname(p))
             sys.path.append(p)
+            p = l[1][:-1]
+            os.environ['IFDHC_CONFIG_DIR'] = os.path.dirname(os.path.dirname(p))
         pf.close()
 
     def fetch_inputs(self):
@@ -722,7 +726,7 @@ exit
             # this moves the dest3 -> dest , etc. when i is 3...
             for k in ('dest', 'rename', 'addoutput', 'declare_metadata', 
                     'add_metadata', 'metadata_extractor', 'metadata_extractor_unquote', 'add_to_dataset', 
-                    'dataset_exclude', 'add_location'):
+                    'dataset_exclude', 'add_location', 'filter_metadata'):
                 self.options.__dict__[k] = self.options.__dict__.get(k+str(i), None)
 
             # clean out output files from previous pass
@@ -852,11 +856,17 @@ exit
                             metadata = self.merge_metadata(metadata,added_metadata)
                             metadata_d = json.loads(metadata)
 
+                    for ffl in self.options.filter_metadata:
+                        for ff in ffl.split(','):
+                            del metadata_d[ff]
+                    #metadata = json.dumps(metadata_d)
+
                     # add extra metadata fields from commandline
                     for siv in self.options.add_metadata:
                         si, v = siv.split('=',1)
                         metadata_d[si] = v
-                        metadata = json.dumps(metadata_d)
+
+                    metadata = json.dumps(metadata_d)
                             
                     if self.options.add_to_dataset:
                         # skip if it is in our exclude pattern
