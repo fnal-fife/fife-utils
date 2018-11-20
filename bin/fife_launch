@@ -484,6 +484,12 @@ if __name__ == '__main__':
     p.add_option('--arg_push', action='append', help='push a command line argument in the executable section', default=[])
     p.add_option('--arg_del', action='append', help='delete a specific argument in the executable section', default=[])
     options, args = p.parse_args()
+
+    if len(args) > 0:
+        sys.stderr.write("Error: extra command line arguments %s\n" % repr(args))
+        sys.stderr.write("-- perhaps you are missing some quotes?")
+
+        sys.exit(1)
    
     try:
         l = launcher(options.config, options.override, options.jobname, options.stage, options.fake, options.config_dump, options.arg_push, options.arg_del)
