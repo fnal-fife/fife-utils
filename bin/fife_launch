@@ -378,6 +378,9 @@ class launcher(object):
                 for k,v1 in self.cfg_items("job_output"+ssuffix, raw=1):
                     v = self.cfg_get("job_output"+ssuffix,k,vars = self.cfg_globals)
                     check_exp_err(k, v1, v)
+
+                    if len(k) > 2 and k[-2] == '_' and k[-1] in "0123456789":
+                         k = k[:-2]
  
                     if self.is_boolean_flag[k]:
                         if  v == 'True' or v == True:
