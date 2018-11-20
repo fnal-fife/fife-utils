@@ -279,9 +279,11 @@ exit
                  if found:
                      evallist.append(l)
                  else:
-                     print l
-                 if l.rstrip() == cuthere:
-                     found = True
+                     if l.rstrip() == cuthere:
+                         found = True
+                     else:
+                         print l
+
             p.stdin.close()
             p.stdout.close()
             p.wait()
@@ -570,7 +572,7 @@ exit
            in the common products area and shove it in sys.path
         '''
         pf = os.popen("source /cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups || source /grid/fermiapp/products/common/etc/setups; source `ups setup ifdhc $IFDH_VERSION`; echo $IFDHC_DIR/lib/python; echo $IFDHC_CONFIG_DIR")
-        ll = pf.readlines()
+        l = pf.readlines()
         if len(l):
             p = l[0][:-1]
             sys.path.append(p)
