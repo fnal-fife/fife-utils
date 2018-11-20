@@ -280,16 +280,21 @@ class launcher(object):
                     sys.stderr.write("Error in config [submit]: n_jobs_per_file requires dataset\n")
                     sys.exit(1)
                         
+            # env_pass part one -- export the VAR='val' before
+            # starting jobsub
+            for k,v1 in self.cfg_items("env_pass", raw = 1):
+                v = self.cfg_get("env_pass",k,vars = self.cfg_globals)
+                check_exp_err(k, v1, v)
+                res.append( "export %s='%s'" % (k,v) )
 
             if self.fake:
                 res.append("fake_jobsub \\")
             else:
                 res.append("jobsub_submit \\")
 
+            # env_pass part two: pass -e VAR for each var
             for k,v1 in self.cfg_items("env_pass", raw = 1):
-                v = self.cfg_get("env_pass",k,vars = self.cfg_globals)
-                check_exp_err(k, v1, v)
-                res.append( "  -e %s='%s' \\" % (k,v) )
+                res.append( "  -e %s \\" % k )
 
             if self.cfg.has_section("poms_campaign_layer"):
                 #
