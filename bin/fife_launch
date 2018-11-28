@@ -32,7 +32,7 @@ except:
 
 def check_exp_err(k, v1, v):
     if v1 and not v:
-        raise KeyError("Error: expanding:\n %s: %s \n error in expansion!")
+        raise KeyError("Error: expanding:\n %s: %s \n error in expansion!" % (k, v1))
 
 class launcher(object):
  

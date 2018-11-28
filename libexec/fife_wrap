@@ -145,7 +145,7 @@ class Wrapper:
             parser.add_option("--metadata_extractor"+suffix, help="use given program to extract and declare metadata", default=None)
             parser.add_option("--metadata_extractor_unquote"+suffix, help="use given program to extract and declare metadata", default=None)
             parser.add_option("--add_to_dataset"+suffix, help="Add files to named dataset using Dataset.Tag", default=None)
-            parser.add_option("--filter_metadata"+suffix, help="fields to filter out from metadata extractor, comma separated", default=None)
+            parser.add_option("--filter_metadata"+suffix, help="fields to filter out from metadata extractor, comma separated", action="append",default=[])
             parser.add_option("--dataset_exclude"+suffix,action="append",  help="glob pattern of output files to exclude from the --add_to_dataset=dataset", default = [])
             parser.add_option("--add_location"+suffix, action="store_true", default=None, help="Add locations of output files to SAM")
             parser.add_option("--outputlist"+suffix, action="append", help="ifdh cp -f file to run to copy out outputs", default = [])
@@ -292,11 +292,6 @@ exit
 
     def start_client(self):
         if self.options.debug: sys.stderr.write( "entering start_client\n" )
-        try:
-            import ifdh
-        except:
-            sys.stderr.write("fife_wrap: import ifdh failed\n")
-            if self.options.debug: sys.stderr.write(traceback.format_exc())
 
         import socket
 
@@ -310,6 +305,11 @@ exit
             description = "process %d on %s" % (os.getpid(), hostname)
 
         if self.ih == None:
+            try:
+                import ifdh
+            except:
+                sys.stderr.write("fife_wrap: import ifdh failed\n")
+                if self.options.debug: sys.stderr.write(traceback.format_exc())
             self.ih = ifdh.ifdh()
 
         # assume SAM_PROJECT and SAM_STATION are set...
@@ -571,16 +571,21 @@ exit
            so get the python path addition for the current version 
            in the common products area and shove it in sys.path
         '''
-        pf = os.popen("source /cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups || source /grid/fermiapp/products/common/etc/setups; source `ups setup ifdhc $IFDH_VERSION`; echo $IFDHC_DIR/lib/python; echo $IFDHC_CONFIG_DIR")
+        pf = os.popen("for f in /cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups /grid/fermiapp/products/common/etc/setups; do if [ -z $f ] ; then source $f; fi; done; source `ups setup ifdhc $IFDH_VERSION`; echo $IFDHC_DIR/lib/python; echo $IFDHC_CONFIG_DIR")
         l = pf.readlines()
         if len(l):
             p = l[0][:-1]
             sys.path.append(p)
-            if self.options.debug: sys.stderr.write("adding ifdh dir %s to sys.path" % p) 
+            if self.options.debug: sys.stderr.write("adding ifdh dir %s to sys.path\n" % p) 
             p = l[1][:-1]
-            os.environ['IFDHC_CONFIG_DIR'] = os.path.dirname(os.path.dirname(p))
-            if self.options.debug: sys.stderr.write("setting IFDHC_CONFIG_DIR=%s" % p) 
+            os.environ['IFDHC_CONFIG_DIR'] = p
+            if self.options.debug: sys.stderr.write("setting IFDHC_CONFIG_DIR=%s\n" % p) 
         pf.close()
+        import ifdh
+        if self.ih:
+            if self.options.debug: sys.stderr.write("reloading ifdh module\n") 
+            reload(ifdh)
+        self.ih = ifdh.ifdh()
 
     def fetch_inputs(self):
         if self.options.nosetup:
@@ -721,7 +726,7 @@ exit
             os.system("wget --no-check-certificate  --certificate=$X509_USER_PROXY --ca-certificate=$X509_USER_PROXY --ca-directory=/etc/grid-security/certificates --private-key=$X509_USER_PROXY --post-data 'add=%s' 'https://samweb.fnal.gov:8483/sam/%s/api/files/name/%s/locations'" % (loc, self.experiment, of))
 
     def copy_back(self):
-        self.find_ifdh()
+        self.find_ifdhc()
         for i in range(10):
             self.copy_back_n(i)
 
@@ -902,7 +907,7 @@ exit
                                     self.experiment)
                                 # in case there are more dependencies
                                 for i in range(2,6):
-                                    datasetname2 = 'poms_depends_%s_%i' % os.environ.get("POMS_TASK_ID")
+                                    datasetname2 = 'poms_depends_%s_%d' % (os.environ.get("POMS_TASK_ID"), i)
                                     self.ih.createDefinition(
                                         datasetname2, 
                                         'defname:%s' % datasetname, 
