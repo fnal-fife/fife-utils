@@ -1268,5 +1268,9 @@ if __name__ == '__main__' :
         if self.options.debug: sys.stderr.write(traceback.format_exc())
         pass
 
+    if os.WIFSIGNALED(w.rres):
+        print("executable was killed: exiting 1")
+        exit(1)
+
     print("trying to exit %d" % os.WEXITSTATUS(w.rres))
     sys.exit(os.WEXITSTATUS(w.rres))
