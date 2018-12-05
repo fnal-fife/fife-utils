@@ -158,7 +158,7 @@ class dataset(object):
     def uncache_location(self,fullpath):
         base = self.get_base_dir(fullpath)
         if base in self.dircache:
-            if self.dircache[base].has_key(fullpath):
+            if fullpath in  self.dircache[base]:
                 self.dircache[base].remove(fullpath)
         self.remove_path_for(os.path.basename(filename),os.path.dirname(fullpath))
                  

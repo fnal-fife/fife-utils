@@ -186,9 +186,7 @@ add_dataset() {
    do
        fname="${dataset}_f${i}"
        echo "file $i" > $fname
-       checksum=`ifdh checksum $fname 2>/dev/null | 
-			grep '"crc_value"' | 
-			sed -e 's/",.*//' -e 's/.*"//'`
+       checksum=`ifdh checksum $fname 2>/dev/null`
        size=`cat $fname | wc -c`
        cat > $fname.json <<EOF
 {
@@ -196,9 +194,7 @@ add_dataset() {
  "file_type": "test", 
  "file_format": "data", 
  "file_size": $size, 
- "checksum": [
-  "enstore:$checksum"
- ], 
+ "checksum": $checksum,
  "content_status": "good", 
  "group": "samdev", 
  "data_tier": "log", 

@@ -1,15 +1,16 @@
 #!/bin/bash
 
-. unittest.bash
+. ./unittest.bash
 
 count_report_files() {
     echo
-    echo "$1"
+    echo "$1 $dataset:"
     echo "----------------------------------"
     sam_validate_dataset -v --name $dataset 2>/dev/null | tee /tmp/v$$
     echo "----------------------------------"
     eval "$2=`grep located: /tmp/v$$ | wc -l`"
     rm /tmp/v$$
+    eval echo "count: \$$2"
 }
 
 setup_tests() {
@@ -20,17 +21,17 @@ setup_tests() {
    export IFDH_BASE_URI="http://samweb.fnal.gov:8480/sam/samdev/api"
    export IFDH_CP_MAXRETRIES=0
 
-   workdir=/nova/data/$USER/work.$$
+   workdir=/pnfs/dune/scratch/users/$USER/fife_utils_test/work.$$
    if [ ! -r $workdir ]
    then
-       mkdir $workdir
+       mkdir -p $workdir
    fi
    cd $workdir
    if [ ! -r dataset ] 
    then
        echo "testds_`hostname --fqdn`_`date +%s`_$$" > dataset
    fi
-   pnfs_dir=/pnfs/nova/scratch/users/$USER/fife_util_test 
+   pnfs_dir=/pnfs/dune/scratch/users/$USER/fife_util_test 
    ifdh ls $pnfs_dir || ifdh mkdir $pnfs_dir || true
    read dataset < dataset
    export dataset
@@ -48,13 +49,13 @@ setup_tests() {
 test_add_dataset_flist_norename() {
    rm -rf data
    mkdir data
-   : > file_list
+   rm -f file_list
    for i in 1 2 3 
    do
        fname="f${i}_$$.txt"
        echo "file $i" > data/$fname
-       echo `pwd`/data/$fname >> file_list
-   done
+       echo `pwd`/data/$fname 
+   done > file_list
 
    cat > meta.json <<EOF
 {
@@ -80,13 +81,13 @@ EOF
 test_add_dataset_flist() {
    rm -rf data
    mkdir data
-   : > file_list
+   rm -f file_list
    for i in 1 2 3 
    do
        fname="f${i}.txt"
        echo "file $i" > data/$fname
-       echo `pwd`/data/$fname >> file_list
-   done
+       echo `pwd`/data/$fname 
+   done > file_list
 
    cat > meta.json <<EOF
 {
@@ -111,13 +112,13 @@ EOF
 
 test_add_dataset_flist_glob() {
    mkdir data
-   : > file_list
+   rm -f file_list
    for i in 1 2 3 
    do
        fname="f${i}.txt"
        echo "file $i" > data/$fname
    done
-   echo `pwd`/data/f*.txt >> file_list
+   echo `pwd`/data/f*.txt >  file_list
 
    cat > meta.json <<EOF
 {
@@ -185,9 +186,7 @@ add_dataset() {
    do
        fname="${dataset}_f${i}"
        echo "file $i" > $fname
-       checksum=`ifdh checksum $fname 2>/dev/null | 
-			grep '"crc_value"' | 
-			sed -e 's/",.*//' -e 's/.*"//'`
+       checksum=`ifdh checksum $fname 2>/dev/null`
        size=`cat $fname | wc -c`
        cat > $fname.json <<EOF
 {
@@ -195,9 +194,7 @@ add_dataset() {
  "file_type": "test", 
  "file_format": "data", 
  "file_size": $size, 
- "checksum": [
-  "enstore:$checksum"
- ], 
+ "checksum": $checksum,
  "content_status": "good", 
  "group": "samdev", 
  "data_tier": "log", 
@@ -209,6 +206,7 @@ add_dataset() {
 }
 EOF
        case `pwd` in
+       /pnfs/*/scratch/*) location="dcache:`pwd`";;
        /pnfs/*) location="enstore:`pwd`";;
        /grid/*) location="${EXPERIMENT}data:`pwd`";;
        /nova/*) location="samdevdata:`pwd`";;
@@ -224,11 +222,36 @@ EOF
 }
 
 test_validate_1() {
+    ls -l $workdir
     sam_validate_dataset --name $dataset
+}
+
+test_audit_1() {
+    ls -l $workdir
+    sam_audit_dataset --name $dataset --dest=$workdir
+}
+
+test_audit_2() {
+    ls -l $workdir
+    sam_audit_dataset --name $dataset --dest=$workdir | tee /tmp/sadout$$
+    echo "------"
+    grep "Present and declared: 9" /tmp/sadout$$
+}
+
+test_audit_3() {
+    mkdir $workdir/hide
+    mv *_f2 $workdir/hide
+    ls -l $workdir
+    sam_audit_dataset --name $dataset --dest=$workdir | tee /tmp/sadout$$
+    mv $workdir/hide/*_f2 .
+    echo "------"
+    grep "Present and declared: 8" /tmp/sadout$$ &&
+        grep "Present at wrong location: 1" /tmp/sadout$$ 
 }
 
 
 test_validate_2() {
+    ls -l $workdir
     mv ${dataset}_f2 ${dataset}_f2_hide
     if sam_validate_dataset --name $dataset
     then
@@ -240,6 +263,12 @@ test_validate_2() {
     return $res
 }
 
+test_validate_locality() {
+    sam_clone_dataset -v -b 2 --name $dataset --dest $pnfs_dir
+    sam_validate_dataset -v --name $dataset --locality > out
+    sam_unclone_dataset -v -b 2 --name $dataset --dest $pnfs_dir
+    grep Locality out
+}
 
 test_clone() {
     count_report_files "before:" locs1
@@ -271,12 +300,18 @@ test_move2archive() {
 
 test_move2archive_double() {
     count_report_files "before:" locs1
+
     # make a *second* copy
-    ifdh mkdir ${pnfs_dir}_alt
+    ifdh mkdir ${pnfs_dir}_1
     sam_clone_dataset --name $dataset --dest ${pnfs_dir}_1
     count_report_files "after clone:" locs2
+    
+    # move to third place
+    ifdh mkdir ${pnfs_dir}_2
     sam_move2archive_dataset -v --name $dataset --dest ${pnfs_dir}_2
     count_report_files "after archive:" locs3
+   
+    # should be back to first count
     echo counts $locs1 $locs2 $locs3
     [ "$locs2" -gt "$locs1"  -a "$locs3" -eq "$locs1" ]
 }
@@ -352,6 +387,10 @@ test_retire() {
         while read loc path
         do
             path=`echo $path | sed -e 's/[a-z]*://'`
+            if [ -z "$path" ]
+            then
+               continue
+            fi
             if [ -r $path ] 
             then
                 echo Ouch -- $path still there
@@ -362,23 +401,36 @@ test_retire() {
         )
 }
 
+test_archive_restore_dir() {
+    cd $workdir
+    mkdir mytestdir
+    for f in a b c d; do echo foo $f >> mytestdir/$f; done
+    sam_archive_directory_image --dest=$pnfs_dir --src=$workdir/mytestdir
+    rm -rf reftestdir
+    mv mytestdir reftestdir
+    listout=`sam_restore_directory_image --list | grep $workdir/mytestdir | tail -1`
+    set : $listout
+    sam_restore_directory_image --restore=`pwd`/mytestdir --date=$2
+    diff --recursive mytestdir reftestdir && [ "x$listout" != "x" ]
+}
+
 testsuite test_utils \
 	-s setup_tests \
         add_dataset \
-        test_move2archive_double \
+	test_validate_1 \
+	test_audit_1 \
         test_retire \
 
 : \
-        add_dataset \
-	test_validate_1 \
+	test_audit_2 \
+	test_audit_3 \
 	test_validate_2 \
         test_modify \
 	test_clone  \
-        test_retire \
+        test_archive_restore_dir \
         add_dataset \
         test_unclone \
         test_unclone_slashes \
-        test_pin \
         test_retire \
         add_dataset \
 	test_clone_n  \
