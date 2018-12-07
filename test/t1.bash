@@ -21,7 +21,17 @@ setup_tests() {
    export IFDH_BASE_URI="http://samweb.fnal.gov:8480/sam/samdev/api"
    export IFDH_CP_MAXRETRIES=0
 
-   workdir=/pnfs/dune/scratch/users/$USER/fife_utils_test/work.$$
+   # pick an experiment pnfs area from whats available
+   for e in nova dune uboone minerva
+   do
+       if [ -d /pnfs/$e ]
+       then
+           break
+           exp=$e
+       fi
+   done
+
+   workdir=/pnfs/${exp}/scratch/users/$USER/fife_utils_test/work.$$
    if [ ! -r $workdir ]
    then
        mkdir -p $workdir
@@ -31,7 +41,7 @@ setup_tests() {
    then
        echo "testds_`hostname --fqdn`_`date +%s`_$$" > dataset
    fi
-   pnfs_dir=/pnfs/dune/scratch/users/$USER/fife_util_test 
+   pnfs_dir=/pnfs/${exp}/scratch/users/$USER/fife_util_test 
    ifdh ls $pnfs_dir || ifdh mkdir $pnfs_dir || true
    read dataset < dataset
    export dataset
