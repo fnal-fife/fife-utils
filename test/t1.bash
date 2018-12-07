@@ -263,6 +263,13 @@ test_validate_2() {
     return $res
 }
 
+test_validate_3() {
+    ls -l $workdir
+    mv ${dataset}_f2 ${dataset}_f2_hide
+    sam_validate_dataset --name $dataset --prune
+    return $res
+}
+
 test_validate_locality() {
     sam_clone_dataset -v -b 2 --name $dataset --dest $pnfs_dir
     sam_validate_dataset -v --name $dataset --locality > out
@@ -416,6 +423,9 @@ test_archive_restore_dir() {
 
 testsuite test_utils \
 	-s setup_tests \
+        add_dataset \
+	test_validate_3 \
+        test_retire \
         test_archive_restore_dir \
         add_dataset \
 	test_validate_1 \
