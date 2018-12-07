@@ -273,11 +273,11 @@ test_validate_2() {
     return $res
 }
 
-test_validate_3() {
+test_validate_prune() {
     ls -l $workdir
     mv ${dataset}_f2 ${dataset}_f2_hide
-    sam_validate_dataset --name $dataset --prune
-    return $res
+    sam_validate_dataset --name $dataset --prune 2>&1 | tee /tmp/out$$
+    grep '_f2 has 0 locations' /tmp/out$$
 }
 
 test_validate_locality() {
@@ -434,7 +434,7 @@ test_archive_restore_dir() {
 testsuite test_utils \
 	-s setup_tests \
         add_dataset \
-	test_validate_3 \
+	test_validate_prune \
         test_retire \
         test_archive_restore_dir \
         add_dataset \
