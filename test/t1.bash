@@ -26,8 +26,8 @@ setup_tests() {
    do
        if [ -d /pnfs/$e ]
        then
-           break
            exp=$e
+           break
        fi
    done
 
