@@ -160,7 +160,7 @@ class dataset(object):
         if base in self.dircache:
             if fullpath in  self.dircache[base]:
                 self.dircache[base].remove(fullpath)
-        self.remove_path_for(os.path.basename(filename),os.path.dirname(fullpath))
+        self.remove_path_for(os.path.basename(fullpath),os.path.dirname(fullpath))
                  
     def cached_location_has_file(self, fullpath):
         base = self.get_base_dir(fullpath)
