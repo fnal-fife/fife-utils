@@ -571,7 +571,7 @@ exit
            so get the python path addition for the current version 
            in the common products area and shove it in sys.path
         '''
-        pf = os.popen("for f in /cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups /grid/fermiapp/products/common/etc/setups; do if [ -z $f ] ; then source $f; fi; done; source `ups setup ifdhc $IFDH_VERSION`; echo $IFDHC_DIR/lib/python; echo $IFDHC_CONFIG_DIR")
+        pf = os.popen("for f in /cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups /grid/fermiapp/products/common/etc/setups; do if [ -r $f ] ; then source $f; fi; done; source `ups setup ifdhc $IFDH_VERSION`; echo $IFDHC_DIR/lib/python; echo $IFDHC_CONFIG_DIR")
         l = pf.readlines()
         if len(l):
             p = l[0][:-1]
