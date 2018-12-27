@@ -451,10 +451,9 @@ exit
                         print("     " + cmd )
                     else:
                         res = os.system(cmd)
-                        self.rres = res
  
                     if res != 0:
-                        break;
+                        self.rres = res
 
                 if self.options.dry_run:
                     print("     then")
