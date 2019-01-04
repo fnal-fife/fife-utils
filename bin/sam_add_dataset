@@ -46,7 +46,7 @@ from fife_sam_utils import log_startup, log_finish
 
 
 def getJSONMetadata(jsonFile, tag):
-  logging.info('looking for json metadata from user at %s' % jsonFile)
+  logging.info('looking for json metadata from user at %s', jsonFile)
   metadata = None
 
   try:
@@ -56,7 +56,7 @@ def getJSONMetadata(jsonFile, tag):
   except Exception, e:
     sys.exit('failed geting json data from %s: %s' % (jsonFile, e))
 
-  logging.info('extracted user metadata which is %s' % metadata)
+  logging.info('extracted user metadata which is %s', metadata)
 
 
   if "data_tier" in metadata:
@@ -66,10 +66,10 @@ def getJSONMetadata(jsonFile, tag):
       metadata["data_tier"] = metadata["data_tier"]+"-user"
 
 
-  logging.info('updating the metadata with Dataset.Tag: %s' % tag)
+  logging.info('updating the metadata with Dataset.Tag: %s', tag)
   metadata.update( {"Dataset.Tag": tag } )
 
-  logging.info('the metadata is now %s' % metadata)
+  logging.info('the metadata is now %s', metadata)
   return metadata
 
 
@@ -86,7 +86,7 @@ def checkfiletype(line):
 
 
 def getFileList(txtFile):
-  logging.info('trying to create a python list of files from file %s' % txtFile)
+  logging.info('trying to create a python list of files from file %s', txtFile)
   
   try:
     f = open(txtFile)
@@ -95,7 +95,7 @@ def getFileList(txtFile):
   except Exception, e:
     sys.exit('Failed reading file list from %s: %s' % (txtFile,e))
 
-  logging.info('the python list is %s' % fileList)
+  logging.info('the python list is %s', fileList)
   return fileList
 
 def getFileListFromPipe():
@@ -105,7 +105,7 @@ def getFileListFromPipe():
   except Exception, e:
     sys.exit('Failed reading file list from pipe: %s' % e)
 
-  logging.info('the python list is %s' % fileList)
+  logging.info('the python list is %s', fileList)
   return fileList
 
 def getFileListCommon(f):
@@ -126,7 +126,7 @@ def getFileListCommon(f):
 
 
 def getFileListFromDir(directory, recurse):
-  logging.info('trying to create a python list of files from directory %s with recurse level set to %s' % (directory, recurse))
+  logging.info('trying to create a python list of files from directory %s with recurse level set to %s', directory, recurse)
     
   fileList = []
     
@@ -140,7 +140,7 @@ def getFileListFromDir(directory, recurse):
     if recurse == False:
         break
 
-  logging.info('the python list is %s' % fileList)
+  logging.info('the python list is %s', fileList)
   return fileList
 
 
@@ -148,15 +148,15 @@ def getFileListFromDir(directory, recurse):
 
 
 def declareFile(samweb, metadata):
-  logging.info('trying to declare the metadata to sam which is %s' % json.dumps(metadata))
+  logging.info('trying to declare the metadata to sam which is %s', json.dumps(metadata))
 
   try:
     samweb.declareFile( metadata )
   except Exception, e:
-    logging.error("Error declaring metadata for %s: %s" (metadata['file_name'],str(e)))
+    logging.error("Error declaring metadata for %s: %s", metadata['file_name'], e)
     return 0
   else:
-    logging.info('the metadata for %s was declared to sam' % metadata['file_name'])
+    logging.info('the metadata for %s was declared to sam', metadata['file_name'])
    
   return 1
 
@@ -174,7 +174,7 @@ def renameFile(file, do_replace_uuids = False):
   if not has_uuid_prefix(fileName):
 
 
-    logging.info('trying to rename %s on disk with a uuid' % file)
+    logging.info('trying to rename %s on disk with a uuid', file)
 
     uniquifier = str(uuid.uuid4()) + '-'
 
@@ -186,14 +186,14 @@ def renameFile(file, do_replace_uuids = False):
     try:
       os.rename(file, newFileName)
     except Exception, e:
-      logging.error("ERROR: could not rename %s to %s\n... may not be unique" % (file, newFileName))
+      logging.error("ERROR: could not rename %s to %s\n... may not be unique", file, newFileName)
       newFileName = file
 
     logging.warning('renamed ' + fileName + ' to ' + os.path.basename(newFileName))
-    logging.info('its location is %s' % dirName)
+    logging.info('its location is %s', dirName)
 
   else:
-    logging.info('uuid detected for %s therefore not renaming' % file)
+    logging.info('uuid detected for %s therefore not renaming', file)
     if dirName == '':
       newFileName = fileName
     else:
@@ -204,7 +204,7 @@ def renameFile(file, do_replace_uuids = False):
 
 
 def statBuildMetaData(file):
-  logging.info('trying to stat %s for its size' % file)
+  logging.info('trying to stat %s for its size', file)
   
   try:
     statinfo = os.stat(file)
@@ -215,20 +215,20 @@ def statBuildMetaData(file):
         
   metadata = {"file_name": file, "file_type": "unknown", "file_size": size}
   
-  logging.info('just built generic json metadata object for this file %s which will be updated' % metadata)
+  logging.info('just built generic json metadata object for this file %s which will be updated', metadata)
   
   return metadata
 
 
 
 def declareFileLocation(samweb, fileName, location):
-  logging.info('trying to declare file location to sam with filename of %s and location of %s' % (fileName, location))
+  logging.info('trying to declare file location to sam with filename of %s and location of %s', fileName, location)
   
   location = samprefix(location) + location
 
   try:
     samweb.addFileLocation(fileName, location)
-    logging.info('file %s location %s was declared to SAM' % (fileName,location))
+    logging.info('file %s location %s was declared to SAM', fileName,location)
     return True
   except Exception, e:
     if "Location" and "not found" in str(e):
@@ -236,7 +236,7 @@ def declareFileLocation(samweb, fileName, location):
       logging.error("Valid data disks are:\n")
       for item in data_disks:
         logging.error(item['mount_point'])
-    logging.error('Error: %s is not a valid sam path' % location)
+    logging.error('Error: %s is not a valid sam path', location)
   return False
 
 def get_tag(options, datasetName):
@@ -244,11 +244,11 @@ def get_tag(options, datasetName):
   
   if options.tag:
     tag = options.tag
-    logging.info('the tag is %s' % tag)
+    logging.info('the tag is %s', tag)
     return tag
   else:
     tag = datasetName
-    logging.info('the tag is %s' % tag)
+    logging.info('the tag is %s', tag)
     return tag
 
 
@@ -260,17 +260,17 @@ def get_dataset_name(options, user):
     datasetName = options.name
   else:
     datasetName = "userdataset_" + user + "_" + str(datetime.datetime.now().strftime("%Y-%m-%d-%H_%M_%S"))
-  logging.info('the dataset name is %s' % datasetName)
+  logging.info('the dataset name is %s', datasetName)
   return datasetName
 
 
 def createDefinition(samweb, definitionName, dimensions):
-  logging.info('trying to create definition %s with dimensions %s to sam' % (definitionName, dimensions))
+  logging.info('trying to create definition %s with dimensions %s to sam', definitionName, dimensions)
   
   try:
     samweb.createDefinition(definitionName, dimensions)
   except Exception, e:
-    logging.error('oops: %s' % e)
+    logging.error('oops: %s', e)
     sys.exit(1)
   logging.info('dataset definition created')
 
@@ -290,7 +290,7 @@ class Sam_Metadata_Dumper_Parser:
     
     
   def get_json(self):
-    logging.info('trying to create subprocess for %s' % self.progname)     
+    logging.info('trying to create subprocess for %s', self.progname)     
    
     try:
       a = json.loads( subprocess.Popen([self.progname, self.file],stdout=subprocess.PIPE).stdout.read() )
@@ -420,7 +420,7 @@ def main():
   else:
     logging.disable(logging.INFO)
 
-  logging.info("options are: %s " % repr(o))
+  logging.info("options are: %s ", repr(o))
 
   if len(sys.argv) == 1:
     p.print_help()
@@ -452,9 +452,9 @@ def main():
 
   tag = get_tag(o, datasetName)
 
-  logging.info('the o are %s' % o)
-  logging.info('the arguments are %s' % arguments)
-  logging.info('the user is %s' % user)
+  logging.info('the o are %s', o)
+  logging.info('the arguments are %s', arguments)
+  logging.info('the user is %s', user)
 
 
   if 5 > 3:  #still need to figure out this condition
@@ -481,7 +481,7 @@ def main():
 
     for fname in fileList:
         if fname[0] == '/' and not os.access(fname, os.R_OK):
-            logging.error("WARNING: file %s not accessible" % fname)
+            logging.error("WARNING: file %s not accessible", fname)
 
     logging.info('entering for loop to process all the files to create the dataset')
     if o.no_rename:
@@ -492,7 +492,7 @@ def main():
     lengths_ok = True
     for filename in fileList:
       if len(os.path.basename(filename)) > fname_limit:
-          logging.error("file name too long: %s" % os.path.basename(filename))
+          logging.error("file name too long: %s", os.path.basename(filename))
           lengths_ok = False
 
     if not lengths_ok:
@@ -503,7 +503,7 @@ def main():
     totfiles = 0
 
     for filename in fileList:
-      logging.info('processing %s' % filename)
+      logging.info('processing %s', filename)
 
       
       fileMD = {}
@@ -532,7 +532,7 @@ def main():
           if not declareFileLocation(samweb, fileMD["file_name"], fileLocation):
               failedlocations = failedlocations + 1
       else:
-          logging.error("Could not declare file: %s " % filename)
+          logging.error("Could not declare file: %s ", filename)
           failedfiles = failedfiles + 1
 
     logging.info('for loop is done')
@@ -541,12 +541,12 @@ def main():
     dimension = "Dataset.Tag " + tag
     res = createDefinition(samweb, datasetName, dimension)
     
-    logging.info('createDefinition returned %s' % repr(res))
+    logging.info('createDefinition returned %s', repr(res))
 
     logging.info('PROGRAM SUCCESS')
     logging.warning('the dataset with name ' + datasetName + ' was created')
     if failedfiles > 0:
-        logging.error("...however %d files out of %d failed to declare" % (failedfiles, totfiles))
+        logging.error("...however %d files out of %d failed to declare", failedfiles, totfiles)
 
     if failedlocations > 0:
         logging.error("...however %d file locations failed to add")
