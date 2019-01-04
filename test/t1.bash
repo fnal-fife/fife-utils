@@ -262,6 +262,7 @@ test_audit_3() {
 
 test_validate_2() {
     ls -l $workdir
+    rm -f ${dataset}_f2_hide
     mv ${dataset}_f2 ${dataset}_f2_hide
     if sam_validate_dataset --name $dataset
     then
@@ -362,7 +363,7 @@ test_unclone_slashes() {
     count_report_files "before:" locs1
     sam_clone_dataset -v --name $dataset --dest $pnfs_dir
     count_report_files "after:" locs2
-    sdest=`echo $pnfs_dir | sed -e 's|nova/|nova//|'`
+    sdest=`echo $pnfs_dir | sed -e 's|\([^s]/\)|\1/|'`
     sam_unclone_dataset --name $dataset --dest $sdest
     count_report_files "after unclone:" locs3
     [ "$locs2" -gt "$locs1" -a "$locs3" -lt "$locs2" -a "$locs1" -eq "$locs3" ]
@@ -434,6 +435,10 @@ test_archive_restore_dir() {
 testsuite test_utils \
 	-s setup_tests \
         add_dataset \
+        test_unclone \
+        test_unclone_slashes \
+        test_retire \
+        add_dataset \
 	test_validate_prune \
         test_retire \
         test_archive_restore_dir \
@@ -445,10 +450,6 @@ testsuite test_utils \
 	test_validate_2 \
         test_modify \
 	test_clone  \
-        test_retire \
-        add_dataset \
-        test_unclone \
-        test_unclone_slashes \
         test_retire \
         add_dataset \
 	test_clone_n  \
