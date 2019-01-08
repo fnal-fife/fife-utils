@@ -21,7 +21,17 @@ setup_tests() {
    export IFDH_BASE_URI="http://samweb.fnal.gov:8480/sam/samdev/api"
    export IFDH_CP_MAXRETRIES=0
 
-   workdir=/pnfs/dune/scratch/users/$USER/fife_utils_test/work.$$
+   # pick an experiment pnfs area from whats available
+   for e in nova dune uboone minerva
+   do
+       if [ -d /pnfs/$e ]
+       then
+           exp=$e
+           break
+       fi
+   done
+
+   workdir=/pnfs/${exp}/scratch/users/$USER/fife_utils_test/work.$$
    if [ ! -r $workdir ]
    then
        mkdir -p $workdir
@@ -31,7 +41,7 @@ setup_tests() {
    then
        echo "testds_`hostname --fqdn`_`date +%s`_$$" > dataset
    fi
-   pnfs_dir=/pnfs/dune/scratch/users/$USER/fife_util_test 
+   pnfs_dir=/pnfs/${exp}/scratch/users/$USER/fife_util_test 
    ifdh ls $pnfs_dir || ifdh mkdir $pnfs_dir || true
    read dataset < dataset
    export dataset
@@ -252,6 +262,7 @@ test_audit_3() {
 
 test_validate_2() {
     ls -l $workdir
+    rm -f ${dataset}_f2_hide
     mv ${dataset}_f2 ${dataset}_f2_hide
     if sam_validate_dataset --name $dataset
     then
@@ -261,6 +272,13 @@ test_validate_2() {
     fi
     mv ${dataset}_f2_hide ${dataset}_f2
     return $res
+}
+
+test_validate_prune() {
+    ls -l $workdir
+    mv ${dataset}_f2 ${dataset}_f2_hide
+    sam_validate_dataset --name $dataset --prune 2>&1 | tee /tmp/out$$
+    grep '_f2 has 0 locations' /tmp/out$$
 }
 
 test_validate_locality() {
@@ -345,7 +363,7 @@ test_unclone_slashes() {
     count_report_files "before:" locs1
     sam_clone_dataset -v --name $dataset --dest $pnfs_dir
     count_report_files "after:" locs2
-    sdest=`echo $pnfs_dir | sed -e 's|nova/|nova//|'`
+    sdest=`echo $pnfs_dir | sed -e 's|\([^s]/\)|\1/|'`
     sam_unclone_dataset --name $dataset --dest $sdest
     count_report_files "after unclone:" locs3
     [ "$locs2" -gt "$locs1" -a "$locs3" -lt "$locs2" -a "$locs1" -eq "$locs3" ]
@@ -417,51 +435,7 @@ test_archive_restore_dir() {
 testsuite test_utils \
 	-s setup_tests \
         add_dataset \
-	test_validate_1 \
-	test_audit_1 \
-        test_retire \
-
-: \
-	test_audit_2 \
-	test_audit_3 \
-	test_validate_2 \
-        test_modify \
-	test_clone  \
-        test_archive_restore_dir \
-        add_dataset \
-        test_unclone \
-        test_unclone_slashes \
-        test_retire \
-        add_dataset \
 	test_clone_n  \
-        test_retire \
-        test_add_dataset_flist \
-	test_validate_1 \
-        test_retire \
-        test_add_dataset_flist_norename \
-	test_validate_1 \
-        test_retire \
-        test_add_dataset_flist_glob \
-	test_validate_1 \
-        test_retire \
-        test_add_dataset_directory \
-	test_validate_1 \
-        test_retire  \
-        add_dataset \
-        test_copy2scratch_dataset \
-        test_retire \
-        add_dataset \
-        test_archive_dataset \
-        test_retire \
-        add_dataset \
-        test_move2persistent \
-        test_retire \
-        add_dataset \
-        test_move2archive \
-        test_retire \
-        add_dataset \
-        test_move2archive_double \
-        test_retire \
+        test_retire 
 
-         
 test_utils "$@"
