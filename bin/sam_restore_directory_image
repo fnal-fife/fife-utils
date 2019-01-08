@@ -50,6 +50,9 @@ class restorer(object):
             os.unlink(self.fifopath)
 
     def list(self, o):
+        if o.just_say:
+            print("I would list archvied areas in the dataset", o.name)
+            return
         print("Archived areas in dataset", o.name, ":")
         print("Date\t\t\t\tsize(k)\tPath")
         for f in d.file_iterator():
@@ -59,6 +62,10 @@ class restorer(object):
     def restore(self, o):
         if not o.restore or not o.date:
             parser.error("either --list or --restore=/some/path and --date=some-date required")
+
+        if o.just_say:
+            print("I would unpack the archvied areas in the dataset", o.name , "for location " , o.restore , " as of " , o.date)
+            return
 
         os.chdir('/')
         for f in d.file_iterator():

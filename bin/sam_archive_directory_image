@@ -84,6 +84,7 @@ if __name__ == '__main__':
         sys.stderr.write("Error: Need either --experiment or $EXPERIMENT $SAM_EXPERIMENT in environment")
         os.exit(1)
 
+    res = 0
 
     if not o.src:
         sys.stderr.write("Error: need a --src= directory whose contents are to be archived!")
@@ -94,8 +95,11 @@ if __name__ == '__main__':
 
     samweb = samweb_client.SAMWebClient(experiment = o.experiment)
 
-    check_dest(o.dest, default_dest)
-    d = dataset(o.name)
+    if o.just_say:
+        print("I would check directory %s", o.dest)
+    else:
+        check_dest(o.dest, default_dest)
+        d = dataset(o.name)
 
     tarfilename = "image-%s.tgz" % uuid.uuid4()
 
@@ -104,12 +108,20 @@ if __name__ == '__main__':
     else:
         tmpdir = os.getenv("TMPDIR","/var/tmp")
 
-    res = os.system("tar czf %s/%s %s" % ( tmpdir, tarfilename, o.src))
+    cmd = "tar czf %s/%s %s" % ( tmpdir, tarfilename, o.src)
+
+    if o.just_say:
+        print( "I would: %s" % cmd)
+    else:
+        res = os.system(cmd)
 
     if (res != 0): 
         raise logicError("tar failed")
 
-    statinfo =  os.stat("%s/%s" % (tmpdir, tarfilename))
+    if o.just_say:
+        statinfo =  os.stat("/tmp")
+    else:
+        statinfo =  os.stat("%s/%s" % (tmpdir, tarfilename))
 
     metadata = { 
         "file_name":      tarfilename, 
@@ -120,23 +132,34 @@ if __name__ == '__main__':
         "Dataset.Tag":    o.name,
     }
 
-    samweb.declareFile(metadata)
+    if o.just_say:
+        print("I would declare metadata: %s" % repr(metadata))
+    else:
+        samweb.declareFile(metadata)
 
     # if we are not going direct via nfs4, we need to copy
     # the tarfile there.
     if not o.nfs4:
         ih = ifdh.ifdh()
 
-        res = ih.cp(["%s/%s" % (tmpdir,tarfilename) , 
-              "%s/%s" % (o.dest,  tarfilename)])
+        args = ["%s/%s" % (tmpdir,tarfilename) , 
+              "%s/%s" % (o.dest,  tarfilename)]
+
+        if o.just_say:
+            print("I would copy %s" % ' '.join(args))
+        else:  
+            res = ih.cp(args)
 
         if (res != 0): raise logicError("ifdh::cp failed")
 
-    samweb.addFileLocation(tarfilename, o.dest);
+    if o.just_say:
+        print("I would add file location %s for %s" % (o.dest, tarfilename))
+    else:
+        samweb.addFileLocation(tarfilename, o.dest);
 
-    try:
-       samweb.createDefinition(o.name, "Dataset.tag %s" % o.name);
-    except:
-       pass
+        try:
+           samweb.createDefinition(o.name, "Dataset.tag %s" % o.name);
+        except:
+           pass
 
     log_finish("Success")
