@@ -93,7 +93,47 @@ def get_standard_certificate_path(options):
   logging.info('cert is %s' % cert)
   return cert
 
-class dataset(object):
+class fake_file_dataset:
+
+    def __init__( self, filename ):
+        print("making fake_file_dataset for file %s" % filename)
+        self.ifdh_handle = ifdh.ifdh()   
+        self.filename = filename
+
+    def file_iterator(self):
+        flist = [ self.filename ]
+        print("returning file iterator for  %s" % self.filename)
+        return flist.__iter__()
+
+    def fullpath_iterator(self, fulllocflag = False, tapeset = None):
+        locs = self.ifdh_handle.locateFile( self.filename )
+        loclist = []
+        for l in locs:
+            if l.find('(') > 0:
+                l = l[:l.find('(')]
+            if l.find(':') > 0:
+                l = l[l.find(':')+1:]
+            loclist.append(l + self.filename)
+            
+            print("returning location iterator for  %s : %s" % (self.filename, repr(loclist)))
+        return loclist.__iter__()
+
+    def location_has_file(self,fullpath):
+        res = self.ifdh_handle.ls(fullpath,1,'')
+        return len(res) != 0
+
+    def uncache_location(self,fp):
+        pass
+
+    def get_paths_for(self,filename):
+        loclist = self.ifdh_handle.locateFile( self.filename )
+        return loclist
+         
+    def remove_path_for(filename, fp):
+        pass
+        
+
+class dataset:
     def __init__( self, name ):
         self.ifdh_handle = ifdh.ifdh()   
         self.name = name
