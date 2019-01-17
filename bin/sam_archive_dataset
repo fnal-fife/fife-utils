@@ -131,7 +131,7 @@ if __name__ == '__main__':
         d = dataset(o.name)
 
     if o.file:
-        d = dataset(o.file)
+        d = fake_file_dataset(o.file)
         
     clone(d, o.dest, subdirf = o.dirfunc, just_say = o.just_say, batch_size = o.batch_size, verbose = o.verbose, experiment=o.experiment, ncopies = o.ncopies, paranoid = o.paranoid, getawscreds = o.getawscreds, intermed = o.intermed)
 
