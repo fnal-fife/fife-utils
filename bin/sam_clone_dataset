@@ -74,6 +74,7 @@ if __name__ == '__main__':
     parser.add_option('-e','--experiment', default=experiment, help='use this experiment server defaults to $SAM_EXPERIMENT if not set')
     parser.add_option('-j','--just_say',  action='store_true', help="do not actually copy, just say what you would do")
     parser.add_option('-n', '--name',     help="dataset name to copy", )
+    parser.add_option('-f', '--file',     help="file name to copy", )
     parser.add_option('-v','--verbose',   action='count')
     parser.add_option('-0','--zerodeep',  dest='dirfunc', action='store_const', const=zerodeep, help="make no subdirectories in destination")
     parser.add_option('-1','--onedeep',   dest='dirfunc', action='store_const', const=onedeep, help = "make subdirectories one deep in destination")
@@ -110,8 +111,8 @@ if __name__ == '__main__':
     cert = get_standard_certificate_path(o)
     os.environ['X509_USER_PROXY'] = cert
 
-    if not o.name:
-        parser.error("expected --name dataset-name")
+    if not o.name and not o.file:
+        parser.error("expected --name dataset-name or --file filename")
         exit(1)
 
     if not o.dest:
@@ -120,9 +121,14 @@ if __name__ == '__main__':
 
     o.dest = canonical(o.dest)
 
+    if o.name:
+        ds = dataset(o.name)
+    if o.file:
+        ds = fake_file.dataset(o.file)
+
     if o.njobs:
         startjobs(o)
     else:
-        clone(dataset(o.name), o.dest, subdirf = o.dirfunc, just_say = o.just_say, batch_size = o.batch_size, verbose = o.verbose, experiment=o.experiment, ncopies=o.ncopies, just_start_project = o.just_start_project, connect_project=o.connect_project , projname = o.project, paranoid = o.paranoid, intermed = o.intermed, getawscreds = o.getawscreds)
+        clone(ds, o.dest, subdirf = o.dirfunc, just_say = o.just_say, batch_size = o.batch_size, verbose = o.verbose, experiment=o.experiment, ncopies=o.ncopies, just_start_project = o.just_start_project, connect_project=o.connect_project , projname = o.project, paranoid = o.paranoid, intermed = o.intermed, getawscreds = o.getawscreds)
 
     log_finish("Success")

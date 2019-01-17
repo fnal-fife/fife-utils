@@ -96,13 +96,11 @@ def get_standard_certificate_path(options):
 class fake_file_dataset:
 
     def __init__( self, filename ):
-        print("making fake_file_dataset for file %s" % filename)
         self.ifdh_handle = ifdh.ifdh()   
         self.filename = filename
 
     def file_iterator(self):
         flist = [ self.filename ]
-        print("returning file iterator for  %s" % self.filename)
         return flist.__iter__()
 
     def fullpath_iterator(self, fulllocflag = False, tapeset = None):
@@ -113,9 +111,8 @@ class fake_file_dataset:
                 l = l[:l.find('(')]
             if l.find(':') > 0:
                 l = l[l.find(':')+1:]
-            loclist.append(l + self.filename)
+            loclist.append(l + '/' + self.filename)
             
-            print("returning location iterator for  %s : %s" % (self.filename, repr(loclist)))
         return loclist.__iter__()
 
     def location_has_file(self,fullpath):
