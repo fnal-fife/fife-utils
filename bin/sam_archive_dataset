@@ -118,7 +118,7 @@ if __name__ == '__main__':
     if not o.dest:
         o.dest = dest
 
-    if not o.name and no o.file:
+    if not o.name and not o.file:
         parser.error("expected --name dataset-name or --file filename")
         exit(1)
 
