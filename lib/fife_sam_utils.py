@@ -108,6 +108,8 @@ class fake_file_dataset:
         loclist = []
         for l in locs:
             if l.find('(') > 0:
+                if tapeset != None:
+                    tapeset.add(l[l.find('@')+1:-1])
                 l = l[:l.find('(')]
             if l.find(':') > 0:
                 l = l[l.find(':')+1:]
@@ -259,7 +261,7 @@ class dataset:
 
             m = re.match('\(.*?@.*?\)$', res)
             if m:
-                if tapeset:
+                if tapeset != None:
                     tapeset.add(m.group(1))
                 res = re.sub('\(.*?\)$','',res)
 
