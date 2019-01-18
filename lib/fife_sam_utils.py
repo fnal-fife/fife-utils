@@ -563,12 +563,18 @@ def get_enstore_info(bfid , maxdepth = 3):
          enstore_info = get_enstore_info(package_id, maxdepth - 1)
     return enstore_info
 
-def validate( ds, just_say = False, prune = False, verbose = False, experiment = None , locality = False, list_tapes=False, tapeloc= False):
+def validate( ds, just_say = False, prune = False, verbose = False, experiment = None , locality = False, list_tapes=False, tapeloc= False ):
     samweb = SAMWebClient(experiment=experiment)
     res=0
 
-    counts = {}
-    if list_tapes:
+    if isinstance(dict, locality):
+        counts = locality 
+    else:
+        counts = {}
+
+    if isinstance(set,list_tapes):
+        tapeset = list_tapes
+    elif list_tapes:
         tapeset = set()
     else:
         tapeset = None
