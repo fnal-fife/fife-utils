@@ -567,12 +567,13 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
     samweb = SAMWebClient(experiment=experiment)
     res=0
 
-    if isinstance(dict, locality):
+    if isinstance(locality, dict):
         counts = locality 
+        counts['ONLINE'] = 0
     else:
         counts = {}
 
-    if isinstance(set,list_tapes):
+    if isinstance(list_tapes, set):
         tapeset = list_tapes
     elif list_tapes:
         tapeset = set()
@@ -606,7 +607,7 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
             else:
                 if verbose: print("located: %s" % p)
 
-            if locality or tapeloc:
+            if locality  or tapeloc:
                
                 if not p.startswith("enstore:/pnfs") and not p.startswith("dcache:/pnfs") and not fp.startswith("/pnfs"):
                      continue
