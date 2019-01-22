@@ -563,14 +563,19 @@ def get_enstore_info(bfid , maxdepth = 3):
          enstore_info = get_enstore_info(package_id, maxdepth - 1)
     return enstore_info
 
-def validate( ds, just_say = False, prune = False, verbose = False, experiment = None , locality = False, list_tapes=False, tapeloc= False ):
+def validate( ds, just_say = False, prune = False, verbose = False, experiment = None , locality = False, list_tapes=False, tapeloc= False, location = [] ):
     samweb = SAMWebClient(experiment=experiment)
     res=0
 
-    if isinstance(dict, locality):
+    if isinstance(locality, dict):
         counts = locality 
     else:
         counts = {}
+
+    if location:
+        locationre = re.compile("|".join(location))
+    else:
+        locationre = re.compile(".")
 
     if isinstance(set,list_tapes):
         tapeset = list_tapes
@@ -585,6 +590,10 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
         f = os.path.basename(p) 
         fp = "%s/%s" % (sp,f)
         samloc = dirname(p)
+
+        if not locationre.match(fp):
+            if verbose: print("skipping: %s" % fp)
+            continue
 
         if just_say and not prune:
             print("I would: ifdh ls %s/%s 0" % (sp, f))
