@@ -39,6 +39,11 @@ try:
 except:
    pass
 
+def setup_environ(experiment = None):
+    os.environ['EXPERIMENT'] = experiment
+    os.environ['SAM_EXPERIMENT'] = experiment
+    cert = get_standard_certificate_path({})
+    os.environ['X509_USER_PROXY'] = cert
 
 def log_startup():
     ih = ifdh.ifdh()
