@@ -39,6 +39,11 @@ try:
 except:
    pass
 
+def setup_environ(experiment = None):
+    os.environ['EXPERIMENT'] = experiment
+    os.environ['SAM_EXPERIMENT'] = experiment
+    cert = get_standard_certificate_path({})
+    os.environ['X509_USER_PROXY'] = cert
 
 def log_startup():
     ih = ifdh.ifdh()
@@ -569,6 +574,7 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
 
     if isinstance(locality, dict):
         counts = locality 
+        counts['ONLINE'] = 0
     else:
         counts = {}
 
@@ -577,7 +583,7 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
     else:
         locationre = re.compile(".")
 
-    if isinstance(set,list_tapes):
+    if isinstance(list_tapes, set):
         tapeset = list_tapes
     elif list_tapes:
         tapeset = set()
@@ -615,7 +621,7 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
             else:
                 if verbose: print("located: %s" % p)
 
-            if locality or tapeloc:
+            if locality  or tapeloc:
                
                 if not p.startswith("enstore:/pnfs") and not p.startswith("dcache:/pnfs") and not fp.startswith("/pnfs"):
                      continue
