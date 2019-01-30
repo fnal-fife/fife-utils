@@ -139,6 +139,12 @@ def main():
 
   options, arguments = p.parse_args()
 
+  if options.verbose > 1:
+     logging.basicConfig(level=logging.DEBUG)
+  elif options.verbose > 0:
+     logging.basicConfig(level=logging.INFO)
+  else:
+     logging.disable(logging.INFO)
   
   if options.verbose:
     logging.basicConfig(level=logging.DEBUG)

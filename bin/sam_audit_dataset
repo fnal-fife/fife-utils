@@ -4,13 +4,13 @@ try:
 except:
     pass
 
-from samweb_client import *
-from fife_sam_utils import *
 import sys
 import os
 import grp
 import optparse
-from fife_sam_utils import log_startup, log_finish
+import logging
+from samweb_client import *
+from fife_sam_utils import *
 
 
 def audit( ds, dest,  verbose = False, experiment = None, keeplists=None ):
@@ -65,7 +65,7 @@ def audit( ds, dest,  verbose = False, experiment = None, keeplists=None ):
                 num_declared_at_dest += 1
                 if  sp in full_set:
                     num_present_declared_at_dest += 1
-                    if verbose: print("located: %s" % sp)
+                    logging.info("located: %s" % sp)
                 else:
                     if f in fnameset:
                         num_present_wrong_loc += 1
@@ -73,8 +73,8 @@ def audit( ds, dest,  verbose = False, experiment = None, keeplists=None ):
                             if pp.find(f):
                                 if keeplists != None:
                                     wronglist.write("wrong path: %s at %s not %s" % ( f, pp, sp))
-                                if verbose: print("wrong path: %s at %s not %s" % ( f, pp, sp))
-                    if verbose: print("missing: %s" % sp)
+                                logging.info("wrong path: %s at %s not %s" % ( f, pp, sp))
+                    logging.info("missing: %s" % sp)
                     res = 1
         if found == 0:
            if keeplists != None:
@@ -84,7 +84,7 @@ def audit( ds, dest,  verbose = False, experiment = None, keeplists=None ):
                num_present_undeclared_at_dest += 1
         if len(spl) == 0:
            num_no_locations += 1
-           if verbose: print("file %s has 0 locations" % f)
+           logging.info("file %s has 0 locations" % f)
         
     print_("Dataset ", ds.name, "at location", dest, ":")
     print_("               Total Files:", num_in_dataset) 
@@ -114,6 +114,13 @@ if __name__ == '__main__':
     parser.add_option('-n', '--name',     help="dataset name to audit", )
 
     (o,a) = parser.parse_args()
+
+    if o.verbose > 1:
+        logging.basicConfig(level=logging.DEBUG)
+    elif o.verbose > 0:
+        logging.basicConfig(level=logging.INFO)
+    else:
+        logging.disable(logging.INFO)
 
     if o.experiment:
         os.environ['EXPERIMENT']= o.experiment

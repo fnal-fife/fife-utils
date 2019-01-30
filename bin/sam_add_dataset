@@ -473,11 +473,12 @@ def main():
   
   o, arguments = p.parse_args()
 
-
-  if o.verbose:
-    logging.basicConfig(level=logging.DEBUG)
+  if o.verbose > 1:
+     logging.basicConfig(level=logging.DEBUG)
+  elif o.verbose > 0:
+     logging.basicConfig(level=logging.INFO)
   else:
-    logging.disable(logging.INFO)
+     logging.disable(logging.INFO)
 
   logging.info("options are: %s ", repr(o))
 

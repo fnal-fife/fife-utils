@@ -10,17 +10,19 @@ try:
 except:
     def old_div(x,y):
         return x / y 
-import optparse
+
 import grp
-import sys
-import os
-import time
 import ifdh
+import logging
+import optparse
+import os
 import samweb_client
+import subprocess
+import sys
+import time
+
 from fife_sam_utils import dataset, sampath, get_standard_certificate_path
 from fife_sam_utils import log_startup, log_finish
-import subprocess
-
 
 try:
    import uuid
@@ -99,6 +101,13 @@ if __name__ == '__main__':
     parser.add_option('-d', '--date',      help="date of image to restore")
 
     (o,a) = parser.parse_args()
+
+    if o.verbose > 1:
+        logging.basicConfig(level=logging.DEBUG)
+    elif o.verbose > 0:
+        logging.basicConfig(level=logging.INFO)
+    else:
+        logging.disable(logging.INFO)
 
     if o.experiment:
         os.environ['EXPERIMENT']= o.experiment

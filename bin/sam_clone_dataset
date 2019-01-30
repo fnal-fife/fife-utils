@@ -4,15 +4,16 @@ try:
 except:
     pass
 
-from fife_sam_utils import *
 
-import sys
-import os
-from samweb_client import *
-import socket
-import optparse
-import time
 import grp
+import logging
+import optparse
+import os
+import socket
+import sys
+import time
+from fife_sam_utils import *
+from samweb_client import *
 
 def do_setup(s, debug=False):
     sys.path.insert(0,'/cvmfs/fermilab.opensciencegrid.org/products/common/etc')
@@ -110,6 +111,13 @@ if __name__ == '__main__':
 
     cert = get_standard_certificate_path(o)
     os.environ['X509_USER_PROXY'] = cert
+
+    if o.verbose > 1:
+        logging.basicConfig(level=logging.DEBUG)
+    elif o.verbose > 0:
+        logging.basicConfig(level=logging.INFO)
+    else:
+        logging.disable(logging.INFO)
 
     if not o.name and not o.file:
         parser.error("expected --name dataset-name or --file filename")

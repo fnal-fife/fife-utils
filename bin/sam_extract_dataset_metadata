@@ -5,15 +5,15 @@ try:
 except:
     pass
 
-from fife_sam_utils import *
 import sys
 import os
 import grp
-from samweb_client import *
+import logging
 import socket
 import optparse
 
-from fife_sam_utils import log_startup, log_finish
+from fife_sam_utils import *
+from samweb_client import *
 
 
 def extract_dataset_metadata( d, extractor,  just_say = False, verbose = False, experiment = None ):
@@ -59,6 +59,13 @@ if __name__ == '__main__':
     parser.add_option('-m', '--metadata', help="metadata file with updates", )
 
     (o,a) = parser.parse_args()
+
+    if o.verbose > 1:
+        logging.basicConfig(level=logging.DEBUG)
+    elif o.verbose > 0:
+        logging.basicConfig(level=logging.INFO)
+    else:
+        logging.disable(logging.INFO)
 
     if o.experiment:
         os.environ['EXPERIMENT']= o.experiment

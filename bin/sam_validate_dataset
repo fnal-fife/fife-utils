@@ -34,8 +34,10 @@ if __name__ == '__main__':
 
     (o,a) = parser.parse_args()
 
-    if o.verbose:
+    if o.verbose > 1:
         logging.basicConfig(level=logging.DEBUG)
+    elif o.verbose > 0:
+        logging.basicConfig(level=logging.INFO)
     else:
         logging.disable(logging.INFO)
 

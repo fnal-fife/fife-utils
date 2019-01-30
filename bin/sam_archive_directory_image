@@ -4,14 +4,15 @@ try:
 except:
     pass
 
-import optparse
 import grp
-import sys
+import logging
+import optparse
 import os
+import sys
 import time
-import samweb_client
 from fife_sam_utils import dataset, get_standard_certificate_path
 from fife_sam_utils import log_startup, log_finish
+import samweb_client
 
 try:
    import uuid
@@ -74,6 +75,13 @@ if __name__ == '__main__':
     parser.add_option('-4', '--nfs4',     help="write tarfile directly via nfs4", action='store_true')
 
     (o,a) = parser.parse_args()
+
+    if o.verbose > 1:
+        logging.basicConfig(level=logging.DEBUG)
+    elif o.verbose > 0:
+        logging.basicConfig(level=logging.INFO)
+    else:
+        logging.disable(logging.INFO)
 
     if o.experiment:
         print("seting experiment to: " , o.experiment)

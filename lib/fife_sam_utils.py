@@ -75,7 +75,7 @@ def do_getawscreds(debug = False):
     os.unlink(fname)
 
 def get_standard_certificate_path(options):
-  logging.info('looking for cert')
+  logging.debug('looking for cert')
 
   if hasattr(options,'cert') and options.cert:
     cert = options.cert
@@ -86,16 +86,16 @@ def get_standard_certificate_path(options):
       key = os.environ.get('X509_USER_KEY',None)
       if cert and key: cert = (cert, key)
     if not cert:
-      logging.info('trying to create cert for you as none were found')
-      logging.info('looking for cert with ifdh')
+      logging.debug('trying to create cert for you as none were found')
+      logging.debug('looking for cert with ifdh')
       ih = ifdh.ifdh()
       cert = ih.getProxy()
-      logging.info('ifdh returns %s' % cert)
+      logging.debug('ifdh returns %s' % cert)
 
   if not cert:
     sys.exit("unable to find cert and unable to make one")
 
-  logging.info('cert is %s' % cert)
+  logging.debug('cert is %s' % cert)
   return cert
 
 class fake_file_dataset:
@@ -497,7 +497,7 @@ def copy_and_declare(d, cpargs, locargs, dest, subdirf, samweb, just_say, verbos
         for f in locargs:
             print("I would declare location for %s of %s" % (f, dest+subdirf(f)))
     else: 
-        if verbose: print("doing ifdh cp %s" % cpargs)
+        logging.debug("doing ifdh cp %s" % cpargs)
         if intermed:
             # make two commandlines, src to intermed, intermed to dest
             l1 = []
@@ -526,12 +526,12 @@ def copy_and_declare(d, cpargs, locargs, dest, subdirf, samweb, just_say, verbos
             res = d.ifdh_handle.cp(l2)
         else:
             res = d.ifdh_handle.cp(cpargs)
-        if verbose: print("ifdh cp returns %d" % res)
+        logging.debug("ifdh cp returns %d" % res)
         # XXX note this is arguably incorrect, we only declare locations if
         #     *all* the copies in the batch succeed; but if *some* of them
         #     do we don't...
         if res == 0:
-            if verbose: print("doing locargs: ", locargs)
+            logging.debug("doing locargs: ", locargs)
             for f in locargs:
                 try:
                     if paranoid:
@@ -544,7 +544,7 @@ def copy_and_declare(d, cpargs, locargs, dest, subdirf, samweb, just_say, verbos
                             continue
 
                     loc =  samprefix(dest) + dest + subdirf(f)
-                    if verbose: print("addFileLocation(%s, %s)" % (f, loc))
+                    logging.debug("addFileLocation(%s, %s)" % (f, loc))
                     samweb.addFileLocation(f, loc )
                 except:
                     raise
@@ -559,7 +559,7 @@ def get_enstore_info(bfid , maxdepth = 3):
     ei = pfd.read()
     pfd.close()
 
-    logging.info('enstore info says: "%s"' % ei )
+    logging.debug('enstore info says: "%s"' % ei )
     enstore_info = ast.literal_eval(ei)
     if isinstance(enstore_info, list):
         enstore_info = enstore_info[0]
@@ -598,7 +598,7 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
         samloc = dirname(p)
 
         if not locationre.match(fp):
-            if verbose: print("skipping: %s" % fp)
+            logging.debug("skipping: %s" % fp)
             continue
 
         if just_say and not prune:
@@ -619,7 +619,7 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
                         except:
                             logging.exception("Error: Removing file location: %s %s " % (f, samloc))
             else:
-                if verbose: print("located: %s" % p)
+                logging.info("located: %s" % p)
 
             if locality  or tapeloc:
                
@@ -636,7 +636,7 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
                         counts[loc] = counts.get(loc,0) + 1
 
                     if tapeloc and tl == None:
-                        logging.info('checking: %s/.(use)(4)(%s)' % (sp,f))
+                        logging.debug('checking: %s/.(use)(4)(%s)' % (sp,f))
                         fd = open( "%s/.(use)(4)(%s)" % (sp, f), "r")
                         l4 = fd.read().strip()
                         fd.close()
@@ -728,7 +728,7 @@ def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 1, verbose =
         time.sleep(5)
 
     if verbose or just_start_project:
-        print(("found" if connect_project else "started"), "project:", projname, "->", purl)
+        logging.info(("found" if connect_project else "started"), "project:", projname, "->", purl)
 
     if (just_start_project):
         return 
@@ -738,7 +738,7 @@ def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 1, verbose =
         res = os.fork()
         if res > 0:
            kidlist.append(res)
-           if verbose: print("started child", res)
+           logging.debug("started child", res)
         if res == 0:
            # we are a child
            kidlist = []
@@ -754,8 +754,7 @@ def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 1, verbose =
        
     consumer_id = d.ifdh_handle.establishProcess( purl, "sam_clone_dataset", "1", hostname, user, "fife_utils", "sam_clone_dataset project", 0 , "")
     consumer_id = consumer_id.strip()
-    if verbose:
-         print("got consumer id: ", consumer_id)
+    logging.info("got consumer id: ", consumer_id)
 
     if consumer_id == "":
          print("Error: could not establish sam consumer id for project: ", projname)
@@ -771,8 +770,7 @@ def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 1, verbose =
 
     while furi:
 
-        if verbose:
-            print("got file uri:", furi)
+        logging.debug("got file uri:", furi)
 
         f = basename(furi)
 
@@ -859,9 +857,9 @@ def unclone( d, just_say = False, delete_match = '.*', verbose = False, experime
     succeed = 0
     samweb = SAMWebClient(experiment = experiment)
     for full in d.fullpath_iterator(True):
-        if verbose: print("looking at full path:", full)
+        logging.debug("looking at full path:", full)
         spath = sampath(full)
-        if verbose: print("looking at sampath:", spath)
+        logging.debug("looking at sampath:", spath)
         filename = basename(full)
         if just_say:
             if re.match(delete_match, full) or re.match(delete_match, spath):
@@ -869,13 +867,13 @@ def unclone( d, just_say = False, delete_match = '.*', verbose = False, experime
                 print("I would remove location %s for %s" % (dirname(full), file ))
         else:
             if re.match(delete_match, full) or re.match(delete_match, spath):
-                if verbose: print("matches: " , delete_match)
+                logging.debug("matches: " , delete_match)
                 pl = d.get_paths_for(filename)
-                if verbose: print("paths: " , pl)
+                logging.debug("paths: " , pl)
                 if len(pl) == 1:
                     print("NOT removing %s, it is the only location!" % full)
                     continue
-                if verbose: print("removing: " , full)
+                logging.info("removing: " , full)
                 if full.find("s3:/") == 0:
                    path = full[0:4]+full[3:]
                 else:

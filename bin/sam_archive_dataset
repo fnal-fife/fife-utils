@@ -4,13 +4,15 @@ try:
 except:
     pass
 
-import optparse
-import grp
-import sys
-import os
 
+import grp
 import ifdh
+import loggin
+import optparse
+import os
 import os.path
+import sys
+
 from fife_sam_utils import clone, fourdeep, unclone, dataset, get_standard_certificate_path, validate
 from fife_sam_utils import log_startup, log_finish
 
@@ -93,6 +95,13 @@ if __name__ == '__main__':
 
     (o,a) = parser.parse_args()
 
+    if o.verbose > 1:
+        logging.basicConfig(level=logging.DEBUG)
+    elif o.verbose > 0:
+        logging.basicConfig(level=logging.INFO)
+    else:
+        logging.disable(logging.INFO)
+
     if o.setup:
         do_setup(o.setup)
 
@@ -121,6 +130,13 @@ if __name__ == '__main__':
     if not o.name and not o.file:
         parser.error("expected --name dataset-name or --file filename")
         exit(1)
+
+    if o.verbose > 1:
+        logging.basicConfig(level=logging.DEBUG)
+    elif o.verbose > 0:
+        logging.basicConfig(level=logging.INFO)
+    else:
+        logging.disable(logging.INFO)
 
     if o.keep:
        clean_others = False
