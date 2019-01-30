@@ -151,8 +151,8 @@ def getFileListFromDir(directory, recurse):
 
 
 def getFileListFromGridFTP(directory_url, recurse):
-    #logging.info('trying to create a python list of files from gridftp accessible directory %s with recurse level set to %s' % (directory, recurse))
-    logging.info('trying to create a python list of files from gridftp accessible directory %s with recurse level set to NOT IMPLEMENTED' % directory_url)
+    #logging.info('trying to create a python list of files from gridftp accessible directory %s with recurse level set to %s',directory, recurse)
+    logging.info('trying to create a python list of files from gridftp accessible directory %s with recurse level set to NOT IMPLEMENTED' , directory_url)
 
     file_uri_list = []
     file_stats = {}

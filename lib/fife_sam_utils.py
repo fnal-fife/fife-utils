@@ -531,7 +531,7 @@ def copy_and_declare(d, cpargs, locargs, dest, subdirf, samweb, just_say, verbos
         #     *all* the copies in the batch succeed; but if *some* of them
         #     do we don't...
         if res == 0:
-            logging.debug("doing locargs: ", locargs)
+            logging.debug("doing locargs: % ", locargs)
             for f in locargs:
                 try:
                     if paranoid:
@@ -544,7 +544,7 @@ def copy_and_declare(d, cpargs, locargs, dest, subdirf, samweb, just_say, verbos
                             continue
 
                     loc =  samprefix(dest) + dest + subdirf(f)
-                    logging.debug("addFileLocation(%s, %s)" % (f, loc))
+                    logging.debug("addFileLocation(%s, %s)", f, loc)
                     samweb.addFileLocation(f, loc )
                 except:
                     raise
@@ -619,7 +619,7 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
                         except:
                             logging.exception("Error: Removing file location: %s %s " % (f, samloc))
             else:
-                logging.info("located: %s" % p)
+                if verbose: print("located: %s" % p)
 
             if locality  or tapeloc:
                
@@ -632,7 +632,7 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
                         fd = open( "%s/.(get)(%s)(locality)" % (sp, f), "r")
                         loc = fd.read().strip()
                         fd.close()
-                        logging.info("locality: %s\t%s" % (loc, f))
+                        if verbose: print("locality: %s\t%s" % (loc, f))
                         counts[loc] = counts.get(loc,0) + 1
 
                     if tapeloc and tl == None:
@@ -659,7 +659,7 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
                                 sequence = 0
 
                             fulloc = "%s%s(%s@%s)" % (samprefix(sp),sp, sequence,label)
-                            logging.info('Adding tape label location for %s: %s'%(f, fulloc))
+                            if verbose: print('Adding tape label location for %s: %s', %(f, fulloc))
                             samweb.addFileLocation( f, fulloc )
 
                 except Exception as e:
@@ -725,7 +725,10 @@ def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 1, verbose =
         purl = d.ifdh_handle.findProject(projname, os.environ.get('SAM_STATION',experiment))
     else:
         purl = d.ifdh_handle.startProject(projname, os.environ.get('SAM_STATION',experiment), d.name, user, experiment)
-        time.sleep(5)
+        if not purl:
+            logging.error("startProject failed.")
+            os.exit(1)
+        time.sleep(6)
 
     if verbose or just_start_project:
         logging.info(("found" if connect_project else "started"), "project:", projname, "->", purl)
@@ -754,7 +757,7 @@ def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 1, verbose =
        
     consumer_id = d.ifdh_handle.establishProcess( purl, "sam_clone_dataset", "1", hostname, user, "fife_utils", "sam_clone_dataset project", 0 , "")
     consumer_id = consumer_id.strip()
-    logging.info("got consumer id: ", consumer_id)
+    logging.info("got consumer id: %s", consumer_id)
 
     if consumer_id == "":
          print("Error: could not establish sam consumer id for project: ", projname)
@@ -873,7 +876,7 @@ def unclone( d, just_say = False, delete_match = '.*', verbose = False, experime
                 if len(pl) == 1:
                     print("NOT removing %s, it is the only location!" % full)
                     continue
-                logging.info("removing: " , full)
+                logging.info("removing: %s" , full)
                 if full.find("s3:/") == 0:
                    path = full[0:4]+full[3:]
                 else:
@@ -913,7 +916,7 @@ def unclone( d, just_say = False, delete_match = '.*', verbose = False, experime
     # clean up rm threads
     while proccount > 0:
        (wpid, wstat) = os.wait()
-       if os.WIFEXITED(wstat) and os.WEXITSTATUS(wstat) != 0 or os.WIFSIGNALLED(wstat):
+       if os.WIFEXITED(wstat) and os.WEXITSTATUS(wstat) != 0 or os.WIFSIGNALED(wstat):
 
            fail = fail + 1
        else:

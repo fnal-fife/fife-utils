@@ -19,7 +19,7 @@ import fnmatch
 
 
 def get_file_list(txt_file):
-  logging.info('trying to create a python list of files from file %s' % txt_file)
+  logging.info('trying to create a python list of files from file %s', txt_file)
   file_list = []
   
   try:
@@ -31,13 +31,13 @@ def get_file_list(txt_file):
   except Exception as e:
     sys.exit('oops: %s' % e)
 
-  logging.info('the python list is %s' % file_list)
+  logging.info('the python list is %s', file_list)
   return file_list
 
 
 
 def get_file_list_from_dir(directory, recurse):
-  logging.info('trying to create a python list of files from directory %s with recurse level set to %s' % (directory, recurse))
+  logging.info('trying to create a python list of files from directory %s with recurse level set to %s', directory, recurse)
     
   file_list = []
     
@@ -51,7 +51,7 @@ def get_file_list_from_dir(directory, recurse):
     if recurse == False:
         break
 
-  logging.info('the python list is %s' % file_list)
+  logging.info('the python list is %s', file_list)
   return file_list
 
 
@@ -66,7 +66,7 @@ def get_file_list_from_pipe():
   except Exception as e:
     sys.exit('oops: %s' % e)
 
-  logging.info('the python list is %s' % file_list)
+  logging.info('the python list is %s', file_list)
   return file_list
 
 
@@ -93,7 +93,7 @@ def rename_file(file, do_nothing):
 
 
 def filter_pattern(file_list, pattern):
-  logging.info('applying filter pattern %s to %s' % (pattern, file_list))
+  logging.info('applying filter pattern %s to %s', pattern, file_list)
   return fnmatch.filter(file_list, pattern)
 
 

@@ -32,10 +32,10 @@ def retire( d, just_say = False, keep_files = False, delete_match = '.*', experi
             if not keep_files:
                 try:
                     if re.match(delete_match, full): 
-                        logging.info("removing: ", full)
+                        logging.info("removing: %s ", full)
                         d.ifdh_handle.rm(full, '')
                 except: 
-                    logging.info("excpetion in remove", traceback.format_exc())
+                    logging.info("excpetion in remove %s", traceback.format_exc())
                     pass
             logging.info("removing location:", samprefix(full), full) 
             try:
@@ -48,7 +48,7 @@ def retire( d, just_say = False, keep_files = False, delete_match = '.*', experi
             print("I would retire file: %s" %  file)
         else:
             try:
-                logging.info("retiring file", file)
+                logging.info("retiring file %s", file)
                 samweb.retireFile(file)
             except:
                 print("Ouch! retriring %s" % file)
@@ -57,7 +57,7 @@ def retire( d, just_say = False, keep_files = False, delete_match = '.*', experi
     if just_say:
          print("I would deleteDefinition( %s ) " % d.name)
     else:
-         logging.info("deleting definition: " , d.name)
+         logging.info("deleting definition: %s" , d.name)
          samweb.deleteDefinition(d.name)
 
 
