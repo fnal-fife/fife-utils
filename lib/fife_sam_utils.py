@@ -531,7 +531,7 @@ def copy_and_declare(d, cpargs, locargs, dest, subdirf, samweb, just_say, verbos
         #     *all* the copies in the batch succeed; but if *some* of them
         #     do we don't...
         if res == 0:
-            logging.debug("doing locargs: % ", locargs)
+            logging.debug("doing locargs: %s", repr(locargs))
             for f in locargs:
                 try:
                     if paranoid:
@@ -544,7 +544,7 @@ def copy_and_declare(d, cpargs, locargs, dest, subdirf, samweb, just_say, verbos
                             continue
 
                     loc =  samprefix(dest) + dest + subdirf(f)
-                    logging.debug("addFileLocation(%s, %s)", f, loc)
+                    logging.debug("addFileLocation(%s, %s)" % (f, loc))
                     samweb.addFileLocation(f, loc )
                 except:
                     raise
@@ -659,7 +659,7 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
                                 sequence = 0
 
                             fulloc = "%s%s(%s@%s)" % (samprefix(sp),sp, sequence,label)
-                            if verbose: print('Adding tape label location for %s: %s', %(f, fulloc))
+                            if verbose: print('Adding tape label location for %s: %s' % (f, fulloc))
                             samweb.addFileLocation( f, fulloc )
 
                 except Exception as e:
@@ -741,7 +741,7 @@ def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 1, verbose =
         res = os.fork()
         if res > 0:
            kidlist.append(res)
-           logging.debug("started child", res)
+           logging.debug("started child %s", res)
         if res == 0:
            # we are a child
            kidlist = []
@@ -773,7 +773,7 @@ def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 1, verbose =
 
     while furi:
 
-        logging.debug("got file uri:", furi)
+        logging.debug("got file uri: %s", furi)
 
         f = basename(furi)
 
@@ -860,9 +860,9 @@ def unclone( d, just_say = False, delete_match = '.*', verbose = False, experime
     succeed = 0
     samweb = SAMWebClient(experiment = experiment)
     for full in d.fullpath_iterator(True):
-        logging.debug("looking at full path:", full)
+        logging.debug("looking at full path: %s", full)
         spath = sampath(full)
-        logging.debug("looking at sampath:", spath)
+        logging.debug("looking at sampath: %s", spath)
         filename = basename(full)
         if just_say:
             if re.match(delete_match, full) or re.match(delete_match, spath):
@@ -870,9 +870,9 @@ def unclone( d, just_say = False, delete_match = '.*', verbose = False, experime
                 print("I would remove location %s for %s" % (dirname(full), file ))
         else:
             if re.match(delete_match, full) or re.match(delete_match, spath):
-                logging.debug("matches: " , delete_match)
+                logging.debug("matches: %s" , delete_match)
                 pl = d.get_paths_for(filename)
-                logging.debug("paths: " , pl)
+                logging.debug("paths: %s" , pl)
                 if len(pl) == 1:
                     print("NOT removing %s, it is the only location!" % full)
                     continue
