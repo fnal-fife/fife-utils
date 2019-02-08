@@ -812,12 +812,12 @@ def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 1, verbose =
     copy_and_declare(d, cpargs, locargs, dest, subdirf, samweb, just_say, verbose, paranoid, intermed)
     d.ifdh_handle.setStatus( purl, consumer_id, "completed")
 
-    if len(kidlist) > 1:
+    if kidlist:
        # we're the parent, and there are kids
        for i in range(0,len(kidlist)-1):
            os.wait()
 
-    if len(kidlist) > 1 or int(ncopies) == 1:
+    if kidlist or int(ncopies) == 1:
        d.ifdh_handle.endProject(purl)
 
 def clean_one(d, path, full, keep, exp):
