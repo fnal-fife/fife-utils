@@ -102,7 +102,7 @@ if __name__ == '__main__':
     res = os.system("tar czf %s/%s %s" % ( tmpdir, tarfilename, o.src))
 
     if (res != 0): 
-	raise logicError("tar failed")
+	raise ValueError("tar failed")
 
     statinfo =  os.stat("%s/%s" % (tmpdir, tarfilename))
 
@@ -125,7 +125,7 @@ if __name__ == '__main__':
 	res = ih.cp(["%s/%s" % (tmpdir,tarfilename) , 
 	      "%s/%s" % (o.dest,  tarfilename)])
 
-	if (res != 0): raise logicError("ifdh::cp failed")
+	if (res != 0): raise ValueError("ifdh::cp failed")
 
     samweb.addFileLocation(tarfilename, o.dest);
 
