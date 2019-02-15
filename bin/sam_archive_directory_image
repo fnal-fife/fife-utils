@@ -71,7 +71,7 @@ if __name__ == '__main__':
     (o,a) = parser.parse_args()
 
     if o.experiment:
-        print "seting experiment to: " , o.experiment
+        print "setting experiment to: " , o.experiment
         os.environ['EXPERIMENT']= o.experiment
         os.environ['SAM_EXPERIMENT']= o.experiment
         os.environ['IFDH_BASE_URI'] = "http://samweb.fnal.gov:8480/sam/%s/api" % o.experiment
