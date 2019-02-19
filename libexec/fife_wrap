@@ -94,13 +94,13 @@ class Wrapper:
         parser.add_option("-c","--config", help="Specify config file (fcl) for art executable")
         parser.add_option("-X","--exe", help="Specify executable name for art executable -- default $EXPERIMENT" , default=[], action="append")
         parser.add_option("-g","--getconfig", action="store_true", help="get config files as inputs from SAM (i.e. for MonteCarlo simulation). Conflicts with --config")
-        parser.add_option("-M","--dynamic_lifetime", action="store_true", help="for multifile and getconfig loops quit if less time than this left", default=None)
+        parser.add_option("--dynamic_lifetime", action="store_true", help="for multifile and getconfig loops quit if less time than this left", default=None)
         parser.add_option("--mix", action="append", help="mixing script to run after fetching each input", default=[])
         parser.add_option("-M","--multifile", action="store_true", help="Fetch files in wrapper and run executable once per file")
         parser.add_option("-G","--with_gdb", action="store_true", help="run executable under gdb and print stack trace")
         parser.add_option("-L","--limit", type="int", help="Set SAM project file delivery limit", default=0)
         parser.add_option("-S","--schema",  help="Set SAM file delivery schema", default="")
-        parser.add_option(,"--no-checksum", dest="checksum", action="store_false",  help="don't do checksums when adding metadata", default = True)
+        parser.add_option("--no-checksum", dest="checksum", action="store_false",  help="don't do checksums when adding metadata", default = True)
         parser.add_option("-I","--inputfile", action="append", help="Input file to copy to job area before running the executable", default = [])
         parser.add_option("-T","--inputtar", action="append", help="Input tar file to copy to job area and unpack running the executable", default = [])
         parser.add_option("--inputlist", action="append", help="ifdh cp -f file to run to fetch inputs", default = [])
@@ -622,15 +622,15 @@ exit
         self.ih = ifdh.ifdh()
 
     def check_cvmfs(self):
-        if not self.options.cvmfs_version:
+        if not self.options.cvmfs_revision:
              return
 
         f = os.popen('attr -qg revision /cvmfs/%s.opensciencegrid.org/' % self.experiment, 'r')
         vers = f.readline()
         f.close()
 
-        if vers and int(vers) < int(self.options.cvmfs_version):
-            print("/cvmfs/%s.opensciencegrid.org is at version %s; we need %s" % self.experment, vers, self.options.cvmfs_version);
+        if vers and int(vers) < int(self.options.cvmfs_revision):
+            print("/cvmfs/%s.opensciencegrid.org is at version %s; we need %s" % self.experment, vers, self.options.cvmfs_revision);
             os.exit(1)
 
     def fetch_inputs(self):

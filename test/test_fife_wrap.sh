@@ -45,8 +45,8 @@ test_client_excl() {
     ../libexec/fife_wrap --debug --find_setups --setup fife_utils --limit 1 --multifile  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_location --add_to_dataset _poms_task --dataset_exclude '*.xyzzy' --dest /pnfs/nova/scratch/users/mengel -- '>bar.root' '<' 
 }
 
-testsuite fife_wrap_tests -s setup_proj -t end_proj test_client_3
+#testsuite fife_wrap_tests -s setup_proj -t end_proj test_client_3
 
-#testsuite fife_wrap_tests -s setup_proj -t end_proj test_client_tmpl test_client_1 test_client_4 test_client_excl
+testsuite fife_wrap_tests -s setup_proj -t end_proj test_client_tmpl test_client_1 test_client_3 test_client_4 test_client_excl
 
 fife_wrap_tests "$@"
