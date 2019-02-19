@@ -94,13 +94,18 @@ class Wrapper:
         parser.add_option("-c","--config", help="Specify config file (fcl) for art executable")
         parser.add_option("-X","--exe", help="Specify executable name for art executable -- default $EXPERIMENT" , default=[], action="append")
         parser.add_option("-g","--getconfig", action="store_true", help="get config files as inputs from SAM (i.e. for MonteCarlo simulation). Conflicts with --config")
+        parser.add_option("-M","--dynamic_lifetime", action="store_true", help="for multifile and getconfig loops quit if less time than this left", default=None)
+        parser.add_option("--mix", action="append", help="mixing script to run after fetching each input", default=[])
         parser.add_option("-M","--multifile", action="store_true", help="Fetch files in wrapper and run executable once per file")
         parser.add_option("-G","--with_gdb", action="store_true", help="run executable under gdb and print stack trace")
         parser.add_option("-L","--limit", type="int", help="Set SAM project file delivery limit", default=0)
         parser.add_option("-S","--schema",  help="Set SAM file delivery schema", default="")
+        parser.add_option(,"--no-checksum", dest="checksum", action="store_false",  help="don't do checksums when adding metadata", default = True)
         parser.add_option("-I","--inputfile", action="append", help="Input file to copy to job area before running the executable", default = [])
         parser.add_option("-T","--inputtar", action="append", help="Input tar file to copy to job area and unpack running the executable", default = [])
         parser.add_option("--inputlist", action="append", help="ifdh cp -f file to run to fetch inputs", default = [])
+ 
+        parser.add_option("--cvmfs-revision", help="check for this cvmfs revision on /cvmfs/$GROUP.opensciencegrid.org/", default= None)
         parser.add_option("--export",action="append",  help="export environment variable before running", default= [])
         parser.add_option("--export-unquote",action="append",  help="export environment variable before running", default= [])
         parser.add_option("--setup",action="append",  help="setup product before running", default=[])
@@ -108,6 +113,7 @@ class Wrapper:
         parser.add_option("--source",action="append",  help="source setup file before running", default = [])
         parser.add_option("--source-unquote",action="append",  help="source setup file before running", default = [])
         parser.add_option("--self_destruct_timer", type="int", help="After this many seconds, suicide the job so we get output back")
+        parser.add_option("--self-destruct-timer", dest="self_destruct_timer", type="int", help="After this many seconds, suicide the job so we get output back")
         parser.add_option("--prescript", action="append", help="script to run before Art executable", default = [])
         parser.add_option("--prescript-unquote",action="append",  help="script to run before Art executable", default = [])
         parser.add_option("--postscript",action="append",  help="script to run after Art executable", default = [])
@@ -149,6 +155,7 @@ class Wrapper:
             parser.add_option("--dataset_exclude"+suffix,action="append",  help="glob pattern of output files to exclude from the --add_to_dataset=dataset", default = [])
             parser.add_option("--add_location"+suffix, action="store_true", default=None, help="Add locations of output files to SAM")
             parser.add_option("--outputlist"+suffix, action="append", help="ifdh cp -f file to run to copy out outputs", default = [])
+            parser.add_option("--hash"+suffix, help="hash depth argument to copyBackOutput", default = 0)
 
         (self.options, self.args) = parser.parse_args()
 
@@ -194,6 +201,7 @@ class Wrapper:
              return
 
         scriptlist = []
+ 
         if self.options.debug:
             scriptlist.append('set -x\n')
 
@@ -286,9 +294,10 @@ exit
 
             p.stdin.close()
             p.stdout.close()
-            p.wait()
+            res = p.wait()
             if self.options.debug: sys.stderr.write('inhaled environment: %s' % repr(evallist))
             exec('\n'.join(evallist))
+            return res
 
     def start_client(self):
         if self.options.debug: sys.stderr.write( "entering start_client\n" )
@@ -356,6 +365,14 @@ exit
             if self.options.debug: sys.stderr.write(traceback.format_exc())
             raise
 
+    def checktimeleft(self):
+       if self.options.dynamic_lifetime and os.environ.get("FIFE_GLIDEIN_ToDie", None):
+           tleft = int(os.environ.get("FIFE_GLIDEIN_ToDie")) - time.time() 
+           if tleft <= int(self.options.dynamic_lifetime):
+               print("Only %s seconds left, leaving getNextFile loop" % tleft)
+               return 0
+       return 1
+
     def file_loop(self):
 
         if self.options.debug: sys.stderr.write("Entering file loop:\n")
@@ -413,6 +430,21 @@ exit
                     fname=self.ih.fetchInput(self.furi)
                     if self.options.debug: sys.stderr.write( "Fetching: %s gave: %s\n" % (self.furi, fname))
                     self.ih.updateFileStatus(self.cpurl, self.consumerid, os.path.basename(self.furi), 'transferred')
+
+                if self.options.dry_run:
+                    for m in self.options.mix:
+                        print('     %s' % m)
+                else:
+                    # mix scripts, if any, expect $fname in the environment...
+                    os.environ['fname'] = fname
+                    res = self.run_extracting_environment(self.options.mix)
+                    if res != 0:
+                        print("Mixing scripts %s failed, marking file skipped" % self.options.mix)
+                        self.ih.updateFileStatus(self.cpurl, self.consumerid, os.path.basename(self.furi), 'skipped')
+                        lastfuri = self.furi
+                        self.furi=self.ih.getNextFile(self.cpurl,self.consumerid)
+                        continue
+
                 res = 0
                 if self.options.dry_run:
                     print("     if " )
@@ -454,6 +486,9 @@ exit
  
                     if res != 0:
                         self.rres = res
+
+                    if not self.checktimeleft():
+                        break
 
                 if self.options.dry_run:
                     print("     then")
@@ -586,6 +621,18 @@ exit
             reload(ifdh)
         self.ih = ifdh.ifdh()
 
+    def check_cvmfs(self):
+        if not self.options.cvmfs_version:
+             return
+
+        f = os.popen('attr -qg revision /cvmfs/%s.opensciencegrid.org/' % self.experiment, 'r')
+        vers = f.readline()
+        f.close()
+
+        if vers and int(vers) < int(self.options.cvmfs_version):
+            print("/cvmfs/%s.opensciencegrid.org is at version %s; we need %s" % self.experment, vers, self.options.cvmfs_version);
+            os.exit(1)
+
     def fetch_inputs(self):
         if self.options.nosetup:
             # this means we're re-exec-ed after setups, and we did 
@@ -661,14 +708,16 @@ exit
         sd = os.stat(f)
         cdate = datetime.utcfromtimestamp(sd.st_ctime).strftime("%Y-%m-%dT%H:%M:%S:+00:00")
         
-        #checksum = self.ih.checksum(f)
-        
-        p = subprocess.Popen("ifdh checksum %s" % f, shell=True, stdout=subprocess.PIPE)
-        checksum = p.stdout.read()
-        p.stdout.close()
-        rc = p.wait()
+        checksum = None
 
-        if self.options.debug: sys.stderr.write("DEBUG: ifdh checksum returns: %s" % checksum)
+        if self.options.checksum:
+            p = subprocess.Popen("ifdh checksum %s" % f, shell=True, stdout=subprocess.PIPE)
+            checksum = p.stdout.read()
+            p.stdout.close()
+            rc = p.wait()
+
+            if self.options.debug: sys.stderr.write("DEBUG: ifdh checksum returns: %s" % checksum)
+
         if checksum:
             if checksum.find("crc_value") >= 0:
                 checksum = '["enstore:%s"]' % json.loads(checksum)["crc_value"]
@@ -735,7 +784,7 @@ exit
             # this moves the dest3 -> dest , etc. when i is 3...
             for k in ('dest', 'rename', 'addoutput', 'declare_metadata', 
                     'add_metadata', 'metadata_extractor', 'metadata_extractor_unquote', 'add_to_dataset', 
-                    'dataset_exclude', 'add_location', 'filter_metadata'):
+                    'dataset_exclude', 'add_location', 'filter_metadata','hash'):
                 self.options.__dict__[k] = self.options.__dict__.get(k+str(i), None)
 
             # clean out output files from previous pass
@@ -943,7 +992,10 @@ exit
             if do_mkdir_p:
                 self.ih.mkdir_p(actualdest)
 
-            self.ih.copyBackOutput(actualdest)
+            if self.options.hash:
+                self.ih.copyBackOutput(actualdest, int(self.options.hash))
+            else:
+                self.ih.copyBackOutput(actualdest)
 
             if self.options.dest_uniq_rename:
                 src = self.options.dest
@@ -1243,6 +1295,7 @@ def format_path(path_template, metadata, mtime, srcdir=None, basedir=None):
 if __name__ == '__main__' :
     w = Wrapper()
     w.parse_arguments()
+    w.check_cvmfs()
     try:
         w.fetch_inputs()
         w.do_setup()
