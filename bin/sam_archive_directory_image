@@ -84,7 +84,7 @@ if __name__ == '__main__':
         logging.disable(logging.INFO)
 
     if o.experiment:
-        print("seting experiment to: " , o.experiment)
+        print "setting experiment to: " , o.experiment
         os.environ['EXPERIMENT']= o.experiment
         os.environ['SAM_EXPERIMENT']= o.experiment
         os.environ['IFDH_BASE_URI'] = "http://samweb.fnal.gov:8480/sam/%s/api" % o.experiment
@@ -124,7 +124,7 @@ if __name__ == '__main__':
         res = os.system(cmd)
 
     if (res != 0): 
-        raise logicError("tar failed")
+	raise ValueError("tar failed")
 
     if o.just_say:
         statinfo =  os.stat("/tmp")
@@ -158,7 +158,7 @@ if __name__ == '__main__':
         else:  
             res = ih.cp(args)
 
-        if (res != 0): raise logicError("ifdh::cp failed")
+	if (res != 0): raise ValueError("ifdh::cp failed")
 
     if o.just_say:
         print("I would add file location %s for %s" % (o.dest, tarfilename))
