@@ -626,7 +626,7 @@ def main():
         logging.error("...however %d files out of %d failed to declare", failedfiles, totfiles)
 
     if failedlocations > 0:
-        logging.error("...however %d file locations failed to add")
+        logging.error("...however %d file locations failed to add", failedlocations)
 
   else:
     #p.print_help()

@@ -35,9 +35,9 @@ def retire( d, just_say = False, keep_files = False, delete_match = '.*', experi
                         logging.info("removing: %s ", full)
                         d.ifdh_handle.rm(full, '')
                 except: 
-                    logging.info("excpetion in remove %s", traceback.format_exc())
+                    logging.exception("unable to remove %s", full)
                     pass
-            logging.info("removing location:", samprefix(full), full) 
+            logging.info("removing location: %s%s", samprefix(full), full) 
             try:
                 samweb.removeFileLocation(file, samprefix(full) + dirname(full))
             except:

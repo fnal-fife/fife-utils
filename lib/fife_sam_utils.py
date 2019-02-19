@@ -617,7 +617,7 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
                             ds.uncache_location(fp)
                             print("-- location %s removed for %s" %(samloc,f))
                         except:
-                            logging.exception("Error: Removing file location: %s %s " % (f, samloc))
+                            logging.error("Error: Removing file location: %s %s " % (f, samloc))
             else:
                 if verbose: print("located: %s" % p)
 
@@ -843,11 +843,11 @@ def clean_one(d, path, full, keep, exp):
 
     if res == 0:
         try:
-            samweb.removeFileLocation(filename, loc)
             d.uncache_location(full)
+            samweb.removeFileLocation(filename, loc)
             res = 0
         except: 
-            logging.exception("Error: removeFileLocation %s %s failed" % (filename, loc))
+            logging.error("Error: removeFileLocation %s %s failed" % (filename, loc))
             res = 3
 
     sys.stdout.flush()
