@@ -14,10 +14,19 @@ import grp
 import optparse
 
 def report_stage_status(ds, locality, tapes):
-    print("   Staging status for: %s" %  ds.name)
-    print("          Total Files: %d" % len(ds.flist))
-    print("        Tapes spanned: %d" % len(tapes))
-    print("Percent files on disk: %d%%" % (int(locality['ONLINE'] * 100 / len(ds.flist) )))
+    print("         Staging status for: %s" %  ds.name)
+    print("                Total Files: %d" % len(ds.flist))
+    print("              Tapes spanned: %d" % len(tapes))
+    print("      Percent files on disk: %d%%" % (int(locality['ONLINE'] * 100 / len(ds.flist) )))
+    ons = locality.get('ONLINE_AND_NEARLINE_size', 0)
+    os = locality.get('ONLINE_size', 0)
+    ns = locality.get('NEARLINE_size', 0)
+    ts = ons + os + ns
+    if ts != 0:
+        print("Percent bytes online DCache: %d%%" % ((ons + os) * 100 / ts ))
+        
+    else:
+        print("Percent bytes on disk: unknown")
     
 
 if __name__ == '__main__':
@@ -72,24 +81,40 @@ if __name__ == '__main__':
     if o.file:
         ds =fake_file_dataset(o.file)
 
-    if o.stage_status:
-        o.locality = {}
-        o.locality['ONLINE'] = 0
-        o.listtapes = set()
 
-    if o.locality and not os.access("/pnfs/%s" % o.experiment, os.O_RDONLY):
+    if (o.locality or o.stage_status)  and not os.access("/pnfs/%s" % o.experiment, os.O_RDONLY):
         sys.stderr.write("Notice: cannot do locality checks here: /pnfs/%s not visible\n" % o.experiment)
         o.locality = False
         o.stage_status = False
 
-    if o.tapeloc and not os.access("/pnfs/%s" % o.experiment, os.O_RDONLY):
+    if (o.tapeloc or o.stage_status ) and not os.access("/pnfs/%s" % o.experiment, os.O_RDONLY):
         sys.stderr.write("Notice: cannot do tape label checks here: /pnfs/%s not visible\n" % o.experiment)
         o.tapeloc = False
         o.stage_status = False
-    res = validate(ds , just_say = o.just_say, prune = o.prune, verbose = o.verbose , experiment = o.experiment, locality=o.locality, list_tapes=o.listtapes, tapeloc=o.tapeloc, location = o.location)
+
+    locality = None
+    if o.locality or o.stage_status:
+        locality = {}
+        locality['ONLINE'] = 0
+
+    listtapes = None
+    if o.listtapes or o.stage_status:
+        listtapes = set()
+
+    res = validate(ds , just_say = o.just_say, prune = o.prune, verbose = o.verbose , experiment = o.experiment, locality=locality, list_tapes=listtapes, tapeloc=o.tapeloc, location = o.location)
 
     if o.stage_status:
-        report_stage_status(ds, o.locality, o.listtapes)
+        report_stage_status(ds, locality, listtapes)
+
+    if o.locality:
+       print("locality counts:")
+       for k in list(locality.keys()):
+            print("%s: %d" % (k, locality[k]))
+
+    if o.listtapes:
+        print("tapes:")
+        for t in listtapes:
+            print(t)
 
     if 0 == res:
         log_finish("Success")

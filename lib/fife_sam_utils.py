@@ -120,6 +120,7 @@ class fake_file_dataset:
                 l = l[:l.find('(')]
             if l.find(':') > 0:
                 l = l[l.find(':')+1:]
+
             loclist.append(l + '/' + self.filename)
             
         return loclist.__iter__()
@@ -638,6 +639,9 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
                         if verbose: print("locality: %s\t%s" % (loc, f))
                         counts[loc] = counts.get(loc,0) + 1
 
+                        stat = os.stat("%s/%s" % (sp, f))
+                        counts["%s_size"%loc] = counts.get("%s_size"%loc,0) + stat.st_size
+
                     if tapeloc and tl == None:
                         logging.debug('checking: %s/.(use)(4)(%s)' % (sp,f))
                         fd = open( "%s/.(use)(4)(%s)" % (sp, f), "r")
@@ -670,21 +674,12 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
                     logging.error(traceback.format_exc())
                     logging.error("continuing...")
        
-    if locality:
-       print("locality counts:")
-       for k in list(counts.keys()):
-            print("%s: %d" % (k, counts[k]))
 
     for f in ds.file_iterator():
         l = ds.ifdh_handle.locateFile(f)
         if len(l) == 0:
            print("file %s has 0 locations" % f)
            res = 1
-
-    if list_tapes or isinstance(list_tapes, set):
-        print("tapes:")
-        for t in tapeset:
-            print(t)
 
     return res
 
