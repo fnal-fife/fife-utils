@@ -232,6 +232,7 @@ class dataset:
             self.loc_iter = [].__iter__()
             self.locmap = locmap
             self.fulllocflag = fulllocflag
+            self.tapeset = tapeset
             self.key_iter = list(locmap.keys()).__iter__()
             try:
                 self.next_key()
@@ -266,10 +267,10 @@ class dataset:
             if not self.fulllocflag:
                 prefix, res = res.split(':',1)
 
-            m = re.match('\(.*?@.*?\)$', res)
+            m = re.search('\(.*?@(.*?)\)', res)
             if m:
-                if tapeset != None:
-                    tapeset.add(m.group(1))
+                if self.tapeset != None:
+                    self.tapeset.add(m.group(1))
                 res = re.sub('\(.*?\)$','',res)
 
             #print "converted\n\t%s\nto\n\t%s" % ( pre, res)
@@ -287,10 +288,10 @@ class dataset:
     def remove_path_for(self, filename, path):
         locs = [x for x in self.locmap.get(filename)]
         if len(locs) >  0:
-            print("got locs: ", locs)
+            #print("got locs: ", locs)
             for i in range(len(locs)):
                 if locs[i][locs[i].find(':')+1:] == path:
-                    print("found match ", i)
+                    #print("found match ", i)
                     del locs[i:i+1]
                     break
             self.locmap[filename] = locs
@@ -680,7 +681,7 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
            print("file %s has 0 locations" % f)
            res = 1
 
-    if list_tapes:
+    if list_tapes or isinstance(list_tapes, set):
         print("tapes:")
         for t in tapeset:
             print(t)
