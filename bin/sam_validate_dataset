@@ -13,6 +13,12 @@ import os
 import grp
 import optparse
 
+def report_stage_status(ds, locality, tapes):
+    print("   Staging status for: %s" %  ds.name)
+    print("          Total Files: %d" % len(ds.flist))
+    print("        Tapes spanned: %d" % len(tapes))
+    print("Percent files on disk: %d%%" % (int(locality['ONLINE'] * 100 / len(ds.flist) )))
+    
 
 if __name__ == '__main__':
 
@@ -31,6 +37,7 @@ if __name__ == '__main__':
     parser.add_option('-L', '--listtapes', action='store_true', help='list what tapes SAM thinks files are on', default = False)
     parser.add_option('-T', '--tapeloc', action='store_true', help='check DCache locations to see what tapes things are on', default = False)
     parser.add_option('--location', help="only check matching locations", action='append', default=[])
+    parser.add_option('--stage_status', help="generate staging status report", action='store_true', default = False)
 
     (o,a) = parser.parse_args()
 
@@ -62,19 +69,30 @@ if __name__ == '__main__':
     if o.file:
         ds =fake_file_dataset(o.file)
 
+    if o.stage_status:
+        o.locality = {}
+        o.locality['ONLINE'] = 0
+        o.list_tapes = set()
+        o.tapeloc = True
+
     if o.locality and not os.access("/pnfs/%s" % o.experiment, os.O_RDONLY):
         sys.stderr.write("Notice: cannot do locality checks here: /pnfs/%s not visible\n" % o.experiment)
         o.locality = False
+        o.stage_status = False
 
     if o.tapeloc and not os.access("/pnfs/%s" % o.experiment, os.O_RDONLY):
         sys.stderr.write("Notice: cannot do tape label checks here: /pnfs/%s not visible\n" % o.experiment)
         o.tapeloc = False
+        o.stage_status = False
     res = validate(ds , just_say = o.just_say, prune = o.prune, verbose = o.verbose , experiment = o.experiment, locality=o.locality, list_tapes=o.listtapes, tapeloc=o.tapeloc, location = o.location)
+
+    if o.stage_status:
+        report_stage_status(ds, o.locality, o.list_tapes)
 
     if 0 == res:
         log_finish("Success")
     else:
-        log_finish("Success")
+        log_finish("Fail")
 
     sys.exit(res)
 

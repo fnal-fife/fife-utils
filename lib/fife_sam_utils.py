@@ -103,6 +103,8 @@ class fake_file_dataset:
     def __init__( self, filename ):
         self.ifdh_handle = ifdh.ifdh()   
         self.filename = filename
+        self.name = "file %s" % filename
+        self.flist = [ filename ]
 
     def file_iterator(self):
         flist = [ self.filename ]
