@@ -41,6 +41,9 @@ if __name__ == '__main__':
 
     (o,a) = parser.parse_args()
 
+    if sys.argv[0].find("stage_status") > 0:
+        o.stage_status = 1
+
     if o.verbose > 1:
         logging.basicConfig(level=logging.DEBUG)
     elif o.verbose > 0:
