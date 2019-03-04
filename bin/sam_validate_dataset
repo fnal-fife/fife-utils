@@ -17,7 +17,7 @@ def report_stage_status(ds, locality, tapes):
     print("         Staging status for: %s" %  ds.name)
     print("                Total Files: %d" % len(ds.flist))
     print("              Tapes spanned: %d" % len(tapes))
-    print("      Percent files on disk: %d%%" % ((locality['ONLINE']+locality['ONLINE_AND_NEARLINE']) * 100 / len(ds.flist) )))
+    print("      Percent files on disk: %d%%" % ((locality.get('ONLINE',0)+locality.get('ONLINE_AND_NEARLINE',0)) * 100 / len(ds.flist) ))
     ons = locality.get('ONLINE_AND_NEARLINE_size', 0)
     os = locality.get('ONLINE_size', 0)
     ns = locality.get('NEARLINE_size', 0)
