@@ -322,11 +322,11 @@ class launcher(object):
                 if len(k) > 2 and k[-2] == '_' and k[-1] in "0123456789":
                      k = k[:-2]
                 if len(k) == 1:
-                    res.append("  -%s '%s'  \\" %( k,v))
+                    res.append("  -%s %s  \\" %( k,v))
                 elif v == 'True' or v == True:
                     res.append("  --%s \\" % k)
                 else:
-                    res.append("  --%s='%s'  \\" %( k,v))
+                    res.append("  --%s=%s  \\" %( k,v))
 
             wrapfile = os.path.expandvars(self.cfg_get('global','wrapper',vars = self.cfg_globals))
             if wrapfile.startswith("file:///"):
