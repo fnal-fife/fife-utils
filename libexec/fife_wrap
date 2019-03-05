@@ -694,7 +694,10 @@ exit
         #  list data disks and look for path matches... but it covers most
         #  cases for now.
         if re.match( '/pnfs/[^/]*/(scratch|volatile|persistent)',path):
-            return 'dcache:'
+            if self.experiment == 'uboone':
+                return 'fnal-dcache:'
+            else:
+                return 'dcache:'
         if re.match('/pnfs/',path):
             return 'enstore:'
         if re.match('/eos/cern.ch/',path):
@@ -987,7 +990,7 @@ exit
                 actualdest = format_path(actualdest, CaseInsensitiveDict(metadata_d), time.time())
                 
             if actualdest.find('$') >= 0:
-                actualdest = os.path.expandvars()
+                actualdest = os.path.expandvars(actualdest)
 
             if do_mkdir_p:
                 self.ih.mkdir_p(actualdest)
