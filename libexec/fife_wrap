@@ -922,7 +922,7 @@ exit
                     # add extra metadata fields from commandline
                     for siv in self.options.add_metadata:
                         si, v = siv.split('=',1)
-                        metadata_d[si] = v
+                        metadata_d[si] = os.path.expandvars(v)
 
                     metadata = json.dumps(metadata_d)
                             
