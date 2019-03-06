@@ -690,9 +690,32 @@ exit
 
     def sam_prefix(self, path):
         '''figure out a SAM prefix for a path...'''
-        #  note that this should work like the one in fife_utils, we should
-        #  list data disks and look for path matches... but it covers most
-        #  cases for now.
+
+        if path.find("s3:") == 0:
+            return ""
+
+        if path.find("://") > 0:
+            # it is a URL, so leave it alone!
+            return ""
+
+        #
+        # try to find a match in sam data disks...
+        #
+        try:
+            nowhere=open("/dev/null","w")
+            l = subprocess.Popen("wget -O - 'http://samweb.fnal.gov:8480/sam/%s/api/values/data_disks'" % self.experiment , stdout=subprocess.PIPE, stderr=nowhere).stdout.readlines()
+            nowhere.close()
+            for pp in l:
+               pp = pp.strip('\n')
+               prefix, rest = pp.split(":",1)
+               #print "checking:", pp, "->",  prefix,  ":", rest
+               if path.startswith(rest):
+                    return "%s:" % prefix
+        except:
+            print("exception in samweb list-data-disks...")
+            pass
+
+
         if re.match( '/pnfs/[^/]*/(scratch|volatile|persistent)',path):
             if self.experiment == 'uboone':
                 return 'fnal-dcache:'
