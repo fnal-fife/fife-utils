@@ -712,9 +712,10 @@ exit
                if path.startswith(rest):
                     return "%s:" % prefix
         except:
-            print("exception in samweb list-data-disks...")
+            print("ignroing exception in samweb list-data-disks...")
             pass
 
+        # if we didn't find it the right way, make a good guess..
 
         if re.match( '/pnfs/[^/]*/(scratch|volatile|persistent)',path):
             if self.experiment == 'uboone':
