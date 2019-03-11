@@ -110,6 +110,7 @@ class Wrapper:
         parser.add_option("--export-unquote",action="append",  help="export environment variable before running", default= [])
         parser.add_option("--setup",action="append",  help="setup product before running", default=[])
         parser.add_option("--setup-unquote",action="append",  help="setup product before running", default=[])
+        parser.add_option("--setup-unpacked",action="append",  help="setup products in upacked tar directory", default=[])
         parser.add_option("--source",action="append",  help="source setup file before running", default = [])
         parser.add_option("--source-unquote",action="append",  help="source setup file before running", default = [])
         parser.add_option("--self_destruct_timer", type="int", help="After this many seconds, suicide the job so we get output back")
@@ -231,6 +232,10 @@ class Wrapper:
         if self.options.setup_unquote:
             for s in self.options.setup_unquote:
                 scriptlist.append("setup %s" % urllib_unquote(s))
+
+        if self.options.setup_unpacked:
+            for d in self.options.setup_unpacked:
+                scriptlist.append("for f in $(ups list -aK+ -z %s*|while read p v f q c; do echo ups setup -j -z %s* $p $v -f $f -q $q; done|sh);do source $f; done" % (d, d))
 
         scriptlist.append('[ -z "$PRODUCTS" -a -r /cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups.sh ] && source /cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups.sh')
         scriptlist.append('[ -z "$PRODUCTS" -a -r /grid/fermiapp/products/common/etc/setups.sh ] && source /grid/fermiapp/products/common/etc/setups.sh')
