@@ -105,6 +105,7 @@ class fake_file_dataset:
         self.filename = filename
         self.dims = "file %s" % filename
         self.flist = [ filename ]
+        self.have_pnfs = os.access("/pnfs/")
 
     def file_iterator(self):
         flist = [ self.filename ]
@@ -126,6 +127,9 @@ class fake_file_dataset:
         return loclist.__iter__()
 
     def location_has_file(self,fullpath):
+        # optimize location checks for pnfs if mounted
+        if fullpath[:6] == '/pnfs/' and self.have_pnfs and os.access(fullpath, os.R_OK):
+            return 1
         res = self.ifdh_handle.ls(fullpath,1,'')
         return len(res) != 0
 
@@ -579,7 +583,7 @@ def get_enstore_info(bfid , maxdepth = 3):
          enstore_info = get_enstore_info(package_id, maxdepth - 1)
     return enstore_info
 
-def validate( ds, just_say = False, prune = False, verbose = False, experiment = None , locality = False, list_tapes=False, tapeloc= False, location = [] ):
+def validate( ds, just_say = False, prune = False, verbose = False, experiment = None , locality = False, list_tapes=False, tapeloc= False, location = []):
     samweb = SAMWebClient(experiment=experiment)
     res=0
 

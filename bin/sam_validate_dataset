@@ -14,7 +14,7 @@ import grp
 import optparse
 
 def report_stage_status(ds, locality, tapes):
-    print("         Staging status for: %s" %  ds.name)
+    print("         Staging status for: %s" %  ds.dims)
     print("                Total Files: %d" % len(ds.flist))
     print("              Tapes spanned: %d" % len(tapes))
     print("      Percent files on disk: %d%%" % ((locality.get('ONLINE',0)+locality.get('ONLINE_AND_NEARLINE',0)) * 100 / len(ds.flist) ))
