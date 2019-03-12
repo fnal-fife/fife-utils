@@ -53,7 +53,6 @@ def duplicate_kids( ds,  verbose = False, experiment = None, keeplists=None ):
             # list the smaller file as the duplicate
             # if a file is zero size, or truncated, the longer one
             # is the keeper...
-            sys.stdout.write('.')
             if mdl[i]['file_size'] < mdl[j]['file_size']:
                 dl.append(mdl[i]['file_name'])
                 i = j
@@ -61,7 +60,7 @@ def duplicate_kids( ds,  verbose = False, experiment = None, keeplists=None ):
                 dl.append(mdl[j]['file_name'])
             j = j + 1
 
-        print("parent %s file %s dups %s" % (p, mdl[i]['file_name'], repr(dl)))
+        #print("parent %s file %s dups %s" % (p, mdl[i]['file_name'], repr(dl)))
         dupl[p][mdl[i]['file_name']] = dl
 
         i = j 
@@ -108,7 +107,11 @@ if __name__ == '__main__':
     res = duplicate_kids(dataset(dims=o.dims), verbose = o.verbose , experiment = o.experiment, keeplists= o.keeplists)
 
     for p in res:
-        if not res[p]:
+        has_dups = False
+        for k in res[p]:
+            if res[p][k]:
+                has_dups = True
+        if not has_dups:
             continue
         print("parent %s:" % p)
         for k in res[p]:
