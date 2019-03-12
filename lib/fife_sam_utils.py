@@ -103,7 +103,7 @@ class fake_file_dataset:
     def __init__( self, filename ):
         self.ifdh_handle = ifdh.ifdh()   
         self.filename = filename
-        self.name = "file %s" % filename
+        self.dims = "file %s" % filename
         self.flist = [ filename ]
 
     def file_iterator(self):
@@ -141,9 +141,16 @@ class fake_file_dataset:
         
 
 class dataset:
-    def __init__( self, name ):
+    def __init__( self, name = None, dims = None ):
+
         self.ifdh_handle = ifdh.ifdh()   
-        self.name = name
+        if name and dims or (not name and not dims):
+             raise ParameterError("either name or dims, not both")
+        elif name:
+            self.dims = "defname:%s" % name
+        elif dims:
+            self.dims = dims
+
         self.flush()
 
     def wrap_ls(self, path, n, force):
@@ -220,7 +227,7 @@ class dataset:
 
     def get_flist( self ):
         if self.flist == None:
-            self.flist =  self.ifdh_handle.translateConstraints("defname: %s " % self.name)
+            self.flist =  self.ifdh_handle.translateConstraints(self.dims)
         return self.flist
 
     def file_iterator(self):

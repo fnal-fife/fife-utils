@@ -52,6 +52,8 @@ if __name__ == '__main__':
 
     if sys.argv[0].find("stage_status") > 0:
         o.stage_status = True
+        if not o.location:
+            o.location.append('/pnfs/')
 
     if o.verbose > 1:
         logging.basicConfig(level=logging.DEBUG)

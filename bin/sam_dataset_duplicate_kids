@@ -1,0 +1,124 @@
+#!/usr/bin/env python
+try:
+    from six import *
+except:
+    pass
+
+import sys
+import os
+import grp
+import optparse
+import logging
+from samweb_client import *
+from fife_sam_utils import *
+
+def is_dup(md1, md2):
+    for k in ['file_format', 'file_type', 'data_tier', 'user', 'version', 'application', 'parents']:
+        if md1.get(k,None) != md2.get(k, None):
+            return 0
+    return 1
+
+def duplicate_kids( ds,  verbose = False, experiment = None, keeplists=None ):
+    samweb = SAMWebClient(experiment=experiment)
+    dupl = {}
+    fl = []
+
+    for f in ds.file_iterator():
+        fl.append(f)
+   
+    mdl = []
+    while fl:
+        md_json = samweb.getMultipleMetadata(fl[:500],asJSON=True)
+        mdl.extend(json.loads(md_json))
+        fl = fl[500:]
+
+    # order metadata list by (first) parent file id
+    extract_fid =(lambda x: x['parents'][0]['file_id']) 
+
+    mdl.sort(key = extract_fid )
+
+    i = 0
+    j = 1
+    oldp = None
+    dupl[None] = {}
+    n = len(mdl)
+    while (i < n and j < n):
+        dl = []
+        p = mdl[i]['parents'][0]['file_name']
+        if p != oldp:
+            dupl[p] = {}
+        oldp = p
+
+        while( j < n and is_dup(mdl[i], mdl[j])):
+            # list the smaller file as the duplicate
+            # if a file is zero size, or truncated, the longer one
+            # is the keeper...
+            sys.stdout.write('.')
+            if mdl[i]['file_size'] < mdl[j]['file_size']:
+                dl.append(mdl[i]['file_name'])
+                i = j
+            else:
+                dl.append(mdl[j]['file_name'])
+            j = j + 1
+
+        print("parent %s file %s dups %s" % (p, mdl[i]['file_name'], repr(dl)))
+        dupl[p][mdl[i]['file_name']] = dl
+
+        i = j 
+        j = i + 1
+
+    return dupl
+
+if __name__ == '__main__':
+    
+    log_startup()
+
+    experiment = os.environ.get('EXPERIMENT',os.environ.get('SAM_EXPERIMENT',grp.getgrgid(os.getgid())[0]))
+
+    parser = optparse.OptionParser(usage="usage: %prog [options] --dims dimensions \n Check files in dims for duplicate children of same parent")
+    parser.add_option('-v','--verbose',   action='count')
+    parser.add_option('-e','--experiment', default=experiment, help='use this experiment server defaults to $SAM_EXPERIMENT if not set')
+    parser.add_option('-k','--keeplists', help="keep file lists in directory KEEPLISTS",default=None)
+    parser.add_option( '--dims',     help="dimension query for files to check", )
+
+    (o,a) = parser.parse_args()
+
+    if o.verbose > 1:
+        logging.basicConfig(level=logging.DEBUG)
+    elif o.verbose > 0:
+        logging.basicConfig(level=logging.INFO)
+    else:
+        logging.disable(logging.INFO)
+
+    if o.experiment:
+        os.environ['EXPERIMENT']= o.experiment
+        os.environ['SAM_EXPERIMENT']= o.experiment
+        os.environ['IFDH_BASE_URI'] = "http://samweb.fnal.gov:8480/sam/%s/api" % o.experiment
+    else: 
+        sys.stderr.write("Error: Need either --experiment or $EXPERIMENT $SAM_EXPERIMENT in environment")
+        os.exit(1)
+
+    cert = get_standard_certificate_path(o)
+    os.environ['X509_USER_PROXY'] = cert
+
+    if not o.dims:
+        parser.error("expected --dims dimensions")
+        exit(1)
+
+    res = duplicate_kids(dataset(dims=o.dims), verbose = o.verbose , experiment = o.experiment, keeplists= o.keeplists)
+
+    for p in res:
+        if not res[p]:
+            continue
+        print("parent %s:" % p)
+        for k in res[p]:
+            if not res[p][k]:
+                continue
+            print("  duplicates of %s:" % k)
+            for f in res[p][k]:
+                print( "    %s" % f)
+
+    #print repr(res)
+
+    log_finish("Success")
+    sys.exit(0)
