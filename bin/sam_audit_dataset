@@ -86,7 +86,7 @@ def audit( ds, dest,  verbose = False, experiment = None, keeplists=None ):
            num_no_locations += 1
            logging.info("file %s has 0 locations",f)
         
-    print_("Dataset ", ds.name, "at location", dest, ":")
+    print_("Dataset ", ds.dims, "at location", dest, ":")
     print_("               Total Files:", num_in_dataset) 
     print_("      Present and declared:", num_present_declared_at_dest)
     print_("                  Declared:", num_declared_at_dest)

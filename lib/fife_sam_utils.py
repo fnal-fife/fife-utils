@@ -148,9 +148,11 @@ class dataset:
     def __init__( self, name = None, dims = None ):
 
         self.ifdh_handle = ifdh.ifdh()   
+        self.name = None
         if name and dims or (not name and not dims):
              raise ParameterError("either name or dims, not both")
         elif name:
+            self.name = name
             self.dims = "defname:%s" % name
         elif dims:
             self.dims = dims
