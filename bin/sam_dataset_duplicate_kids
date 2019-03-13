@@ -12,61 +12,80 @@ import logging
 from samweb_client import *
 from fife_sam_utils import *
 
-def is_dup(md1, md2):
-    for k in ['file_format', 'file_type', 'data_tier', 'user', 'version', 'application', 'parents']:
-        if md1.get(k,None) != md2.get(k, None):
-            return 0
-    return 1
+class de_duper:
+    def __init__(self):
+        self.metadata_list =  ['file_format', 'file_type', 'data_tier', 'user',  'application', 'parents']
 
-def duplicate_kids( ds,  verbose = False, experiment = None, keeplists=None ):
-    samweb = SAMWebClient(experiment=experiment)
-    dupl = {}
-    fl = []
+    def is_dup(self, md1, md2):
 
-    for f in ds.file_iterator():
-        fl.append(f)
-   
-    mdl = []
-    while fl:
-        md_json = samweb.getMultipleMetadata(fl[:500],asJSON=True)
-        mdl.extend(json.loads(md_json))
-        fl = fl[500:]
+        for k in self.metadata_list:
+            if md1.get(k,None) != md2.get(k, None):
+                return 0
+        return 1
 
-    # order metadata list by (first) parent file id
-    extract_fid =(lambda x: x['parents'][0]['file_id']) 
+    def include_metadata(self, metadata_list):
+        self.metadata_list.extend(metadata_list)
 
-    mdl.sort(key = extract_fid )
+    def extract_key(self, metadata):
+         
+        # parent file id is primary sort key
+        res = [ 
+            str(metadata.get('parents',[{'file_id':-1}])[0]['file_id']),
+        ]
+        # tack on metadata fields we compare on, so they'll be sorted that way
+        for k in self.metadata_list:
+            res.append(repr(metadata.get(k,'')))
 
-    i = 0
-    j = 1
-    oldp = None
-    dupl[None] = {}
-    n = len(mdl)
-    while (i < n and j < n):
-        dl = []
-        p = mdl[i]['parents'][0]['file_name']
-        if p != oldp:
-            dupl[p] = {}
-        oldp = p
+        return ':'.join(res)
 
-        while( j < n and is_dup(mdl[i], mdl[j])):
-            # list the smaller file as the duplicate
-            # if a file is zero size, or truncated, the longer one
-            # is the keeper...
-            if mdl[i]['file_size'] < mdl[j]['file_size']:
-                dl.append(mdl[i]['file_name'])
-                i = j
-            else:
-                dl.append(mdl[j]['file_name'])
-            j = j + 1
+    def duplicate_kids(self,  ds,  verbose = False, experiment = None, keeplists=None ):
+        self.samweb = SAMWebClient(experiment=experiment)
+        dupl = {}
+        fl = []
 
-        #print("parent %s file %s dups %s" % (p, mdl[i]['file_name'], repr(dl)))
-        dupl[p][mdl[i]['file_name']] = dl
+        for f in ds.file_iterator():
+            fl.append(f)
+       
+        mdl = []
+        while fl:
+            md_json = self.samweb.getMultipleMetadata(fl[:500],asJSON=True)
+            mdl.extend(json.loads(md_json))
+            fl = fl[500:]
 
-        i = j 
-        j = i + 1
+        # order metadata list by (first) parent file id
 
-    return dupl
+        mdl.sort(key = self.extract_key)
+
+        i = 0
+        j = 1
+        oldp = None
+        dupl[None] = {}
+        n = len(mdl)
+        while (i < n and j < n):
+            dl = []
+            p = mdl[i]['parents'][0]['file_name']
+            if p != oldp:
+                dupl[p] = {}
+            oldp = p
+
+            while( j < n and self.is_dup(mdl[i], mdl[j])):
+                # list the smaller file as the duplicate
+                # if a file is zero size, or truncated, the longer one
+                # is the keeper...
+                if mdl[i]['file_size'] < mdl[j]['file_size']:
+                    dl.append(mdl[i]['file_name'])
+                    i = j
+                else:
+                    dl.append(mdl[j]['file_name'])
+                j = j + 1
+
+            #print("parent %s file %s dups %s" % (p, mdl[i]['file_name'], repr(dl)))
+            dupl[p][mdl[i]['file_name']] = dl
+
+            i = j 
+            j = i + 1
+
+        return dupl
 
 if __name__ == '__main__':
     
@@ -77,8 +96,10 @@ if __name__ == '__main__':
     parser = optparse.OptionParser(usage="usage: %prog [options] --dims dimensions \n Check files in dims for duplicate children of same parent")
     parser.add_option('-v','--verbose',   action='count')
     parser.add_option('-e','--experiment', default=experiment, help='use this experiment server defaults to $SAM_EXPERIMENT if not set')
-    parser.add_option('-k','--keeplists', help="keep file lists in directory KEEPLISTS",default=None)
     parser.add_option( '--dims',     help="dimension query for files to check", )
+    parser.add_option( '--include_metadata', help="metadata field to include in comparisons", default=[], action='append')
+    parser.add_option( '--mark_bad', action='store_true', default=False, help="mark as 'bad' in content_status")
+    parser.add_option( '--retire_file', action='store_true', default=False, help="retire duplicate files")
 
     (o,a) = parser.parse_args()
 
@@ -104,7 +125,11 @@ if __name__ == '__main__':
         parser.error("expected --dims dimensions")
         exit(1)
 
-    res = duplicate_kids(dataset(dims=o.dims), verbose = o.verbose , experiment = o.experiment, keeplists= o.keeplists)
+    dd = de_duper()
+
+    dd.include_metadata(o.include_metadata)
+
+    res = dd.duplicate_kids(dataset(dims=o.dims), verbose = o.verbose , experiment = o.experiment)
 
     for p in res:
         has_dups = False
@@ -120,8 +145,11 @@ if __name__ == '__main__':
             print("  duplicates of %s:" % k)
             for f in res[p][k]:
                 print( "    %s" % f)
+                if o.mark_bad:
+                     dd.samweb.modifyFileMetadata(f, md = {'content_status':'bad'})
 
-    #print repr(res)
+                if o.retire_file:
+                     dd.samweb.retireFile(f)
 
     log_finish("Success")
     sys.exit(0)
