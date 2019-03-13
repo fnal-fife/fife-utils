@@ -9,6 +9,7 @@ import os
 import grp
 import optparse
 import logging
+import ifdh
 from samweb_client import *
 from fife_sam_utils import *
 
@@ -100,6 +101,7 @@ if __name__ == '__main__':
     parser.add_option( '--include_metadata', help="metadata field to include in comparisons", default=[], action='append')
     parser.add_option( '--mark_bad', action='store_true', default=False, help="mark as 'bad' in content_status")
     parser.add_option( '--retire_file', action='store_true', default=False, help="retire duplicate files")
+    parser.add_option( '--delete', action='store_true', default=False, help="delte duplicate files")
 
     (o,a) = parser.parse_args()
 
@@ -131,6 +133,8 @@ if __name__ == '__main__':
 
     res = dd.duplicate_kids(dataset(dims=o.dims), verbose = o.verbose , experiment = o.experiment)
 
+    ih = ifdh.ifdh()
+
     for p in res:
         has_dups = False
         for k in res[p]:
@@ -144,12 +148,26 @@ if __name__ == '__main__':
                 continue
             print("  duplicates of %s:" % k)
             for f in res[p][k]:
-                print( "    %s" % f)
+                acts=""
+                if o.delete:
+                     ll = dd.samweb.locateFile(f)
+                     for l in ll:
+                          try:
+                              path = sampath(l['full_path'] + '/' + f)
+                              ih.rm(path, '')
+                              acts += "(deleted)"
+                          except Exception as e:
+                              acts += "(failed deleting %s)" % path
+
                 if o.mark_bad:
                      dd.samweb.modifyFileMetadata(f, md = {'content_status':'bad'})
 
+                     acts += "(marked bad)"
                 if o.retire_file:
                      dd.samweb.retireFile(f)
+                     acts += "(retired)"
+
+                print( "    %s %s" % (f,acts))
 
     log_finish("Success")
     sys.exit(0)
