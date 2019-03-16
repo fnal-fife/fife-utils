@@ -142,7 +142,26 @@ class fake_file_dataset:
          
     def remove_path_for(filename, fp):
         pass
-        
+
+    def startProject(projname, station, dataset, user, experiment):
+        return "fake://fake"
+
+    def findProject(projname, station):
+        return "fake://fake"
+
+    def establishProcess( purl, a, vers, hostname, user, pkg, desc, lim , schema)
+        self.count = 0
+        return 1
+
+    def getNextFile(purl, consumer_id):
+        count = count + 1
+        if self.count == 1:
+            return self.file
+        else:
+            return ""
+      
+    def endProject(purl):
+        return 1
 
 class dataset:
     def __init__( self, name = None, dims = None ):
@@ -158,6 +177,21 @@ class dataset:
             self.dims = dims
 
         self.flush()
+
+    def startProject(projname, station, dataset, user, experiment):
+        return self.ifdh_handle.startProject(projname, station, dataset, user, experiment)
+
+    def findProject(projname, station):
+        return  d.ifdh_handle.findProject(projname, station)
+
+    def establishProcess( purl, a, vers, hostname, user, pkg, desc, lim , schema)
+        return self.ifdh_handle.establishProcess( purl, a, vers, hostname, user, pkg, desc, lim , schema)
+
+    def getNextFile(purl, consumer_id):
+        return self.ifdh_handle.getNextFile(purl, consumer_id)
+ 
+    def endProject(purl):
+        return self.ifdh_handle.endProject(purl)
 
     def wrap_ls(self, path, n, force):
         for attempt in range(3):
@@ -733,9 +767,9 @@ def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 1, verbose =
     hostname = socket.gethostname()
 
     if connect_project:
-        purl = d.ifdh_handle.findProject(projname, os.environ.get('SAM_STATION',experiment))
+        purl = d.findProject(projname, os.environ.get('SAM_STATION',experiment))
     else:
-        purl = d.ifdh_handle.startProject(projname, os.environ.get('SAM_STATION',experiment), d.name, user, experiment)
+        purl = d.startProject(projname, os.environ.get('SAM_STATION',experiment), d.name, user, experiment)
         if not purl:
             logging.error("startProject failed.")
             os.exit(1)
@@ -766,7 +800,7 @@ def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 1, verbose =
         samweb = SAMWebClient(experiment = experiment)
         d.ifdh_handle = ifdh.ifdh()
        
-    consumer_id = d.ifdh_handle.establishProcess( purl, "sam_clone_dataset", "1", hostname, user, "fife_utils", "sam_clone_dataset project", 0 , "")
+    consumer_id = d.establishProcess( purl, "sam_clone_dataset", "1", hostname, user, "fife_utils", "sam_clone_dataset project", 0 , "")
     consumer_id = consumer_id.strip()
     logging.info("got consumer id: %s", consumer_id)
 
@@ -774,7 +808,7 @@ def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 1, verbose =
          print("Error: could not establish sam consumer id for project: ", projname)
          sys.exit(1)
 
-    furi = d.ifdh_handle.getNextFile(purl, consumer_id)
+    furi = d.getNextFile(purl, consumer_id)
 
     # deal with single/double s3 urls silliness..
 
@@ -829,7 +863,7 @@ def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 1, verbose =
            os.wait()
 
     if kidlist or int(ncopies) == 1:
-       d.ifdh_handle.endProject(purl)
+       d.endProject(purl)
 
 def clean_one(d, path, full, keep, exp):
     samweb = SAMWebClient(experiment = exp)
