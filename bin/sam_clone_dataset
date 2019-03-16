@@ -132,7 +132,7 @@ if __name__ == '__main__':
     if o.name:
         ds = dataset(o.name)
     if o.file:
-        ds = fake_file.dataset(o.file)
+        ds = fake_file_dataset(o.file)
 
     if o.njobs:
         startjobs(o)

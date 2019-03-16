@@ -103,9 +103,10 @@ class fake_file_dataset:
     def __init__( self, filename ):
         self.ifdh_handle = ifdh.ifdh()   
         self.filename = filename
+        self.name = 'file %s' % filename
         self.dims = "file %s" % filename
         self.flist = [ filename ]
-        self.have_pnfs = os.access("/pnfs/")
+        self.have_pnfs = os.access("/pnfs/", os.R_OK)
 
     def file_iterator(self):
         flist = [ self.filename ]
@@ -137,7 +138,8 @@ class fake_file_dataset:
         pass
 
     def get_paths_for(self,filename):
-        loclist = self.ifdh_handle.locateFile( self.filename )
+        loclist = self.ifdh_handle.locateFile( filename )
+        loclist = [ sampath(loc) + '/' + filename  for loc in loclist]
         return loclist
          
     def remove_path_for(filename, fp):
@@ -151,12 +153,15 @@ class fake_file_dataset:
 
     def establishProcess(self,  purl, a, vers, hostname, user, pkg, desc, lim , schema):
         self.count = 0
+        return "1"
+
+    def updateFileStatus(self, purl, consumer_id,f, status):
         return 1
 
     def getNextFile(self, purl, consumer_id):
         self.count = self.count + 1
         if self.count == 1:
-            return self.file
+            return self.filename
         else:
             return ""
       
@@ -189,6 +194,10 @@ class dataset:
 
     def getNextFile(self,purl, consumer_id):
         return self.ifdh_handle.getNextFile(purl, consumer_id)
+
+    def updateFileStatus(self, purl, consumer_id,f, status):
+        return self.ifdh_handle.updateFileStatus(purl, consumer_id,f, status)
+        return 1
  
     def endProject(purl):
         return self.ifdh_handle.endProject(purl)
@@ -576,6 +585,7 @@ def copy_and_declare(d, cpargs, locargs, dest, subdirf, samweb, just_say, verbos
                 res = d.ifdh_handle.cp(l1)
             res = d.ifdh_handle.cp(l2)
         else:
+            print("ifdh cp args; %s" % cpargs)
             res = d.ifdh_handle.cp(cpargs)
         logging.debug("ifdh cp returns %d" % res)
         # XXX note this is arguably incorrect, we only declare locations if
@@ -825,8 +835,8 @@ def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 1, verbose =
         loclist = d.get_paths_for(f)
 
         if already_there(f, loclist, dest):
-            d.ifdh_handle.updateFileStatus(purl, consumer_id,f, 'transferred')
-            d.ifdh_handle.updateFileStatus(purl, consumer_id,f, 'consumed')
+            d.updateFileStatus(purl, consumer_id,f, 'transferred')
+            d.updateFileStatus(purl, consumer_id,f, 'consumed')
             furi = d.ifdh_handle.getNextFile(purl, consumer_id)
             continue
                 
@@ -850,9 +860,9 @@ def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 1, verbose =
         if getawscreds and  count % 10000 == 0:
             do_getawscreds()
 
-        d.ifdh_handle.updateFileStatus(purl, consumer_id,f, 'transferred')
-        d.ifdh_handle.updateFileStatus(purl, consumer_id,f, 'consumed')
-        furi = d.ifdh_handle.getNextFile(purl, consumer_id)
+        d.updateFileStatus(purl, consumer_id,f, 'transferred')
+        d.updateFileStatus(purl, consumer_id,f, 'consumed')
+        furi = d.getNextFile(purl, consumer_id)
 
     copy_and_declare(d, cpargs, locargs, dest, subdirf, samweb, just_say, verbose, paranoid, intermed)
     d.ifdh_handle.setStatus( purl, consumer_id, "completed")
