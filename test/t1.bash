@@ -452,6 +452,7 @@ testsuite test_utils \
 	test_clone  \
         test_retire \
         add_dataset \
+	test_validate_1 \
 	test_clone_n  \
         test_retire \
         test_add_dataset_flist \

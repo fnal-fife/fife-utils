@@ -24,7 +24,7 @@ testsuite() {
             local n_tests
             local n_fails
             
-            trap \"rm -f ${TMPDIR:-/tmp}/test_out_\$\$ ${TMPDIR:-/tmp}/test_case_out\$\$\; echo 'return trap'; trap '' \$siglist \" \$siglist
+            trap wrapup \$siglist
 
             : > ${TMPDIR:-/tmp}/test_out_$$
 
@@ -71,17 +71,25 @@ testsuite() {
 	       \$${suitename}_test_teardown > /dev/null 2>&1
             done
             echo
-            cat /tmp/test_out_$$
-            echo Ran \$n_tests tests with \$n_fails failures
-            if [ \$n_fails = 0 ]
-            then
-                echo "ok"
-            else
-                echo "FAILED"
-                false
-            fi
          }
      "
      #echo "def is $def" 
      eval "$def"
+}
+wrapup() {
+    echo
+    echo ==================================
+    cat /tmp/test_out_$$
+    echo ==================================
+    echo Ran $n_tests tests with $n_fails failures
+    if [ \$n_fails = 0 ]
+    then
+        echo "ok"
+    else
+        echo "FAILED"
+        false
+    fi
+    rm -f ${TMPDIR:-/tmp}/test_out_$$ ${TMPDIR:-/tmp}/test_case_out$$
+    trap "" $siglist
+    echo 'return trap'
 }

@@ -143,24 +143,24 @@ class fake_file_dataset:
     def remove_path_for(filename, fp):
         pass
 
-    def startProject(projname, station, dataset, user, experiment):
+    def startProject(self, projname, station, dataset, user, experiment):
         return "fake://fake"
 
-    def findProject(projname, station):
+    def findProject(self, projname, station):
         return "fake://fake"
 
-    def establishProcess( purl, a, vers, hostname, user, pkg, desc, lim , schema)
+    def establishProcess(self,  purl, a, vers, hostname, user, pkg, desc, lim , schema):
         self.count = 0
         return 1
 
-    def getNextFile(purl, consumer_id):
-        count = count + 1
+    def getNextFile(self, purl, consumer_id):
+        self.count = self.count + 1
         if self.count == 1:
             return self.file
         else:
             return ""
       
-    def endProject(purl):
+    def endProject(self, purl):
         return 1
 
 class dataset:
@@ -178,16 +178,16 @@ class dataset:
 
         self.flush()
 
-    def startProject(projname, station, dataset, user, experiment):
+    def startProject(self,projname, station, dataset, user, experiment):
         return self.ifdh_handle.startProject(projname, station, dataset, user, experiment)
 
-    def findProject(projname, station):
+    def findProject(self,projname, station):
         return  d.ifdh_handle.findProject(projname, station)
 
-    def establishProcess( purl, a, vers, hostname, user, pkg, desc, lim , schema)
+    def establishProcess(self, purl, a, vers, hostname, user, pkg, desc, lim , schema):
         return self.ifdh_handle.establishProcess( purl, a, vers, hostname, user, pkg, desc, lim , schema)
 
-    def getNextFile(purl, consumer_id):
+    def getNextFile(self,purl, consumer_id):
         return self.ifdh_handle.getNextFile(purl, consumer_id)
  
     def endProject(purl):
