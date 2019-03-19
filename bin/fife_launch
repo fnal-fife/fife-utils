@@ -102,11 +102,11 @@ class launcher(object):
             if v != None:
                 args.append(v)
 
-        for v in arg_push:
-            args.insert(0,v)
-
         for v in arg_del:
             args.remove(v)
+
+        for v in arg_push:
+            args.insert(0,v)
 
         for i in range(1,30):
             if i <= len(args):
