@@ -236,7 +236,7 @@ class Wrapper:
 
         if self.options.setup_local:
             d = os.path.dirname(os.environ.get('INPUT_TAR_FILE','/tmp/x'))
-            scriptlist.append("for f in $(ups list -aK+ -z %s|while read p v f q c; do echo ups setup  -z %s:$PRODUCTS $p $v -f $f -q $q; done|sh);do source $f; done" % (d, d))
+            scriptlist.append("for f in $(ups list -aK+ -z %s|while read p v f q c; do echo UPS_OVERRIDE= ups setup -j -z %s:$PRODUCTS $p $v -f $f -q $q; done|sh);do source $f; done" % (d, d))
 
         scriptlist.append('[ -z "$PRODUCTS" -a -r /cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups.sh ] && source /cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups.sh')
         scriptlist.append('[ -z "$PRODUCTS" -a -r /grid/fermiapp/products/common/etc/setups.sh ] && source /grid/fermiapp/products/common/etc/setups.sh')
