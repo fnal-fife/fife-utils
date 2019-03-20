@@ -26,7 +26,7 @@ HEADERS = {
     'Origin': 'https://landscapeitb.fnal.gov'
 }
 
-LENS_URI = 'https://landscapeitb.fnal.gov/lens/query'
+LENS_URI = 'https://landscape.fnal.gov/lens/query'
 
 ih = None
 
