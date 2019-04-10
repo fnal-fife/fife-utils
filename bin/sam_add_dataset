@@ -468,6 +468,7 @@ def main():
   p.add_option('-c', '--cert', help='x509 certificate for authentication. If not specified, use $X509_USER_PROXY, $X509_USER_CERT/$X509_USER_KEY or standard grid proxy location')
   p.add_option('--no-rename', action='store_true', default = False, help = 'Do not rename files to ensure uniqueness')
   p.add_option('--replace-uuids', action='store_true', default = False, help = 'Replace existing uuid strings to ensure uniqueness')
+  p.add_option('--data_tier', default="sam-user", help="default data_tier if no metadata is given; default 'sam-user'")
   p.add_option('-v', '--verbose', action ='store_true', help='returns verbose output')
   
   
@@ -524,7 +525,7 @@ def main():
     if jsonFile:
       universalMD = getJSONMetadata(o.metadata, tag)
     else:
-      universalMD = {"Dataset.Tag": tag}
+      universalMD = {"Dataset.Tag": tag, "data_tier": o.data_tier }
 
     if o.directory:
       gridftp_location = o.directory.startswith('gsiftp:')
