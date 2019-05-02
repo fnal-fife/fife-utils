@@ -82,6 +82,11 @@ class launcher(object):
                     sys.exit(1)
 
                 try:
+                    if s[:6] == 'stage_':
+                        sys.stderr.write("Warning: Overriding stage value '-O%s' has no effect:\n" % o)
+                        sys.stderr.write("   -- -O changes stage parameter *after* it was used to set %s.\n" % o[o.find('.')+1:o.find('=')])
+                        sys.stderr.write("   -- use: -O%s\n" % o[o.find('.')+1:])
+
                     self.cfg.set(s,n,v)
                 except:
                     sys.stderr.write("Error: cannot store '-O%s'\n" % o)
