@@ -19,31 +19,42 @@ from samweb_client import *
 def extract_dataset_metadata( d, extractor,  just_say = False, verbose = False, experiment = None ):
     samweb = SAMWebClient()
 
+    logging.debug("starting extract_dataset_metadata")
+
     if experiment:
         samweb.experiment = experiment
+        os.environ["EXPERIMENT"] = experiment
 
 
-    oldf = None
+    didthat= set()
     for p in d.fullpath_iterator():
+        logging.debug("file path %s" % p )
         sp = sampath(p)
         f = os.path.basename(p)
-        if f == oldf:
+
+        if f in didthat:
             continue
+        didthat.add(f)
 
         if just_say:
-             print( "I would fetchInput('%s/%s') " % (sp,f))
+             print( "I would fetchInput('%s') " % (sp))
              print( "I would run %s on the result" % extractor)
              print( "I would modifyFileMetadata on %s with that result" % f)
         else:
-            lf = ih.fetchInput("%s/%s"%(sp,f))
+            logging.debug("doing fetchinput on %s"%(sp))
+            lf = d.ifdh_handle.fetchInput("%s"%(sp))
             
             mdf = os.popen("%s %s" % (extractor, lf), "r")
+            md = json.loads(mdf.read())
+            for k in ['parents','create_date','update_date','file_name']:
+                if k in md:
+                    del md[k]
+            mdf.close()
+            logging.debug("got metadata: %s" % repr(md))
+            mdf = StringIO(json.dumps(md))
             samweb.modifyFileMetadata(f, mdfile=mdf)
             mdf.close()
             os.unlink(lf)
-
-        oldf == f
-
 
 if __name__ == '__main__':
 
@@ -56,7 +67,7 @@ if __name__ == '__main__':
     parser.add_option('-j','--just_say',  action='store_true', help="do not actually copy, just say what you would do")
     parser.add_option('-e','--experiment', default=experiment, help='use this experiment server defaults to $SAM_EXPERIMENT if not set')
     parser.add_option('-n', '--name',     help="dataset name to modify", )
-    parser.add_option('--extractor', help="program to extract metadata", )
+    parser.add_option('--extractor', help="program to extract metadata", default="sam_metadata_extractor")
  
 
     (o,a) = parser.parse_args()
@@ -83,10 +94,7 @@ if __name__ == '__main__':
         parser.error("expected --name dataset-name")
         exit(1)
 
-    if not o.metadata:
-        parser.error("expected --dest url")
-        exit(1)
-
+    logging.debug("here")
     extract_dataset_metadata(dataset(o.name), o.extractor,  just_say = o.just_say,  verbose = o.verbose, experiment=o.experiment)
 
     log_finish("Success")
