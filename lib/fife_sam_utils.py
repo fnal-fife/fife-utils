@@ -199,7 +199,7 @@ class dataset:
         return self.ifdh_handle.updateFileStatus(purl, consumer_id,f, status)
         return 1
  
-    def endProject(purl):
+    def endProject(self, purl):
         return self.ifdh_handle.endProject(purl)
 
     def wrap_ls(self, path, n, force):
