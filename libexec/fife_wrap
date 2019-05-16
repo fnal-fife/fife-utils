@@ -204,7 +204,7 @@ class Wrapper:
 
         scriptlist = []
  
-        if self.options.debug:
+        if self.options.debug > 2 :
             scriptlist.append('set -x\n')
 
         if self.options.find_setups:
@@ -256,7 +256,7 @@ class Wrapper:
         else:
             # just assume the setup stuff made a different python environment(?)
             sys.argv = [ 'python' , sys.argv[0] , '--nosetup' ] + sys.argv[1:]
-            if self.options.debug: sys.stderr.write( "about to exec, args: %s\n" % sys.argv)
+            if self.options.debug: sys.stderr.write( "\nabout to exec, args: %s\n" % sys.argv)
             os.execvp('python', sys.argv)
             raise(Exception("Could not restart under new python"))
 
@@ -301,12 +301,12 @@ exit
             p.stdin.close()
             p.stdout.close()
             res = p.wait()
-            if self.options.debug: sys.stderr.write('inhaled environment: %s' % repr(evallist))
+            if self.options.debug: sys.stderr.write('\ninhaled environment: %s' % repr(evallist))
             exec('\n'.join(evallist))
             return res
 
     def start_client(self):
-        if self.options.debug: sys.stderr.write( "entering start_client\n" )
+        if self.options.debug: sys.stderr.write( "\nentering start_client\n" )
 
         import socket
 
@@ -351,7 +351,7 @@ exit
         self.consumerid=None
 
         try:
-            if self.options.debug: sys.stderr.write( "trying to establish consumer process\n")
+            if self.options.debug: sys.stderr.write( "\ntrying to establish consumer process\n")
             self.consumerid = self.ih.establishProcess( 
                self.cpurl, 
                self.options.appname, 
@@ -364,7 +364,7 @@ exit
                self.options.schema
             )
             self.consumerid = self.consumerid.strip()
-            if self.options.debug: sys.stderr.write( "Got consumerid of: %s\n" % self.consumerid)
+            if self.options.debug: sys.stderr.write( "\nGot consumerid of: %s\n" % self.consumerid)
 
         except Exception as e:
             sys.stderr.write("fife_wrap: Got exception: %s while trying to establish consumer\n" % e)
@@ -381,21 +381,21 @@ exit
 
     def file_loop(self):
 
-        if self.options.debug: sys.stderr.write("Entering file loop:\n")
+        if self.options.debug: sys.stderr.write("\nEntering file loop:\n")
 
         self.rres = 0
         self.furi = None
  
         cmdlist=[]
         if self.options.prescript:
-            if self.options.debug: sys.stderr.write("prescripts:\n")
+            if self.options.debug: sys.stderr.write("\nprescripts:\n")
             for s in self.options.prescript:
                 if os.access(s, os.R_OK) and not os.access(s, os.X_OK):
                     try:
                         os.chmod(s,0o755)
                     except:
                         pass
-                if self.options.debug: sys.stderr.write("prescript: %s\n" % s)
+                if self.options.debug: sys.stderr.write("\nprescript: %s\n" % s)
                 cmdlist.append(s)
             if self.options.dry_run:
                 print("# pre-scripts")
@@ -403,7 +403,7 @@ exit
 
         cmdlist=[]
         if self.options.prescript_unquote:
-            if self.options.debug: sys.stderr.write("prescripts:\n")
+            if self.options.debug: sys.stderr.write("\nprescripts:\n")
             for s in self.options.prescript_unquote:
                 sbase = s.split(' ')[0]
                 if os.access(sbase, os.R_OK) and not os.access(sbase, os.X_OK):
@@ -411,7 +411,7 @@ exit
                         os.chmod(sbase,0o755)
                     except:
                         pass
-                if self.options.debug: sys.stderr.write("prescript: %s\n" % s)
+                if self.options.debug: sys.stderr.write("\nprescript: %s\n" % s)
                 cmdlist.append(urllib_unquote(s))
             if self.options.dry_run:
                 print("# pre-scripts-quoted")
@@ -434,7 +434,7 @@ exit
                     fname='"$fname"'
                 else:
                     fname=self.ih.fetchInput(self.furi)
-                    if self.options.debug: sys.stderr.write( "Fetching: %s gave: %s\n" % (self.furi, fname))
+                    if self.options.debug: sys.stderr.write( "\nFetching: %s gave: %s\n" % (self.furi, fname))
                     self.ih.updateFileStatus(self.cpurl, self.consumerid, os.path.basename(self.furi), 'transferred')
 
                 if self.options.dry_run:
@@ -483,7 +483,7 @@ exit
                         cmdlist.append(">%s" % getattr(self.options, 'exe_stdout'+str(i)))
                     cmd = " ".join(cmdlist)
 
-                    if self.options.debug: sys.stderr.write("Running: %s\n" % cmd)
+                    if self.options.debug: sys.stderr.write("\nRunning: %s\n" % cmd)
 
                     if self.options.dry_run:
                         print("     " + cmd )
@@ -508,10 +508,10 @@ exit
                     break
 
                 if 0 == res:
-                    if self.options.debug: sys.stderr.write( "Success, marking consumed\n")
+                    if self.options.debug: sys.stderr.write( "\nSuccess, marking consumed\n")
                     self.ih.updateFileStatus(self.cpurl, self.consumerid, os.path.basename(self.furi), 'consumed')
                 else:
-                    if self.options.debug: sys.stderr.write( "Failed, marking skipped\n")
+                    if self.options.debug: sys.stderr.write( "\nFailed, marking skipped\n")
                     self.ih.updateFileStatus(self.cpurl, self.consumerid, os.path.basename(self.furi), 'skipped')
                 lastfuri = self.furi
                 self.furi=self.ih.getNextFile(self.cpurl,self.consumerid)
@@ -541,7 +541,7 @@ exit
                     print(" ".join(cmdlist))
                     print('rres=$?')
                 else:
-                    if self.options.debug: sys.stderr.write("Running: %s\n" % " ".join(cmdlist))
+                    if self.options.debug: sys.stderr.write("\nRunning: %s\n" % " ".join(cmdlist))
                     res = os.system(" ".join(cmdlist))
                     self.rres = res
                     if res != 0:
@@ -566,7 +566,7 @@ exit
                     print(" ".join(cmdlist))
                     print('rres=$?')
                 else:
-                    if self.options.debug: sys.stderr.write("Running: %s\n" % " ".join(cmdlist))
+                    if self.options.debug: sys.stderr.write("\nRunning: %s\n" % " ".join(cmdlist))
                     res = os.system(" ".join(cmdlist))
                     self.rres = res
                     if res != 0:
@@ -576,24 +576,24 @@ exit
             if self.options.dry_run:
                 print('done')
 
-        if self.options.debug: sys.stderr.write("leaving file loop:\n")
+        if self.options.debug: sys.stderr.write("\nleaving file loop:\n")
 
         if self.options.postscript:
             cmdlist=[]
-            if self.options.debug: sys.stderr.write("postscripts:\n")
+            if self.options.debug: sys.stderr.write("\npostscripts:\n")
             for s in self.options.postscript:
                 if os.access(s, os.R_OK) and not os.access(s, os.X_OK):
                     try:
                         os.chmod(s,0o755)
                     except:
                         pass
-                if self.options.debug: sys.stderr.write("postscript: %s\n" % s)
+                if self.options.debug: sys.stderr.write("\npostscript: %s\n" % s)
                 cmdlist.append(urllib_unquote(s))
             self.run_extracting_environment(cmdlist)
 
         if self.options.postscript_unquote:
             cmdlist=[]
-            if self.options.debug: sys.stderr.write("postscripts:\n")
+            if self.options.debug: sys.stderr.write("\npostscripts:\n")
             for s in self.options.postscript_unquote:
                 sbase = s.split(' ')[0]
                 if os.access(sbase, os.R_OK) and not os.access(sbase, os.X_OK):
@@ -601,7 +601,7 @@ exit
                         os.chmod(sbase,0o755)
                     except:
                         pass
-                if self.options.debug: sys.stderr.write("postscript: %s\n" % s)
+                if self.options.debug: sys.stderr.write("\npostscript: %s\n" % s)
                 cmdlist.append(urllib_unquote(s))
             self.run_extracting_environment(cmdlist)
 
@@ -616,14 +616,14 @@ exit
         if len(l):
             p = l[0][:-1]
             sys.path.append(p)
-            if self.options.debug: sys.stderr.write("adding ifdh dir %s to sys.path\n" % p) 
+            if self.options.debug: sys.stderr.write("\nadding ifdh dir %s to sys.path\n" % p) 
             p = l[1][:-1]
             os.environ['IFDHC_CONFIG_DIR'] = p
-            if self.options.debug: sys.stderr.write("setting IFDHC_CONFIG_DIR=%s\n" % p) 
+            if self.options.debug: sys.stderr.write("\nsetting IFDHC_CONFIG_DIR=%s\n" % p) 
         pf.close()
         import ifdh
         if self.ih:
-            if self.options.debug: sys.stderr.write("reloading ifdh module\n") 
+            if self.options.debug: sys.stderr.write("\nreloading ifdh module\n") 
             reload(ifdh)
         self.ih = ifdh.ifdh()
 
@@ -737,7 +737,7 @@ exit
         return ''
 
     def file_stats(self, f):
-        if self.options.debug: sys.stderr.write("entering file_stats(%s)"%f)
+        if self.options.debug: sys.stderr.write("\nentering file_stats(%s)"%f)
         sd = os.stat(f)
         cdate = datetime.utcfromtimestamp(sd.st_ctime).strftime("%Y-%m-%dT%H:%M:%S:+00:00")
         
@@ -749,7 +749,7 @@ exit
             p.stdout.close()
             rc = p.wait()
 
-            if self.options.debug: sys.stderr.write("DEBUG: ifdh checksum returns: %s" % checksum)
+            if self.options.debug: sys.stderr.write("\nDEBUG: ifdh checksum returns: %s" % checksum)
 
         if checksum:
             if checksum.find("crc_value") >= 0:
@@ -762,7 +762,7 @@ exit
         return (f, cdate, self.user, sd.st_size, checksum)
 
     def merge_metadata(self, m1, m2):
-        if self.options.debug: sys.stderr.write("DEBUG: merge_metadata(%s,%s)" % (m1, m2))
+        if self.options.debug: sys.stderr.write("\nDEBUG: merge_metadata(%s,%s)" % (m1, m2))
        
         dm1 = json.loads(m1)
         dm2 = json.loads(m2)
@@ -828,7 +828,7 @@ exit
                 except:
                     pass
  
-        if self.options.debug: sys.stderr.write( "Entering copy_back:\n")
+        if self.options.debug: sys.stderr.write( "\nEntering copy_back:\n")
         metadata_d = None
 
         if self.ih == None:
