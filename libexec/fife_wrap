@@ -902,6 +902,12 @@ exit
 }
 ''' % rt
                     metadata_d = json.loads(metadata)
+
+                    # if we are consuming a project, include consumer
+                    # process id
+                    if self.consumerid:
+                        metadatd_d["process_id"] = int(self.consumerid)
+
                     if self.options.appfamily and self.options.appvers:
                         metadata_d["application"] =  {
                            "family":self.options.appfamily,
