@@ -427,8 +427,10 @@ exit
             else:
                 self.furi=self.ih.getNextFile(self.cpurl,self.consumerid)
 
+            nthfile = 0
             lastfuri = ""
             while self.furi and self.furi != lastfuri:
+                os.environ["nthfile"] = "%d" % nthfile
                 if self.options.dry_run:
                     print('    fname=`ifdh fetchInput "$furi"')
                     print('    ifdh updateFileStatus "$cpurl" "$consumerid" "$fname" "transferred"')
@@ -444,6 +446,7 @@ exit
                 else:
                     # mix scripts, if any, expect $fname in the environment...
                     os.environ['fname'] = fname
+                    os.environ['furi'] = furi
                     res = self.run_extracting_environment(self.options.mix)
                     if res != 0:
                         print("Mixing scripts %s failed, marking file skipped" % self.options.mix)
@@ -519,6 +522,7 @@ exit
                     self.ih.updateFileStatus(self.cpurl, self.consumerid, os.path.basename(self.furi), 'skipped')
                 lastfuri = self.furi
                 self.furi=self.ih.getNextFile(self.cpurl,self.consumerid)
+                nthfile = nthfile + 1
 
         elif self.options.ifdh_art:
 

@@ -121,7 +121,11 @@ class launcher(object):
                     self.cfg.remove_option('executable', 'arg_%d' % i)
                 except:
                     break
-
+        # variables referring to environment variables in fife_wrap
+        self.cfg.set('global','_nthfile','\\\\\\\${nthfile}')
+        self.cfg.set('global','_fname','\\\\\\\${fname}')
+        self.cfg.set('global','_furi','\\\\\\\${furi}')
+        
         if config_dump == 'after' or config_dump == 'both':
            sys.stderr.write("config after expansion:\n================\n")
            self.cfg.write(sys.stderr)
