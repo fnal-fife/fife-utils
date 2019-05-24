@@ -840,6 +840,8 @@ exit
 
     def do_metadata(self,f):
         
+        metadata_d = None
+
         if self.options.debug: sys.stderr.write("output file: %s\n" % f)
 
         if self.options.declare_metadata or self.options.metadata_extractor:
@@ -860,7 +862,7 @@ exit
             # if we are consuming a project, include consumer
             # process id
             if self.consumerid:
-                metadatd_d["process_id"] = int(self.consumerid)
+                metadata_d["process_id"] = int(self.consumerid)
 
             if self.options.appfamily and self.options.appvers:
                 metadata_d["application"] =  {
@@ -870,7 +872,7 @@ exit
                 }
                 metadata = json.dumps(metadata_d)
 
-            if self.furi and self.options.dataset:
+            if self.furi:
                 metadata_d["parents"] = [{"file_name": os.path.basename(self.furi)}]
                 metadata = json.dumps(metadata_d)
 
@@ -970,10 +972,12 @@ exit
             if res != 0 and res != 1:
                 sys.stderr.write("error declaring metadata:" + self.ih.getErrorText()+"\n")
 
+        return metadata_d
             
     def copy_back_n(self, i):
 
         res = 0
+        metadata_d = None
 
         if i > 0:
             # this moves the dest3 -> dest , etc. when i is 3...
@@ -991,7 +995,6 @@ exit
                     pass
  
         if self.options.debug: sys.stderr.write( "\nEntering copy_back:\n")
-        metadata_d = None
 
         if self.ih == None:
             try:
@@ -1035,7 +1038,7 @@ exit
             if self.options.add_location or self.options.declare_metadata:
                 oflist = self.get_output_files()
                 for f in oflist:
-                    self.do_metadata(f)
+                    metadata_d = self.do_metadata(f)
 
             if self.options.debug: sys.stderr.write( "copybackoutput: %s\n" % self.options.dest)
 
@@ -1062,7 +1065,7 @@ exit
                 for f in oflist:
                     try:
                         os.unlink(f)
-                    except Exception e:
+                    except Exception as e:
                         sys.stderr.write("Error unlinking %s: %s" % (f,e))
 
             if self.options.dest_uniq_rename:
