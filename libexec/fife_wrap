@@ -446,7 +446,7 @@ exit
                 else:
                     # mix scripts, if any, expect $fname in the environment...
                     os.environ['fname'] = fname
-                    os.environ['furi'] = furi
+                    os.environ['furi'] = self.furi
                     res = self.run_extracting_environment(self.options.mix)
                     if res != 0:
                         print("Mixing scripts %s failed, marking file skipped" % self.options.mix)
