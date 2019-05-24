@@ -86,6 +86,7 @@ EOF
 
    echo "dataset $dataset contains:" 
    ifdh translateConstraints "defname: $dataset" 
+   sleep 20 
 }
 
 test_add_dataset_flist() {
@@ -118,6 +119,7 @@ EOF
 
    echo "dataset $dataset contains:" 
    ifdh translateConstraints "defname: $dataset" 
+   sleep 20 
 }
 
 test_add_dataset_flist_glob() {
@@ -150,6 +152,7 @@ EOF
 
    echo "dataset $dataset contains:" 
    ifdh translateConstraints "defname: $dataset" 
+   sleep 20 
 }
 
 test_add_dataset_directory() {
@@ -229,6 +232,9 @@ EOF
 
    echo "dataset $dataset contains:" 
    ifdh translateConstraints "defname: $dataset" 
+   # sometimes the last file we made isn't visible right away
+   # through a different DCache door.  Wait a little for it to settle out...
+   sleep 20 
 }
 
 test_validate_1() {
