@@ -52,6 +52,7 @@ class Wrapper:
         self.old_uniq_re = "_?[-.a-zA-Z]*_[0-9]{10}_[0-9][0-9]*_[0-9]"
         self.uuid_re="(%s|%s)" % (self.uuid_re, self.old_uniq_re)
         self.user = os.environ.get('GRID_USER', os.environ.get('USER','sam'))
+        self.alloutputs = []
 
     def start_self_destruct(self):
         if self.options.self_destruct_timer == None:
