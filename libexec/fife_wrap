@@ -822,6 +822,38 @@ exit
                rres = res
         return rres
 
+    def pre_io_setup(self):
+
+        if self.ih == None:
+            try:
+                import ifdh
+                self.ih = ifdh.ifdh()
+            except:
+                if self.options.debug: sys.stderr.write(traceback.format_exc())
+                pass
+        
+        if self.options.dest_uniq_rename:
+            self.options.dest = self.options.dest + str(uuid.uuid1())
+            if self.options.dry_run:
+                print "I would make a unique output directory '%s' " % (self.options.dest + str(uuid.uuid1()))
+            else:
+                self.ih.mkdir_p(self.options.dest)
+
+    def post_io_setup(self):
+
+        if self.options.dest_uniq_rename:
+            src = self.options.dest
+            self.options.dest = re.sub(self.uuid_re, "", self.options.dest)
+            if self.dry_run:
+                print("I would rename %s to %s" % (src, self.options.dest))
+            else:
+                self.ih.rename(src, self.options.dest)
+
+        if self.options.add_location:
+            for of in self.alloutputs
+                self.ih_addFileLocation(of, self.sam_prefix(actualdest)+actualdest)
+
+
     def get_output_files(self):  
         oflist = []
         # have to get output filenames from the ifdh scratch file
@@ -1004,13 +1036,6 @@ exit
                 if self.options.debug: sys.stderr.write(traceback.format_exc())
                 pass
         
-        if self.options.dest_uniq_rename:
-            self.options.dest = self.options.dest + str(uuid.uuid1())
-            if self.options.dry_run:
-                print "I would make a unique output directory '%s' " % (self.options.dest + str(uuid.uuid1()))
-            else:
-                self.ih.mkdir_p(self.options.dest)
-
         if self.options.dest and self.options.addoutput:
             for g in self.options.addoutput:
                 if self.options.dry_run:
@@ -1068,17 +1093,7 @@ exit
                     except Exception as e:
                         sys.stderr.write("Error unlinking %s: %s" % (f,e))
 
-            if self.options.dest_uniq_rename:
-                src = self.options.dest
-                self.options.dest = re.sub(self.uuid_re, "", self.options.dest)
-                if self.dry_run:
-                    print("I would rename %s to %s" % (src, self.options.dest))
-                else:
-                    self.ih.rename(src, self.options.dest)
-
-            if self.options.add_location:
-                for of in oflist:
-                    self.ih_addFileLocation(of, self.sam_prefix(actualdest)+actualdest)
+            self.alloutputs = self.alloutputs + oflist
 
         # handle any touput file lists
         cplist = []
@@ -1377,11 +1392,13 @@ if __name__ == '__main__' :
              w.start_project()
         if w.options.ifdh_art or w.options.multifile or w.options.getconfig:
             w.start_client()
+        w.pre_io_setup()
         w.file_loop()   
         w.userscripts()
         if not w.options.multifile: 
             # multifile now copies out after each input file..
             w.copy_back()
+        w.post_io_setup()
     except:
         if w.options.debug: sys.stderr.write(traceback.format_exc())
         raise
