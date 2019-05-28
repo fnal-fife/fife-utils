@@ -692,6 +692,8 @@ exit
         return ''
 
     def file_stats(self, f):
+        if self.options.dry_run:
+             return
         if self.options.debug: sys.stderr.write("\nentering file_stats(%s)"%f)
         sd = os.stat(f)
         cdate = datetime.utcfromtimestamp(sd.st_ctime).strftime("%Y-%m-%dT%H:%M:%S:+00:00")
@@ -1070,7 +1072,12 @@ exit
             if self.options.add_location or self.options.declare_metadata:
                 oflist = self.get_output_files()
                 for f in oflist:
-                    metadata_d = self.do_metadata(f)
+                    if self.options.dry_run:
+                        print("I would get base metadata for %s" % f)
+                        metadata_d = {}
+                    else:
+                        metadata_d = self.do_metadata(f)
+                    
 
             if self.options.debug: sys.stderr.write( "copybackoutput: %s\n" % self.options.dest)
 
