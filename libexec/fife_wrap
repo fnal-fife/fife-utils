@@ -239,7 +239,7 @@ class Wrapper:
         if self.options.setup_local:
             d = os.path.dirname(os.environ.get('INPUT_TAR_FILE','/tmp/x'))
             scriptlist.append("for f in $(ups list -aK+ -z %s|while read p v f q c; do echo UPS_OVERRIDE= ups setup -z %s:$PRODUCTS $p $v -f $f -q $q; done|sh);do source $f; done" % (d, d))
-            scriptlist.append("ups active")
+            scriptlist.append("echo; ups active; echo; echo")
 
         scriptlist.append('[ -z "$PRODUCTS" -a -r /cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups.sh ] && source /cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups.sh')
         scriptlist.append('[ -z "$PRODUCTS" -a -r /grid/fermiapp/products/common/etc/setups.sh ] && source /grid/fermiapp/products/common/etc/setups.sh')
@@ -304,7 +304,9 @@ exit
             p.stdin.close()
             p.stdout.close()
             res = p.wait()
+            sys.stdout.flush()
             if self.options.debug: sys.stderr.write('\ninhaled environment: %s' % repr(evallist))
+            sys.stderr.flush()
             exec('\n'.join(evallist))
             return res
 
@@ -746,11 +748,15 @@ exit
         for k in l:
            if k.endswith('_event') and isinstance(dm1[k],list):
               dm1[k] = dm1[k][-1]
-           if k in [ 'applicationVersion', 'applicationFamily' ]:
-              tag = k[11:].lower()
+           if k in [ 'applicationVersion', 'applicationFamily','application.version','application.family' ]:
+              if k[11] == '.':
+                  rest=12
+              else:
+                  rest=11
+              tag = k[rest:].lower()
               if not dm1.get('application',None) or not dm1['application'].get(tag,None):
                   dm1['application'][tag] = dm1[k]
-           if k in [ 'run_type', 'process_name', 'file_format_era', 'file_format_version', 'applicationVersion','applicationFamily']:
+           if k in [ 'run_type', 'process_name', 'file_format_era', 'file_format_version', 'applicationVersion','applicationFamily','application.version', 'application.family']:
               del dm1[k]
 
         return json.dumps(dm1)
@@ -963,6 +969,8 @@ exit
                 else:
                     if self.options.add_to_dataset == '_poms_task':
                         datasetname = 'poms_depends_%s_1' % os.environ.get("POMS_TASK_ID")
+                    elif self.options.add_to_dataset == '_poms_analysis':
+                        datasetname = 'poms_%s_depends_%s_1' % (os.environ.get("GRID_USER",os.environ.get("USER","unknown")),os.environ.get("POMS_TASK_ID"))
                     else:
                         datasetname = self.options.add_to_dataset
 

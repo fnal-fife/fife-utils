@@ -68,6 +68,10 @@ class launcher(object):
                 for k,v in self.cfg_items(stagetag, raw=1):
                     s,n = k.split('.',1)
                     self.cfg.set(s,n,v)
+
+        # a [global_eval] section so we can do conditionals, etc.
+        for k,v in self.cfg_items("global_eval"):
+            self.cfg.set("global",k,eval(v))
                
         # then command line overrides last
         if overrides:
