@@ -855,10 +855,8 @@ exit
             else:
                 self.ih.rename(src, dst)
 
-            print("Here 1 alloutputs: %s" % repr(self.alloutputs))
             for of in self.alloutputs:
                 self.ih_addFileLocation(of, self.sam_prefix(dst)+dst)
-            print("Here 2")
 
     def get_output_files(self):  
         if self.options.dry_run:
@@ -1125,7 +1123,6 @@ exit
             if self.options.add_location and self.options.dest_uniq_rename:
                 self.alloutputs = self.alloutputs + oflist
 
-            print("Here 0 alloutputs: %s" % repr(self.alloutputs))
 
             if self.options.dry_run:
                 print("I would clean up output files")
