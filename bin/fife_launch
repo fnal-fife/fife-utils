@@ -240,6 +240,18 @@ class launcher(object):
                      print("Ignoring launch request on empty dataset")
                      sys.exit(1)
 
+        for i in range(10):
+            if i > 0: 
+                suffix="_%d" % i
+            else:
+                suffix=""
+            cmd = self.cfg_get('prelaunch','script%s'%suffix, vars= self.cfg_globals)
+            if cmd:
+                if dry_run:
+                    print("I would run: %s" % cmd)
+                else:
+                    os.system(cmd)
+
     def launch(self, dry_run = False):
         if dry_run:
             print("Pre-launch checks:")
