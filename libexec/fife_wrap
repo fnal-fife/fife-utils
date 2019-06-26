@@ -320,7 +320,7 @@ exit
         if os.environ.has_key('JOBSUBJOBID'):
             description = os.environ['JOBSUBJOBID']
         elif os.environ.has_key('CLUSTER'):
-            description = "%s.%s" %(os.environ['CLUSTER'],os.environ('PROCESS'))
+            description = "%s.%s" %(os.environ.get('CLUSTER',''),os.environ.get('PROCESS',''))
         else:
             description = "process %d on %s" % (os.getpid(), hostname)
 

@@ -378,7 +378,11 @@ class launcher(object):
                     if v == 'True' or v == True:
                         res.append("    --%s \\" % k)   
                 else:
-                    if k in ['export','source','setup','prescript','postscript'] and v and urllib_quote(v) != v:
+                    # use -unquote version of all these, always, to
+                    # preserve the order, otherwise the unquoted ones
+                    # get run before the quoted ones which looks random 
+                    # to users.
+                    if k in ['export','source','setup','prescript','postscript'] and v:
                          k = '%s-unquote' % k
                          v = urllib_quote(v)
                     res.append("    --%s '%s' \\" % (k,v))   
