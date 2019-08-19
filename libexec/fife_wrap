@@ -52,6 +52,7 @@ class Wrapper:
         self.old_uniq_re = "_?[-.a-zA-Z]*_[0-9]{10}_[0-9][0-9]*_[0-9]"
         self.uuid_re="(%s|%s)" % (self.uuid_re, self.old_uniq_re)
         self.user = os.environ.get('GRID_USER', os.environ.get('USER','sam'))
+        self.alloutputs = []
 
     def start_self_destruct(self):
         if self.options.self_destruct_timer == None:
@@ -237,7 +238,8 @@ class Wrapper:
 
         if self.options.setup_local:
             d = os.path.dirname(os.environ.get('INPUT_TAR_FILE','/tmp/x'))
-            scriptlist.append("for f in $(ups list -aK+ -z %s|while read p v f q c; do echo UPS_OVERRIDE= ups setup -j -z %s:$PRODUCTS $p $v -f $f -q $q; done|sh);do source $f; done" % (d, d))
+            scriptlist.append("for f in $(ups list -aK+ -z %s|while read p v f q c; do echo UPS_OVERRIDE= ups setup -z %s:$PRODUCTS $p $v -f $f -q $q; done|sh);do source $f; done" % (d, d))
+            scriptlist.append("echo; ups active; echo; echo")
 
         scriptlist.append('[ -z "$PRODUCTS" -a -r /cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups.sh ] && source /cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups.sh')
         scriptlist.append('[ -z "$PRODUCTS" -a -r /grid/fermiapp/products/common/etc/setups.sh ] && source /grid/fermiapp/products/common/etc/setups.sh')
@@ -302,7 +304,9 @@ exit
             p.stdin.close()
             p.stdout.close()
             res = p.wait()
+            sys.stdout.flush()
             if self.options.debug: sys.stderr.write('\ninhaled environment: %s' % repr(evallist))
+            sys.stderr.flush()
             exec('\n'.join(evallist))
             return res
 
@@ -387,36 +391,6 @@ exit
         self.rres = 0
         self.furi = None
  
-        cmdlist=[]
-        if self.options.prescript:
-            if self.options.debug: sys.stderr.write("\nprescripts:\n")
-            for s in self.options.prescript:
-                if os.access(s, os.R_OK) and not os.access(s, os.X_OK):
-                    try:
-                        os.chmod(s,0o755)
-                    except:
-                        pass
-                if self.options.debug: sys.stderr.write("\nprescript: %s\n" % s)
-                cmdlist.append(s)
-            if self.options.dry_run:
-                print("# pre-scripts")
-            self.run_extracting_environment(cmdlist)
-
-        cmdlist=[]
-        if self.options.prescript_unquote:
-            if self.options.debug: sys.stderr.write("\nprescripts:\n")
-            for s in self.options.prescript_unquote:
-                sbase = s.split(' ')[0]
-                if os.access(sbase, os.R_OK) and not os.access(sbase, os.X_OK):
-                    try:
-                        os.chmod(sbase,0o755)
-                    except:
-                        pass
-                if self.options.debug: sys.stderr.write("\nprescript: %s\n" % s)
-                cmdlist.append(urllib_unquote(s))
-            if self.options.dry_run:
-                print("# pre-scripts-quoted")
-            self.run_extracting_environment(cmdlist)
 
         if self.options.multifile or self.options.getconfig:
             if self.options.dry_run:
@@ -427,8 +401,10 @@ exit
             else:
                 self.furi=self.ih.getNextFile(self.cpurl,self.consumerid)
 
+            nthfile = 0
             lastfuri = ""
             while self.furi and self.furi != lastfuri:
+                os.environ["nthfile"] = "%d" % nthfile
                 if self.options.dry_run:
                     print('    fname=`ifdh fetchInput "$furi"')
                     print('    ifdh updateFileStatus "$cpurl" "$consumerid" "$fname" "transferred"')
@@ -444,6 +420,7 @@ exit
                 else:
                     # mix scripts, if any, expect $fname in the environment...
                     os.environ['fname'] = fname
+                    os.environ['furi'] = self.furi
                     res = self.run_extracting_environment(self.options.mix)
                     if res != 0:
                         print("Mixing scripts %s failed, marking file skipped" % self.options.mix)
@@ -497,6 +474,9 @@ exit
                     if not self.checktimeleft():
                         break
 
+                if 0 == res:
+                    res = self.copy_back()
+
                 if self.options.dry_run:
                     print("     then")
                     print("          rres=$?")
@@ -508,8 +488,6 @@ exit
                     self.furi = None  # leave loop gracefully(?)
                     break
 
-                if 0 == res:
-                    res = self.copy_back()
 
                 if 0 == res:
                     if self.options.debug: sys.stderr.write( "\nSuccess, marking consumed\n")
@@ -519,6 +497,7 @@ exit
                     self.ih.updateFileStatus(self.cpurl, self.consumerid, os.path.basename(self.furi), 'skipped')
                 lastfuri = self.furi
                 self.furi=self.ih.getNextFile(self.cpurl,self.consumerid)
+                nthfile = nthfile + 1
 
         elif self.options.ifdh_art:
 
@@ -528,8 +507,9 @@ exit
 
             for i in xrange(len(self.options.exe)):
                 cmdlist = [ self.options.exe[i] ]
-                cmdlist.append('-c')
-                cmdlist.append(self.options.config)
+                if self.options.config:
+                    cmdlist.append('-c')
+                    cmdlist.append(self.options.config)
                 cmdlist.append("--sam-web-uri=%s" % self.cpurl)
                 cmdlist.append("--sam-process-id=%s" % self.consumerid)
                 cmdlist.extend(self.args[i])
@@ -581,32 +561,6 @@ exit
 
         if self.options.debug: sys.stderr.write("\nleaving file loop:\n")
 
-        if self.options.postscript:
-            cmdlist=[]
-            if self.options.debug: sys.stderr.write("\npostscripts:\n")
-            for s in self.options.postscript:
-                if os.access(s, os.R_OK) and not os.access(s, os.X_OK):
-                    try:
-                        os.chmod(s,0o755)
-                    except:
-                        pass
-                if self.options.debug: sys.stderr.write("\npostscript: %s\n" % s)
-                cmdlist.append(urllib_unquote(s))
-            self.run_extracting_environment(cmdlist)
-
-        if self.options.postscript_unquote:
-            cmdlist=[]
-            if self.options.debug: sys.stderr.write("\npostscripts:\n")
-            for s in self.options.postscript_unquote:
-                sbase = s.split(' ')[0]
-                if os.access(sbase, os.R_OK) and not os.access(sbase, os.X_OK):
-                    try:
-                        os.chmod(sbase,0o755)
-                    except:
-                        pass
-                if self.options.debug: sys.stderr.write("\npostscript: %s\n" % s)
-                cmdlist.append(urllib_unquote(s))
-            self.run_extracting_environment(cmdlist)
 
     def find_ifdhc(self):
         '''
@@ -740,6 +694,8 @@ exit
         return ''
 
     def file_stats(self, f):
+        if self.options.dry_run:
+             return
         if self.options.debug: sys.stderr.write("\nentering file_stats(%s)"%f)
         sd = os.stat(f)
         cdate = datetime.utcfromtimestamp(sd.st_ctime).strftime("%Y-%m-%dT%H:%M:%S:+00:00")
@@ -792,33 +748,120 @@ exit
         for k in l:
            if k.endswith('_event') and isinstance(dm1[k],list):
               dm1[k] = dm1[k][-1]
-           if k in [ 'applicationVersion', 'applicationFamily' ]:
-              tag = k[11:].lower()
+           if k in [ 'applicationVersion', 'applicationFamily','application.version','application.family' ]:
+              if k[11] == '.':
+                  rest=12
+              else:
+                  rest=11
+              tag = k[rest:].lower()
               if not dm1.get('application',None) or not dm1['application'].get(tag,None):
                   dm1['application'][tag] = dm1[k]
-           if k in [ 'run_type', 'process_name', 'file_format_era', 'file_format_version', 'applicationVersion','applicationFamily']:
+           if k in [ 'run_type', 'process_name', 'file_format_era', 'file_format_version', 'applicationVersion','applicationFamily','application.version', 'application.family']:
               del dm1[k]
 
         return json.dumps(dm1)
 
     def ih_addFileLocation(self, of, loc):
         if self.options.dry_run:
-             print('ifdh addFileLocation "%s" "%s"' % of, loc)
+             print('ifdh addFileLocation "%s" "%s"' % (of, loc))
 
         else:
             '''ifdh doesn't have addFileLocation (yet) so fake it with wget since curl is having trouble with proxies...'''
             os.system("wget --no-check-certificate  --certificate=$X509_USER_PROXY --ca-certificate=$X509_USER_PROXY --ca-directory=/etc/grid-security/certificates --private-key=$X509_USER_PROXY --post-data 'add=%s' 'https://samweb.fnal.gov:8483/sam/%s/api/files/name/%s/locations'" % (loc, self.experiment, of))
 
-    def copy_back(self):
-        self.find_ifdhc()
-        rres = 0
-        for i in range(10):
-            res = self.copy_back_n(i)
-            if res != 0:
-               rres = res
-        return rres
+
+    def pre_file_loop(self):
+
+        if self.ih == None:
+            try:
+                import ifdh
+                self.ih = ifdh.ifdh()
+            except:
+                if self.options.debug: sys.stderr.write(traceback.format_exc())
+                pass
+        
+        if self.options.dest_uniq_rename:
+            self.options.dest = self.options.dest + str(uuid.uuid1())
+            if self.options.dry_run:
+                print "I would make a unique output directory '%s' " % (self.options.dest + str(uuid.uuid1()))
+            else:
+                self.ih.mkdir_p(self.options.dest)
+
+        cmdlist=[]
+        if self.options.prescript:
+            if self.options.debug: sys.stderr.write("\nprescripts:\n")
+            for s in self.options.prescript:
+                if os.access(s, os.R_OK) and not os.access(s, os.X_OK):
+                    try:
+                        os.chmod(s,0o755)
+                    except:
+                        pass
+                if self.options.debug: sys.stderr.write("\nprescript: %s\n" % s)
+                cmdlist.append(s)
+            if self.options.dry_run:
+                print("# pre-scripts")
+            self.run_extracting_environment(cmdlist)
+
+        cmdlist=[]
+        if self.options.prescript_unquote:
+            if self.options.debug: sys.stderr.write("\nprescripts:\n")
+            for s in self.options.prescript_unquote:
+                sbase = s.split(' ')[0]
+                if os.access(sbase, os.R_OK) and not os.access(sbase, os.X_OK):
+                    try:
+                        os.chmod(sbase,0o755)
+                    except:
+                        pass
+                if self.options.debug: sys.stderr.write("\nprescript: %s\n" % s)
+                cmdlist.append(urllib_unquote(s))
+            if self.options.dry_run:
+                print("# pre-scripts-quoted")
+            self.run_extracting_environment(cmdlist)
+
+    def post_file_loop(self):
+
+        if self.options.postscript:
+            cmdlist=[]
+            if self.options.debug: sys.stderr.write("\npostscripts:\n")
+            for s in self.options.postscript:
+                if os.access(s, os.R_OK) and not os.access(s, os.X_OK):
+                    try:
+                        os.chmod(s,0o755)
+                    except:
+                        pass
+                if self.options.debug: sys.stderr.write("\npostscript: %s\n" % s)
+                cmdlist.append(urllib_unquote(s))
+            self.run_extracting_environment(cmdlist)
+
+        if self.options.postscript_unquote:
+            cmdlist=[]
+            if self.options.debug: sys.stderr.write("\npostscripts:\n")
+            for s in self.options.postscript_unquote:
+                sbase = s.split(' ')[0]
+                if os.access(sbase, os.R_OK) and not os.access(sbase, os.X_OK):
+                    try:
+                        os.chmod(sbase,0o755)
+                    except:
+                        pass
+                if self.options.debug: sys.stderr.write("\npostscript: %s\n" % s)
+                cmdlist.append(urllib_unquote(s))
+            self.run_extracting_environment(cmdlist)
+
+        if self.options.dest_uniq_rename:
+            src = self.options.origdest
+            dst = re.sub(self.uuid_re, "", self.options.origdest)
+            if self.options.dry_run:
+                print("I would rename %s to %s" % (src, dst))
+            else:
+                self.ih.rename(src, dst)
+
+            for of in self.alloutputs:
+                self.ih_addFileLocation(of, self.sam_prefix(dst)+dst)
 
     def get_output_files(self):  
+        if self.options.dry_run:
+            return self.options.addoutput
+
         oflist = []
         # have to get output filenames from the ifdh scratch file
         # because they could have been renamed "unique"...
@@ -924,6 +967,8 @@ exit
                 else:
                     if self.options.add_to_dataset == '_poms_task':
                         datasetname = 'poms_depends_%s_1' % os.environ.get("POMS_TASK_ID")
+                    elif self.options.add_to_dataset == '_poms_analysis':
+                        datasetname = 'poms_%s_depends_%s_1' % (os.environ.get("GRID_USER",os.environ.get("USER","unknown")),os.environ.get("POMS_TASK_ID"))
                     else:
                         datasetname = self.options.add_to_dataset
 
@@ -969,6 +1014,17 @@ exit
                 sys.stderr.write("error declaring metadata:" + self.ih.getErrorText()+"\n")
 
         return metadata_d
+
+    def copy_back(self):
+        self.options.origdest = self.options.dest
+        self.options.origadd_location = self.options.add_location
+        self.find_ifdhc()
+        rres = 0
+        for i in range(10):
+            res = self.copy_back_n(i)
+            if res != 0:
+               rres = res
+        return rres
             
     def copy_back_n(self, i):
 
@@ -1000,17 +1056,10 @@ exit
                 if self.options.debug: sys.stderr.write(traceback.format_exc())
                 pass
         
-        if self.options.dest_uniq_rename:
-            self.options.dest = self.options.dest + str(uuid.uuid1())
-            if self.options.dry_run:
-                print "I would make a unique output directory '%s' " % (self.options.dest + str(uuid.uuid1()))
-            else:
-                self.ih.mkdir_p(self.options.dest)
-
         if self.options.dest and self.options.addoutput:
             for g in self.options.addoutput:
                 if self.options.dry_run:
-                    print ("ifdh addOutputFile %s" % g)
+                    print ("        ifdh addOutputFile %s" % g)
                 else:
                     for f in glob.glob(g):
                         if self.options.debug: sys.stderr.write( "addoutput: %s\n"% f)
@@ -1020,21 +1069,21 @@ exit
                 if self.options.debug: sys.stderr.write( "rename: %s\n" % self.options.rename)
                 for r in self.options.rename:
                     if self.options.dry_run:
-                        print ("ifdh renameOutput %s" % r)
+                        print ("        ifdh renameOutput %s" % r)
                     else:
                         self.ih.renameOutput(r)
 
-            if self.options.dry_run:
-                if self.options.add_location:
-                    print("# we add file locations in SAM ")
-                print("# copy back output files to %s" % self.options.dest)
-                return
 
             oflist = []
             if self.options.add_location or self.options.declare_metadata:
                 oflist = self.get_output_files()
                 for f in oflist:
-                    metadata_d = self.do_metadata(f)
+                    if self.options.dry_run:
+                        print("I would get base metadata for %s" % f)
+                        metadata_d = {}
+                    else:
+                        metadata_d = self.do_metadata(f)
+                    
 
             if self.options.debug: sys.stderr.write( "copybackoutput: %s\n" % self.options.dest)
 
@@ -1049,32 +1098,43 @@ exit
                 actualdest = os.path.expandvars(actualdest)
 
             if do_mkdir_p:
-                self.ih.mkdir_p(actualdest)
-
-            if self.options.hash:
-                res = self.ih.copyBackOutput(actualdest, int(self.options.hash))
-            else:
-                res = self.ih.copyBackOutput(actualdest)
-
-            if not self.options.no_delete_after_copy:
-                oflist = self.get_output_files()
-                for f in oflist:
-                    try:
-                        os.unlink(f)
-                    except Exception as e:
-                        sys.stderr.write("Error unlinking %s: %s" % (f,e))
-
-            if self.options.dest_uniq_rename:
-                src = self.options.dest
-                self.options.dest = re.sub(self.uuid_re, "", self.options.dest)
-                if self.dry_run:
-                    print("I would rename %s to %s" % (src, self.options.dest))
+                if self.options.dry_run:
+                    print("        ifdh mkdir_p %s" % actualdest)
                 else:
-                    self.ih.rename(src, self.options.dest)
+                    self.ih.mkdir_p(actualdest)
 
-            if self.options.add_location:
+            if self.options.dry_run:
+                print("        # ifdh copyBackOutput  %s %s" % (self.options.dest, self.options.hash))
+                if self.options.add_location:
+                    print("            # we add file locations of %s in SAM" % self.options.dest)
+            else:
+                if self.options.hash:
+                    res = self.ih.copyBackOutput(actualdest, int(self.options.hash))
+                else:
+                    res = self.ih.copyBackOutput(actualdest)
+
+            # if we're doing the dest_uniq_rename thing, we're going to
+            # rename the directory when we're done, and if that works
+            # add all the locations (to avoid file duplication)
+
+            if self.options.add_location and not self.options.dest_uniq_rename:
                 for of in oflist:
-                    self.ih_addFileLocation(of, self.sam_prefix(actualdest)+actualdest)
+                   self.ih_addFileLocation(of, self.sam_prefix(actualdest)+actualdest)
+            if self.options.add_location and self.options.dest_uniq_rename:
+                self.alloutputs = self.alloutputs + oflist
+
+
+            if self.options.dry_run:
+                print("I would clean up output files")
+            else:
+                if not self.options.no_delete_after_copy:
+                    oflist = self.get_output_files()
+                    for f in oflist:
+                        try:
+                            os.unlink(f)
+                        except Exception as e:
+                            sys.stderr.write("Error unlinking %s: %s" % (f,e))
+
 
         # handle any touput file lists
         cplist = []
@@ -1373,11 +1433,13 @@ if __name__ == '__main__' :
              w.start_project()
         if w.options.ifdh_art or w.options.multifile or w.options.getconfig:
             w.start_client()
+        w.pre_file_loop()
         w.file_loop()   
-        w.userscripts()
         if not w.options.multifile: 
             # multifile now copies out after each input file..
             w.copy_back()
+        w.userscripts()
+        w.post_file_loop()
     except:
         if w.options.debug: sys.stderr.write(traceback.format_exc())
         raise

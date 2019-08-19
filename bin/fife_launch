@@ -68,6 +68,10 @@ class launcher(object):
                 for k,v in self.cfg_items(stagetag, raw=1):
                     s,n = k.split('.',1)
                     self.cfg.set(s,n,v)
+
+        # a [global_eval] section so we can do conditionals, etc.
+        for k,v in self.cfg_items("global_eval"):
+            self.cfg.set("global",k,eval(v))
                
         # then command line overrides last
         if overrides:
@@ -121,7 +125,11 @@ class launcher(object):
                     self.cfg.remove_option('executable', 'arg_%d' % i)
                 except:
                     break
-
+        # variables referring to environment variables in fife_wrap
+        self.cfg.set('global','_nthfile','\\\\\\\${nthfile}')
+        self.cfg.set('global','_fname','\\\\\\\${fname}')
+        self.cfg.set('global','_furi','\\\\\\\${furi}')
+        
         if config_dump == 'after' or config_dump == 'both':
            sys.stderr.write("config after expansion:\n================\n")
            self.cfg.write(sys.stderr)
@@ -231,6 +239,18 @@ class launcher(object):
                 if self.nfiles_in_dataset  == 0:
                      print("Ignoring launch request on empty dataset")
                      sys.exit(1)
+
+        for i in range(10):
+            if i > 0: 
+                suffix="_%d" % i
+            else:
+                suffix=""
+            cmd = self.cfg_get('prelaunch','script%s'%suffix, vars= self.cfg_globals)
+            if cmd:
+                if dry_run:
+                    print("I would run: %s" % cmd)
+                else:
+                    os.system(cmd)
 
     def launch(self, dry_run = False):
         if dry_run:
