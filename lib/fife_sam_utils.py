@@ -869,8 +869,8 @@ def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 1, verbose =
 
     if kidlist:
        # we're the parent, and there are kids
-       for i in range(0,len(kidlist)-1):
-           os.wait()
+       for i in range(0,len(kidlist)):
+           os.waitpid(kidlist[i],0)
 
     if kidlist or int(ncopies) == 1:
        d.endProject(purl)
