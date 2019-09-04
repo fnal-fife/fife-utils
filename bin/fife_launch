@@ -102,7 +102,7 @@ class launcher(object):
         # - shuffle as requested
         # - stick back in arg_n config entries
         args = []
-        for i in range(1,30):
+        for i in range(1,100):
             try:
                 v = self.cfg.get('executable','arg_%d'%i, raw=True)
             except:
@@ -117,7 +117,7 @@ class launcher(object):
         for v in arg_push:
             args.insert(0,v)
 
-        for i in range(1,30):
+        for i in range(1,100):
             if i <= len(args):
                 self.cfg.set('executable', 'arg_%d' % i, args[i-1])
             else:
@@ -125,10 +125,15 @@ class launcher(object):
                     self.cfg.remove_option('executable', 'arg_%d' % i)
                 except:
                     break
-        # variables referring to environment variables in fife_wrap
+
+        # preset variables referring to environment variables in fife_wrap
+        # to save folks typing backslashes
         self.cfg.set('global','_nthfile','\\\\\\\${nthfile}')
         self.cfg.set('global','_fname','\\\\\\\${fname}')
         self.cfg.set('global','_furi','\\\\\\\${furi}')
+        self.cfg.set('global','_uuid','\\\\\\\${UUID}')
+        # values available at job start time
+        self.cfg.set('global','_process','\${JOBSUBJOBSECTION:-\$PROCESS}')
         
         if config_dump == 'after' or config_dump == 'both':
            sys.stderr.write("config after expansion:\n================\n")
@@ -205,7 +210,7 @@ class launcher(object):
         return experiment
 
     def pre_launch(self, dry_run = False):
-        for i in range(10):
+        for i in range(30):
             if i > 0: 
                 suffix="_%d" % i
             else:
@@ -240,7 +245,7 @@ class launcher(object):
                      print("Ignoring launch request on empty dataset")
                      sys.exit(1)
 
-        for i in range(10):
+        for i in range(100):
             if i > 0: 
                 suffix="_%d" % i
             else:
@@ -346,6 +351,8 @@ class launcher(object):
                 check_exp_err(k, v1, v)
                 if len(k) > 2 and k[-2] == '_' and k[-1] in "0123456789":
                      k = k[:-2]
+                elif len(k) > 3 and k[-3] == '_' and k[-1] in "0123456789" and  k[-2] in "0123456789":
+                     k = k[:-3]
                 if len(k) == 1:
                     res.append("  -%s %s  \\" %( k,v))
                 elif v == 'True' or v == True:
@@ -374,6 +381,8 @@ class launcher(object):
                 check_exp_err(k, v1, v)
                 if len(k) > 2 and k[-2] == '_' and k[-1] in "0123456789":
                      k = k[:-2]
+                elif len(k) > 3 and k[-3] == '_' and k[-1] in "0123456789" and  k[-2] in "0123456789":
+                     k = k[:-3]
                 if self.is_boolean_flag[k]:
                     if v == 'True' or v == True:
                         res.append("    --%s \\" % k)   
@@ -397,7 +406,7 @@ class launcher(object):
                 else:
                     res.append("    --%s '%s' \\" % (k,v))   
 
-            for i in range(10):
+            for i in range(30):
                 if i == 0:
                     ssuffix=""
                     osuffix=""
@@ -415,6 +424,8 @@ class launcher(object):
 
                     if len(k) > 2 and k[-2] == '_' and k[-1] in "0123456789":
                          k = k[:-2]
+                    elif len(k) > 3 and k[-3] == '_' and k[-1] in "0123456789" and  k[-2] in "0123456789":
+                         k = k[:-3]
  
                     if self.is_boolean_flag[k]:
                         if  v == 'True' or v == True:
@@ -425,7 +436,7 @@ class launcher(object):
                             v = urllib_quote(v)
                         res.append("    --%s%s '%s' \\" % (k,osuffix, v))
 
-            for i in range(9):
+            for i in range(100):
                 if i == 0:
                     sname = "executable"
                 else:
@@ -441,7 +452,7 @@ class launcher(object):
                 if self.cfg_get(sname,'exe_stderr'):
                     res.append("  --exe_stderr%d %s \\" % (i, self.cfg_get(sname,'exe_stderr', vars = self.cfg_globals)))
 
-            for i in range(9):
+            for i in range(100):
                 if i == 0:
                     sname = "executable"
                 else:

@@ -135,13 +135,13 @@ class Wrapper:
         parser.add_option("--nosetup", action="store_true", help="do not run setup actions (used internally)")
         parser.add_option("--no_delete_after_copy", action="store_true",  help="set to not delete files after copying them out", default=False)
 
-        for  i in range(10):
+        for  i in range(30):
             suffix = str(i)
             parser.add_option("--exe_stdout"+suffix, help = "Specify output redirect for executable")
             parser.add_option("--exe_stderr"+suffix, help = "Specify error output redirect for executable")
 
         # output options
-        for  i in range(10):
+        for  i in range(30):
             if i == 0:
                 suffix = ''
             else:
@@ -405,6 +405,7 @@ exit
             lastfuri = ""
             while self.furi and self.furi != lastfuri:
                 os.environ["nthfile"] = "%d" % nthfile
+                os.environ["UUID"] = str(uuid.uuid1())
                 if self.options.dry_run:
                     print('    fname=`ifdh fetchInput "$furi"')
                     print('    ifdh updateFileStatus "$cpurl" "$consumerid" "$fname" "transferred"')
@@ -1020,7 +1021,7 @@ exit
         self.options.origadd_location = self.options.add_location
         self.find_ifdhc()
         rres = 0
-        for i in range(10):
+        for i in range(30):
             res = self.copy_back_n(i)
             if res != 0:
                rres = res
