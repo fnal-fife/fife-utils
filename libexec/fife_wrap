@@ -508,11 +508,12 @@ exit
 
             for i in xrange(len(self.options.exe)):
                 cmdlist = [ self.options.exe[i] ]
-                if self.options.config:
-                    cmdlist.append('-c')
-                    cmdlist.append(self.options.config)
-                cmdlist.append("--sam-web-uri=%s" % self.cpurl)
-                cmdlist.append("--sam-process-id=%s" % self.consumerid)
+                if i == 0:
+                    if self.options.config:
+                        cmdlist.append('-c')
+                        cmdlist.append(self.options.config)
+                    cmdlist.append("--sam-web-uri=%s" % self.cpurl)
+                    cmdlist.append("--sam-process-id=%s" % self.consumerid)
                 cmdlist.extend(self.args[i])
 
                 if self.options.with_gdb:
