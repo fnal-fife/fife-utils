@@ -82,7 +82,7 @@ wrapup() {
     cat /tmp/test_out_$$
     echo ==================================
     echo Ran $n_tests tests with $n_fails failures
-    if [ \$n_fails = 0 ]
+    if [ $n_fails = 0 ]
     then
         echo "ok"
     else
