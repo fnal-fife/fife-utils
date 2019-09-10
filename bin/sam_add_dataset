@@ -119,13 +119,20 @@ def getFileListCommon(f):
     fileList = []
     for line in f:
 
+      line = line.strip('\n')
+
+
       # check for users doing "sam_add_datset -f foo.root"
       if first:
          first = False
          checkfiletype(line)
 
+      # don't add empty line/empty strings it really confuses things later
+      if not line:
+          continue
+
       if line[0] != '#':
-        fileList.append( os.path.abspath(line.strip('\n')) )
+        fileList.append( os.path.abspath(line) )
 
     return fileList
 
