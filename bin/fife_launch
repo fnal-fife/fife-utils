@@ -86,6 +86,8 @@ class launcher(object):
             stagetag = "stage_" + stage
             if self.cfg.has_section(stagetag):
                 for k, v in self.cfg_items(stagetag, raw=1):
+                    if k == 'parent':
+                        continue
                     s, n = k.split(".", 1)
                     self.cfg.set(s, n, v)
 
@@ -173,7 +175,7 @@ class launcher(object):
     def expand_parents(self, stages):
         res = []
         for s in stages:
-            p = self.cfg_get("stage_%"%s, "parent")
+            p = self.cfg_get("stage_%s"%s, "parent")
             if p:
                 res = res + self.expand_parents(p.split(','))
             res.append(s)
