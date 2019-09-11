@@ -80,6 +80,8 @@ class launcher(object):
             sys.stderr.write("\n================\n")
 
         # handle stage overrides up front
+        stages = self.expand_parents(stages)
+                
         for stage in stages:
             stagetag = "stage_" + stage
             if self.cfg.has_section(stagetag):
@@ -167,6 +169,15 @@ class launcher(object):
         self.get_fife_wrap_booleans()
 
         self.cfg_globals = dict(self.cfg.items("global"))
+
+    def expand_parents(self, stages):
+        res = []
+        for s in stages:
+            p = self.cfg_get("stage_%"%s, "parent")
+            if p:
+                res = res + self.expand_parents(p.split(','))
+            res.append(s)
+        return res
 
     def get_fife_wrap_booleans(self):
         f = os.popen(

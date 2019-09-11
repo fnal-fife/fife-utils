@@ -6,9 +6,10 @@ count_report_files() {
     echo
     echo "$1 $dataset:"
     echo "----------------------------------"
-    sam_validate_dataset -v --name $dataset 2>/dev/null | tee /tmp/v$$
-    echo "----------------------------------"
-    eval "$2=`grep located: /tmp/v$$ | wc -l`"
+    ifdh translateConstraints "defname: $dataset"  | tee /tmp/v$$
+    ifdh locateFiles  `cat /tmp/v$$` | tee /tmp/w$$
+    echo "----------------------------------" 
+    eval "$2=`cat /tmp/w$$ | grep '^	' |  wc -l`"
     rm /tmp/v$$
     eval echo "count: \$$2"
 }
@@ -86,6 +87,7 @@ EOF
 
    echo "dataset $dataset contains:" 
    ifdh translateConstraints "defname: $dataset" 
+   sleep 20 
 }
 
 test_add_dataset_flist() {
@@ -118,6 +120,7 @@ EOF
 
    echo "dataset $dataset contains:" 
    ifdh translateConstraints "defname: $dataset" 
+   sleep 20 
 }
 
 test_add_dataset_flist_glob() {
@@ -150,6 +153,7 @@ EOF
 
    echo "dataset $dataset contains:" 
    ifdh translateConstraints "defname: $dataset" 
+   sleep 20 
 }
 
 test_add_dataset_directory() {
@@ -227,8 +231,10 @@ EOF
    done
    samweb create-definition $dataset "file_name like '${dataset}_f%'"
 
-   echo "dataset $dataset contains:" 
-   ifdh translateConstraints "defname: $dataset" 
+   count_report_files "add_dataset:" count
+   # sometimes the last file we made isn't visible right away
+   # through a different DCache door.  Wait a little for it to settle out...
+   sleep 20 
 }
 
 test_validate_1() {
@@ -435,7 +441,9 @@ test_archive_restore_dir() {
 testsuite test_utils \
 	-s setup_tests \
         add_dataset \
+	test_validate_1 \
 	test_clone_n  \
-        test_retire 
+        test_retire \
 
+         
 test_utils "$@"
