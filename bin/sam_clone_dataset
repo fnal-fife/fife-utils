@@ -15,102 +15,211 @@ import time
 from fife_sam_utils import *
 from samweb_client import *
 
+
 def do_setup(s, debug=False):
-    sys.path.insert(0,'/cvmfs/fermilab.opensciencegrid.org/products/common/etc')
-    sys.path.insert(0,'/grid/fermiapp/products/common/etc')
+    sys.path.insert(0, "/cvmfs/fermilab.opensciencegrid.org/products/common/etc")
+    sys.path.insert(0, "/grid/fermiapp/products/common/etc")
     import setups
+
     ups = setups.setups()
-    if debug: print("found: UPS_DIR:", os.environ['UPS_DIR'])
-    os.environ['PATH'] = "%s/bin:%s" % (os.environ['UPS_DIR'], os.environ['PATH'])
-    if debug: print("setting up:", o.setup)
+    if debug:
+        print("found: UPS_DIR:", os.environ["UPS_DIR"])
+    os.environ["PATH"] = "%s/bin:%s" % (os.environ["UPS_DIR"], os.environ["PATH"])
+    if debug:
+        print("setting up:", o.setup)
     sys.stdout.flush()
-    ups.setup("-R " + o.setup.replace('@',' '))
+    ups.setup("-R " + o.setup.replace("@", " "))
     # make sure stuff gets in our PATH...
-    os.environ['PATH'] = "%s/bin:%s" % (os.environ['AWSCLI_DIR'], os.environ['PATH'])
-    sys.path.insert(0,os.environ['IFDHC_DIR']+'/lib/python')
-    if debug: print("IFDHC_DIR is ", os.environ["IFDHC_DIR"])
+    os.environ["PATH"] = "%s/bin:%s" % (os.environ["AWSCLI_DIR"], os.environ["PATH"])
+    sys.path.insert(0, os.environ["IFDHC_DIR"] + "/lib/python")
+    if debug:
+        print("IFDHC_DIR is ", os.environ["IFDHC_DIR"])
     sys.stdout.flush()
+
 
 def startjobs(o):
 
     if o.project:
-        os.environ['SAM_PROJECT']= o.project
+        os.environ["SAM_PROJECT"] = o.project
     else:
         # pick one...
-        uname = os.environ.get('GRID_USER',os.environ.get('USER','unknown'))
+        uname = os.environ.get("GRID_USER", os.environ.get("USER", "unknown"))
         hostname = socket.gethostname()
-        ds = time.strftime('%Y-%m-%dT%H-%M-%S')
-        os.environ['SAM_PROJECT']=os.environ.get('SAM_PROJECT',"clone-%s-%s-%s-%d"%
-            (uname, hostname, ds, os.getpid()))
-        o.connect_project = os.environ['SAM_PROJECT']
+        ds = time.strftime("%Y-%m-%dT%H-%M-%S")
+        os.environ["SAM_PROJECT"] = os.environ.get(
+            "SAM_PROJECT", "clone-%s-%s-%s-%d" % (uname, hostname, ds, os.getpid())
+        )
+        o.connect_project = os.environ["SAM_PROJECT"]
 
     if not o.connect_project:
-         clone(dataset(o.name), o.dest, subdirf = o.dirfunc, just_say = o.just_say, batch_size = o.batch_size, verbose = o.verbose, experiment=o.experiment, ncopies=o.ncopies, just_start_project = True, connect_project=o.connect_project, projname = o.project, paranoid = o.paranoid, intermed = o.intermed, getawscreds = o.getawscreds)
+        clone(
+            dataset(o.name),
+            o.dest,
+            subdirf=o.dirfunc,
+            just_say=o.just_say,
+            batch_size=o.batch_size,
+            verbose=o.verbose,
+            experiment=o.experiment,
+            ncopies=o.ncopies,
+            just_start_project=True,
+            connect_project=o.connect_project,
+            projname=o.project,
+            paranoid=o.paranoid,
+            intermed=o.intermed,
+            getawscreds=o.getawscreds,
+        )
 
-    cmd = "jobsub_submit --group=%s --resource-provides=usage_model=OPPORTUNISTIC,DEDICATED file://%s/bin/sam_clone_dataset --setup '%s' --experiment=%s --name=%s --project=%s --connect-project --dest=%s %s %s %s %s %s " % (
-      os.environ['EXPERIMENT'],
-      os.environ['FIFE_UTILS_DIR'],
-      os.environ['SETUP_FIFE_UTILS'].replace(' ','@'),
-      os.environ['EXPERIMENT'],
-      o.name,
-      o.project,
-      o.dest, 
-      "--intermed" if o.intermed else "",
-      "--twodeep" if o.dirfunc == twodeep else "", ## fix me
-      "-N %d" % ncopies if o.ncopies > 1 else "",
-      "--getawscreds" if o.getawscreds else "",
-      "--verbose" if o.verbose else ""
+    cmd = (
+        "jobsub_submit --group=%s --resource-provides=usage_model=OPPORTUNISTIC,DEDICATED file://%s/bin/sam_clone_dataset --setup '%s' --experiment=%s --name=%s --project=%s --connect-project --dest=%s %s %s %s %s %s "
+        % (
+            os.environ["EXPERIMENT"],
+            os.environ["FIFE_UTILS_DIR"],
+            os.environ["SETUP_FIFE_UTILS"].replace(" ", "@"),
+            os.environ["EXPERIMENT"],
+            o.name,
+            o.project,
+            o.dest,
+            "--intermed" if o.intermed else "",
+            "--twodeep" if o.dirfunc == twodeep else "",  ## fix me
+            "-N %d" % ncopies if o.ncopies > 1 else "",
+            "--getawscreds" if o.getawscreds else "",
+            "--verbose" if o.verbose else "",
+        )
     )
-    if o.debug: print("running: " , cmd)
+    if o.debug:
+        print("running: ", cmd)
     os.system(cmd)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     log_startup()
 
-    experiment = os.environ.get('EXPERIMENT',os.environ.get('SAM_EXPERIMENT',grp.getgrgid(os.getgid())[0]))
+    experiment = os.environ.get(
+        "EXPERIMENT", os.environ.get("SAM_EXPERIMENT", grp.getgrgid(os.getgid())[0])
+    )
 
-    parser = optparse.OptionParser(usage="usage: %prog [options] \n copy files in named dataset to destination and declare")
-    parser.add_option('-b','--batch_size',default = 1, type='int', help="copy then declare in batches of this size")
-    parser.add_option('-d', '--dest',     help="destination for copy", )
-    parser.add_option('-e','--experiment', default=experiment, help='use this experiment server defaults to $SAM_EXPERIMENT if not set')
-    parser.add_option('-j','--just_say',  action='store_true', help="do not actually copy, just say what you would do")
-    parser.add_option('-n', '--name',     help="dataset name to copy", )
-    parser.add_option('-f', '--file',     help="file name to copy", )
-    parser.add_option('-v','--verbose',   action='count')
-    parser.add_option('-0','--zerodeep',  dest='dirfunc', action='store_const', const=zerodeep, help="make no subdirectories in destination")
-    parser.add_option('-1','--onedeep',   dest='dirfunc', action='store_const', const=onedeep, help = "make subdirectories one deep in destination")
-    parser.add_option('-2','--twodeep',   dest='dirfunc', action='store_const', const=twodeep, help = "make subdirectories two deep in destination")
-    parser.add_option('-3','--threedeep',   dest='dirfunc', action='store_const', const=threedeep, help = "make subdirectories two deep in destination")
-    parser.add_option('-4','--fourdeep',   dest='dirfunc', action='store_const', const=fourdeep, help = "make subdirectories two deep in destination")
-    parser.add_option('-p', '--project', default=None, help = "SAM project name to use"  )
-    parser.add_option('--njobs', default=None, help="Launch njobs jobs to help do the cloning")
-    parser.add_option('-C', '--connect-project', action='store_const', const=True)
-    parser.add_option('-N', '--ncopies',  default=3, help="number of copies to run in parallel" )
-    parser.add_option('-S', '--just-start-project', action='store_const', const=True)
-    parser.add_option('-P', '--paranoid', action='store_const', const=True, default = False, help = "do not believe copy status, check existence before declaring a location")
-    parser.add_option('--getawscreds', action='store_true', help="get AWS S3 credentials from /pnfs file", default = False)
-    parser.add_option('--intermed', action='store_true', help="use intermediate file and not pipe", default = False)
-    parser.add_option('--debug', action='store_true', help="debug messages", default = False)
-    parser.add_option('--setup',  help="set up products", default = None)
+    parser = optparse.OptionParser(
+        usage="usage: %prog [options] \n copy files in named dataset to destination and declare"
+    )
+    parser.add_option(
+        "-b",
+        "--batch_size",
+        default=1,
+        type="int",
+        help="copy then declare in batches of this size",
+    )
+    parser.add_option("-d", "--dest", help="destination for copy")
+    parser.add_option(
+        "-e",
+        "--experiment",
+        default=experiment,
+        help="use this experiment server defaults to $SAM_EXPERIMENT if not set",
+    )
+    parser.add_option(
+        "-j",
+        "--just_say",
+        action="store_true",
+        help="do not actually copy, just say what you would do",
+    )
+    parser.add_option("-n", "--name", help="dataset name to copy")
+    parser.add_option("-f", "--file", help="file name to copy")
+    parser.add_option("-v", "--verbose", action="count")
+    parser.add_option(
+        "-0",
+        "--zerodeep",
+        dest="dirfunc",
+        action="store_const",
+        const=zerodeep,
+        help="make no subdirectories in destination",
+    )
+    parser.add_option(
+        "-1",
+        "--onedeep",
+        dest="dirfunc",
+        action="store_const",
+        const=onedeep,
+        help="make subdirectories one deep in destination",
+    )
+    parser.add_option(
+        "-2",
+        "--twodeep",
+        dest="dirfunc",
+        action="store_const",
+        const=twodeep,
+        help="make subdirectories two deep in destination",
+    )
+    parser.add_option(
+        "-3",
+        "--threedeep",
+        dest="dirfunc",
+        action="store_const",
+        const=threedeep,
+        help="make subdirectories two deep in destination",
+    )
+    parser.add_option(
+        "-4",
+        "--fourdeep",
+        dest="dirfunc",
+        action="store_const",
+        const=fourdeep,
+        help="make subdirectories two deep in destination",
+    )
+    parser.add_option("-p", "--project", default=None, help="SAM project name to use")
+    parser.add_option(
+        "--njobs", default=None, help="Launch njobs jobs to help do the cloning"
+    )
+    parser.add_option("-C", "--connect-project", action="store_const", const=True)
+    parser.add_option(
+        "-N", "--ncopies", default=3, help="number of copies to run in parallel"
+    )
+    parser.add_option("-S", "--just-start-project", action="store_const", const=True)
+    parser.add_option(
+        "-P",
+        "--paranoid",
+        action="store_const",
+        const=True,
+        default=False,
+        help="do not believe copy status, check existence before declaring a location",
+    )
+    parser.add_option(
+        "--getawscreds",
+        action="store_true",
+        help="get AWS S3 credentials from /pnfs file",
+        default=False,
+    )
+    parser.add_option(
+        "--intermed",
+        action="store_true",
+        help="use intermediate file and not pipe",
+        default=False,
+    )
+    parser.add_option(
+        "--debug", action="store_true", help="debug messages", default=False
+    )
+    parser.add_option("--setup", help="set up products", default=None)
 
-    parser.set_defaults(dirfunc = twodeep)
+    parser.set_defaults(dirfunc=twodeep)
 
-    (o,a) = parser.parse_args()
+    (o, a) = parser.parse_args()
 
     if o.setup:
         do_setup(o.setup)
 
     if o.experiment:
 
-        os.environ['EXPERIMENT']= o.experiment
-        os.environ['SAM_EXPERIMENT']= o.experiment
-        os.environ['IFDH_BASE_URI'] = "http://samweb.fnal.gov:8480/sam/%s/api" % o.experiment
-    else: 
-        sys.stderr.write("Error: Need either --experiment or $EXPERIMENT $SAM_EXPERIMENT in environment")
+        os.environ["EXPERIMENT"] = o.experiment
+        os.environ["SAM_EXPERIMENT"] = o.experiment
+        os.environ["IFDH_BASE_URI"] = (
+            "http://samweb.fnal.gov:8480/sam/%s/api" % o.experiment
+        )
+    else:
+        sys.stderr.write(
+            "Error: Need either --experiment or $EXPERIMENT $SAM_EXPERIMENT in environment"
+        )
         os.exit(1)
 
     cert = get_standard_certificate_path(o)
-    os.environ['X509_USER_PROXY'] = cert
+    os.environ["X509_USER_PROXY"] = cert
 
     if o.verbose > 1:
         logging.basicConfig(level=logging.DEBUG)
@@ -137,6 +246,21 @@ if __name__ == '__main__':
     if o.njobs:
         startjobs(o)
     else:
-        clone(ds, o.dest, subdirf = o.dirfunc, just_say = o.just_say, batch_size = o.batch_size, verbose = o.verbose, experiment=o.experiment, ncopies=o.ncopies, just_start_project = o.just_start_project, connect_project=o.connect_project , projname = o.project, paranoid = o.paranoid, intermed = o.intermed, getawscreds = o.getawscreds)
+        clone(
+            ds,
+            o.dest,
+            subdirf=o.dirfunc,
+            just_say=o.just_say,
+            batch_size=o.batch_size,
+            verbose=o.verbose,
+            experiment=o.experiment,
+            ncopies=o.ncopies,
+            just_start_project=o.just_start_project,
+            connect_project=o.connect_project,
+            projname=o.project,
+            paranoid=o.paranoid,
+            intermed=o.intermed,
+            getawscreds=o.getawscreds,
+        )
 
     log_finish("Success")

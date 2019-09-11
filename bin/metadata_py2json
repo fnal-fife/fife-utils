@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-#AUTHOR:  MICHAEL JOSEPH GHEITH
-#DATE:  04/14/2014
+# AUTHOR:  MICHAEL JOSEPH GHEITH
+# DATE:  04/14/2014
 
 try:
     from six import *
@@ -10,8 +10,11 @@ except:
 try:
     from past.utils import old_div
 except:
-    def old_div(x,y):
-        return x / y 
+
+    def old_div(x, y):
+        return x / y
+
+
 try:
     import json
 except:
@@ -23,106 +26,126 @@ import sys
 resultString = ""
 found = False
 
-#https://cdcvs.fnal.gov/redmine/projects/sam-web/wiki/Metadata_format
+# https://cdcvs.fnal.gov/redmine/projects/sam-web/wiki/Metadata_format
 translate = {
-'fileName' : 'file_name',
-'fileId' : 'file_id',
-'fileType': 'file_type',
-'fileFormat': 'file_format',
-'fileSize' : 'file_size',
-'fileContentStatus' : 'content_status',
-'dataTier': 'data_tier',
-'firstEvent': 'first_event',
-'lastEvent': 'last_event',
-'startTime': 'start_time',
-'endTime': 'end_time',
-'applicationFamily': 'application',
-'datastream': 'data_stream',
-'runDescriptorList': 'runs',
-'eventCount': 'event_count',
-'filePartition': 'file_partition',
-'lumBlockRangeList' : 'lum_block_ranges'
+    "fileName": "file_name",
+    "fileId": "file_id",
+    "fileType": "file_type",
+    "fileFormat": "file_format",
+    "fileSize": "file_size",
+    "fileContentStatus": "content_status",
+    "dataTier": "data_tier",
+    "firstEvent": "first_event",
+    "lastEvent": "last_event",
+    "startTime": "start_time",
+    "endTime": "end_time",
+    "applicationFamily": "application",
+    "datastream": "data_stream",
+    "runDescriptorList": "runs",
+    "eventCount": "event_count",
+    "filePartition": "file_partition",
+    "lumBlockRangeList": "lum_block_ranges",
 }
 
-params_dict = {}  #we need this to store our params in because we do not have the metadata dict yet to store them in
+params_dict = (
+    {}
+)  # we need this to store our params in because we do not have the metadata dict yet to store them in
 #####################################
-#AUXILLARY FUNCTIONS THAT GET CALLED#
+# AUXILLARY FUNCTIONS THAT GET CALLED#
 #####################################
+
 
 def ImportedSimulatedFile(a):
     return a
 
+
 def SamSize(a):
-    if a.find('MB') > -1:
-        str_without_mb = a.replace('MB', '')
+    if a.find("MB") > -1:
+        str_without_mb = a.replace("MB", "")
         size_float = float(str_without_mb)
         bytes = size_float * 1048576
         bytes_int = int(bytes)
         return bytes_int
-    if a.find('KB') > -1:
-        str_without_kb = a.replace('KB', '')
+    if a.find("KB") > -1:
+        str_without_kb = a.replace("KB", "")
         size_float = float(str_without_kb)
         bytes = size_float * 1024
         bytes_int = int(bytes)
         return bytes_int
-    if a.find('B') > -1:
-       str_without_b = a.replace('B', '')
-       bytes_int = int(str_without_b)
-       return bytes_int
+    if a.find("B") > -1:
+        str_without_b = a.replace("B", "")
+        bytes_int = int(str_without_b)
+        return bytes_int
+
 
 def CRC(a, b):
     return {"crc_value": a, "crc_type": b}
 
+
 def SamTime(*args):
     return datetime.datetime.utcfromtimestamp(int(args[0])).isoformat()
 
+
 def ApplicationFamily(appFamily=None, appName=None, appVersion=None):
-    return {'family': appFamily, 'name': appName, 'version': appVersion}
+    return {"family": appFamily, "name": appName, "version": appVersion}
+
 
 def Params(a):
     for key, value in a.items():
         category = key
         if isinstance(value, dict):
-            for k,v in value.items():
-                params_dict[category + '.' + k] = v
+            for k, v in value.items():
+                params_dict[category + "." + k] = v
+
 
 def RunDescriptor(runType=None, runNumber=None):
     first_part = int(old_div(runNumber, 10000))
     second_part = runNumber % 10000
     return [first_part, second_part, runType]
 
+
 def RunDescriptorList(a):
     return a
+
+
 ######################################################
-#AUXILLARY CLASS AND FUNCTIONS USED BY OLDER PY FILES#
+# AUXILLARY CLASS AND FUNCTIONS USED BY OLDER PY FILES#
 ######################################################
 class Generic(object):
     pass
-SAM = Generic()  #create an empty generic record
-SAM.DataFileType_ImportedDetector = 'importedDetector'
-SAM.DataFileFormat_BINARY = 'binary'
-SAM.CRC_Adler32Type = 'adler 32 crc type'
-SAM.SamTimeFormat_UTCFormat = '???'  #this gets passed to SamTime and is never used
-SAM.DataFileContentStatus_Good = 'good'
-SAM.DataFileFormat_ROOT = 'root'
+
+
+SAM = Generic()  # create an empty generic record
+SAM.DataFileType_ImportedDetector = "importedDetector"
+SAM.DataFileFormat_BINARY = "binary"
+SAM.CRC_Adler32Type = "adler 32 crc type"
+SAM.SamTimeFormat_UTCFormat = "???"  # this gets passed to SamTime and is never used
+SAM.DataFileContentStatus_Good = "good"
+SAM.DataFileFormat_ROOT = "root"
+
 
 def CaseInsensitiveDictionary(a):
     return a
 
+
 def LumBlockRangeList(a):
     return a
 
+
 def LumBlockRange(a, b):
-    return a,b
+    return a, b
+
 
 def ImportedSimulatedFile(a):
     return a
 
+
 def SamDataFile(**kwargs):
-    return kwargs  #this returns a dictionary
+    return kwargs  # this returns a dictionary
+
 
 #############################################
-#OPEN THE PYTHON FILE SO WE CAN READ FROM IT#
+# OPEN THE PYTHON FILE SO WE CAN READ FROM IT#
 #############################################
 
 if len(sys.argv) > 1:
@@ -136,13 +159,13 @@ else:
     sys.exit("Goodbye.")
 
 ################################################
-#MAIN GOAL IS TO EXTRACT THE JSON FROM THE FILE#
+# MAIN GOAL IS TO EXTRACT THE JSON FROM THE FILE#
 ################################################
 
 for line in file:
     if line.find("(") > -1:
         found = True
-        
+
     if found:
         resultString += line
 ###
@@ -151,59 +174,62 @@ exec(resultString)
 file.close()
 
 ####################################
-#MAIN GOAL IS TO DO KEY TRANSLATION#
+# MAIN GOAL IS TO DO KEY TRANSLATION#
 ####################################
 
-for k,v in metadata.items():
+for k, v in metadata.items():
     newKey = translate.get(k)
     if newKey != None:
         metadata[newKey] = metadata.pop(k)
 
 ############################################
-#CHECK THE DATE FORMAT AND MODIFY IF NEEDED#
+# CHECK THE DATE FORMAT AND MODIFY IF NEEDED#
 ############################################
 
-start_time = metadata.get('start_time')
-end_time = metadata.get('end_time')
+start_time = metadata.get("start_time")
+end_time = metadata.get("end_time")
 if type(start_time) is float:
-    metadata['start_time'] = SamTime(start_time)
+    metadata["start_time"] = SamTime(start_time)
 if type(end_time) is float:
-    metadata['end_time'] = SamTime(end_time)
+    metadata["end_time"] = SamTime(end_time)
 
 ################################################################################################
-#MERGE PARAMS DICT TO THE METADATA DICT AND POP OFF PARAMS AS IT IS NOT A REAL KEY FOR METADATA#
+# MERGE PARAMS DICT TO THE METADATA DICT AND POP OFF PARAMS AS IT IS NOT A REAL KEY FOR METADATA#
 ################################################################################################
 
 metadata.update(params_dict)
-if 'params' in metadata:
-    metadata.pop('params')
+if "params" in metadata:
+    metadata.pop("params")
 ##############################################################################################################################
-#THIS HANDLES THE CASE IN OLD PY WHERE RUNNUMBER AND RUNTYPE ARE KEYS IN A DICT WHEN THEY SHOULD REALLY BE VALUES TO RUNS KEY#
+# THIS HANDLES THE CASE IN OLD PY WHERE RUNNUMBER AND RUNTYPE ARE KEYS IN A DICT WHEN THEY SHOULD REALLY BE VALUES TO RUNS KEY#
 ##############################################################################################################################
 
 if "runNumber" and "runType" in metadata:
     runnumber = metadata.pop("runNumber")
     runtype = metadata.pop("runType")
     runs = RunDescriptorList([RunDescriptor(runType=runtype, runNumber=runnumber)])
-    metadata['runs'] = runs
-#print '**********************'
+    metadata["runs"] = runs
+# print('**********************')
 print(metadata)
-#print '**********************'
+# print( '**********************')
 
 #############################
-#WRITE NEW JSON FILE TO DISK#
+# WRITE NEW JSON FILE TO DISK#
 #############################
 
-file_name = metadata.get('file_name')
+file_name = metadata.get("file_name")
 
 if file_name.find(".dat") > -1:
-    new_json_file_name = file_name.replace('.dat', '.dat.metadata.json')
+    new_json_file_name = file_name.replace(".dat", ".dat.metadata.json")
 elif file_name.find(".root") > -1:
-    new_json_file_name = file_name.replace('.root', '.root.metadata.json')
+    new_json_file_name = file_name.replace(".root", ".root.metadata.json")
 else:
-    print(file_name + ": has unsupported extension in the script you are running but will write file without json extension anyway")
+    print(
+        file_name
+        + ": has unsupported extension in the script you are running but will write file without json extension anyway"
+    )
 
-f = open(new_json_file_name, 'w')
+f = open(new_json_file_name, "w")
 
 try:
     f.write(json.dumps(metadata))

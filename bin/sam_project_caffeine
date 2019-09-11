@@ -18,38 +18,39 @@ import ifdh
 QUERY = '{"query":"{submissions(user:\\"%s\\") {\\n  id\\n  command\\n  args\\n  SAM_PROJECT:env(name:\\"SAM_PROJECT\\") \\n  SAM_PROJECT_NAME:env(name:\\"SAM_PROJECT_NAME\\")\\n} \\n}\\n"}'
 
 HEADERS = {
-    'Accept-Encoding': 'gzip, deflate, br',
-    'Content-Type': 'application/json',
-    'Accept': '*/*',
-    'Connection': 'keep-alive',
-    'DNT': '1',
-    'Origin': 'https://landscapeitb.fnal.gov'
+    "Accept-Encoding": "gzip, deflate, br",
+    "Content-Type": "application/json",
+    "Accept": "*/*",
+    "Connection": "keep-alive",
+    "DNT": "1",
+    "Origin": "https://landscapeitb.fnal.gov",
 }
 
-LENS_URI = 'https://landscape.fnal.gov/lens/query'
+LENS_URI = "https://landscape.fnal.gov/lens/query"
 
 ih = None
 
 already_kicked = set()
 
+
 def lens_dump(username):
-    ''' get a lens dump for user '''
-    htr = requests.post(LENS_URI,
-                        data= QUERY % username,
-                        headers= HEADERS)
+    """ get a lens dump for user """
+    htr = requests.post(LENS_URI, data=QUERY % username, headers=HEADERS)
     res = htr.text
     htr.close()
     return res
 
-def has_project(subs,projname):
-    '''check submission list for projectname in args or environment'''
+
+def has_project(subs, projname):
+    """check submission list for projectname in args or environment"""
     if subs.find(projname) > 0:
-       return 1
+        return 1
     else:
-       return 0
+        return 0
+
 
 def check_project(o, projname, user, started, delivered, wanted, subs):
-    ''' figure out if project has been idle for more than 40 hours'''
+    """ figure out if project has been idle for more than 40 hours"""
 
     # only kick it once
 
@@ -69,49 +70,74 @@ def check_project(o, projname, user, started, delivered, wanted, subs):
     # year if it's early in the year...
 
     if stime.month > now.month:
-        stime = stime.replace( now.year - 1)
+        stime = stime.replace(now.year - 1)
     else:
-        stime = stime.replace( now.year )
-   
-    hasproj = has_project(subs,projname)
+        stime = stime.replace(now.year)
 
-    if delivered == 0 and wanted > 0 and  stime < twodaysago and hasproj:
-        print("project %s started %s delivered %d needs kicking\n" % (projname, stime.ctime(), delivered))
+    hasproj = has_project(subs, projname)
+
+    if delivered == 0 and wanted > 0 and stime < twodaysago and hasproj:
+        print(
+            "project %s started %s delivered %d needs kicking\n"
+            % (projname, stime.ctime(), delivered)
+        )
         return 1
     else:
-        print("project %s started %s delivered %d is okay\n" % (projname, stime.ctime(),delivered))
+        print(
+            "project %s started %s delivered %d is okay\n"
+            % (projname, stime.ctime(), delivered)
+        )
         return 0
 
+
 def kick_project(o, projname, user):
-    ''' register as a consumer to project, and then quit to keep it awake'''
+    """ register as a consumer to project, and then quit to keep it awake"""
 
     print("kicking %s\n" % projname)
 
     puri = ih.findProject(projname, o.station)
-    cid = ih.establishProcess(puri, 'demo', 'demo', 'nowhere', user, 'demo', 'sam_projet_caffiene', 1, '')
+    cid = ih.establishProcess(
+        puri, "demo", "demo", "nowhere", user, "demo", "sam_projet_caffiene", 1, ""
+    )
     ih.endProcess(puri, cid)
 
     already_kicked.add(projname)
 
+
 if __name__ == "__main__":
-    experiment = os.environ.get('EXPERIMENT',os.environ.get('SAM_EXPERIMENT',grp
-.getgrgid(os.getgid())[0]))
+    experiment = os.environ.get(
+        "EXPERIMENT", os.environ.get("SAM_EXPERIMENT", grp.getgrgid(os.getgid())[0])
+    )
 
-    parser = optparse.OptionParser(usage="usage: %prog [options] \n keep production SAM projects alive longer for production\n (Use %prog --help for full options list)")
+    parser = optparse.OptionParser(
+        usage="usage: %prog [options] \n keep production SAM projects alive longer for production\n (Use %prog --help for full options list)"
+    )
 
-    parser.add_option('-e','--experiment', default=experiment, help='use this experiment server defaults to $SAM_EXPERIMENT if not set')
-    parser.add_option('--station', default=None, help='use this station name -- defaults to $SAM_EXPERIMENT if not set')
+    parser.add_option(
+        "-e",
+        "--experiment",
+        default=experiment,
+        help="use this experiment server defaults to $SAM_EXPERIMENT if not set",
+    )
+    parser.add_option(
+        "--station",
+        default=None,
+        help="use this station name -- defaults to $SAM_EXPERIMENT if not set",
+    )
 
-    (o,a) = parser.parse_args()
-
+    (o, a) = parser.parse_args()
 
     if o.experiment:
         print("setting experiment %s" % o.experiment)
-        os.environ['EXPERIMENT']= o.experiment
-        os.environ['SAM_EXPERIMENT']= o.experiment
-        os.environ['IFDH_BASE_URI'] = "http://samweb.fnal.gov:8480/sam/%s/api" % o.experiment
-    else: 
-        sys.stderr.write("Error: Need either --experiment or $EXPERIMENT $SAM_EXPERIMENT in environment")
+        os.environ["EXPERIMENT"] = o.experiment
+        os.environ["SAM_EXPERIMENT"] = o.experiment
+        os.environ["IFDH_BASE_URI"] = (
+            "http://samweb.fnal.gov:8480/sam/%s/api" % o.experiment
+        )
+    else:
+        sys.stderr.write(
+            "Error: Need either --experiment or $EXPERIMENT $SAM_EXPERIMENT in environment"
+        )
         os.exit(1)
 
     if not o.station:
@@ -119,23 +145,25 @@ if __name__ == "__main__":
 
     if not ih:
         ih = ifdh.ifdh()
-  
+
     produser = "%spro" % o.experiment
 
-    while(1):
+    while 1:
         r = ih.dumpStation(o.station)
         subs = lens_dump(produser)
 
-        for line in r.split('\n'):
-            if line[:8] == 'project ':
-                words = line.split(' ')
-                started = ' '.join(words[5:8])
+        for line in r.split("\n"):
+            if line[:8] == "project ":
+                words = line.split(" ")
+                started = " ".join(words[5:8])
                 delivered = int(words[16])
                 wanted = int(words[20])
-                user = words[3].split('.')[0]
-                projname = words[1].split('(')[0]
+                user = words[3].split(".")[0]
+                projname = words[1].split("(")[0]
 
                 if user == produser:
-                    if check_project(o,projname, user, started, delivered, wanted, subs):
-                         kick_project(o, projname, user)
+                    if check_project(
+                        o, projname, user, started, delivered, wanted, subs
+                    ):
+                        kick_project(o, projname, user)
         time.sleep(3600)

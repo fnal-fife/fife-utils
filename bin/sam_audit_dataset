@@ -13,9 +13,9 @@ from samweb_client import *
 from fife_sam_utils import *
 
 
-def audit( ds, dest,  verbose = False, experiment = None, keeplists=None ):
+def audit(ds, dest, verbose=False, experiment=None, keeplists=None):
     samweb = SAMWebClient(experiment=experiment)
-    res=0
+    res = 0
 
     num_in_dataset = 0
     num_declared_at_dest = 0
@@ -24,46 +24,46 @@ def audit( ds, dest,  verbose = False, experiment = None, keeplists=None ):
     num_present_undeclared_at_dest = 0
     num_present_wrong_loc = 0
     num_no_locations = 0
-    
+
     if keeplists != None:
         if not os.path.exists(keeplists):
             os.mkdir(keeplists)
 
-    full_list = ds.ifdh_handle.ls(dest,10,'')
+    full_list = ds.ifdh_handle.ls(dest, 10, "")
     full_list = ds.normalize_list(full_list)
     full_set = set(full_list)
     fnames = [os.path.basename(x) for x in full_list]
     fnameset = set(fnames)
 
     if keeplists != None:
-        lslist=open("%s/ls_lR_out"%keeplists,"w")
+        lslist = open("%s/ls_lR_out" % keeplists, "w")
         for f in full_list:
-            lslist.write(f+"\n")
+            lslist.write(f + "\n")
         lslist.close()
-        lsfiles=open("%s/ls_basenames"%keeplists,"w")
+        lsfiles = open("%s/ls_basenames" % keeplists, "w")
         for f in fnameset:
-            lsfiles.write(f+"\n")
+            lsfiles.write(f + "\n")
         lsfiles.close()
-        flistf=open("%s/files_in_dataset"%keeplists,"w")
-        loclist=open("%s/dataset_locations_matching"%keeplists,"w")
-        misslist=open("%s/dataset_files_missing"%keeplists, "w")
-        wronglist=open("%s/dataset_files_misfiled"%keeplists, "w")
+        flistf = open("%s/files_in_dataset" % keeplists, "w")
+        loclist = open("%s/dataset_locations_matching" % keeplists, "w")
+        misslist = open("%s/dataset_files_missing" % keeplists, "w")
+        wronglist = open("%s/dataset_files_misfiled" % keeplists, "w")
 
     for f in ds.file_iterator():
         if keeplists != None:
-            flistf.write(f+"\n")
+            flistf.write(f + "\n")
         num_in_dataset += 1
         spl = ds.get_paths_for(f)
         spl = ds.normalize_list(spl)
         found = 0
         for sp in spl:
-            #print "checking %s startswith %s" % (sp, dest)
+            # print "checking %s startswith %s" % (sp, dest)
             if sp.startswith(dest):
                 if keeplists != None:
-                    loclist.write(sp+"\n")
+                    loclist.write(sp + "\n")
                 found = 1
                 num_declared_at_dest += 1
-                if  sp in full_set:
+                if sp in full_set:
                     num_present_declared_at_dest += 1
                     logging.info("located: %s", sp)
                 else:
@@ -72,22 +72,24 @@ def audit( ds, dest,  verbose = False, experiment = None, keeplists=None ):
                         for pp in full_list:
                             if pp.find(f):
                                 if keeplists != None:
-                                    wronglist.write("wrong path: %s at %s not %s" % ( f, pp, sp))
-                                logging.info("wrong path: %s at %s not %s" , f, pp, sp)
+                                    wronglist.write(
+                                        "wrong path: %s at %s not %s" % (f, pp, sp)
+                                    )
+                                logging.info("wrong path: %s at %s not %s", f, pp, sp)
                     logging.info("missing: %s", sp)
                     res = 1
         if found == 0:
-           if keeplists != None:
-               misslist.write(f+"\n")
-           num_undeclared_at_dest += 1
-           if f in fnameset:
-               num_present_undeclared_at_dest += 1
+            if keeplists != None:
+                misslist.write(f + "\n")
+            num_undeclared_at_dest += 1
+            if f in fnameset:
+                num_present_undeclared_at_dest += 1
         if len(spl) == 0:
-           num_no_locations += 1
-           logging.info("file %s has 0 locations",f)
-        
+            num_no_locations += 1
+            logging.info("file %s has 0 locations", f)
+
     print_("Dataset ", ds.dims, "at location", dest, ":")
-    print_("               Total Files:", num_in_dataset) 
+    print_("               Total Files:", num_in_dataset)
     print_("      Present and declared:", num_present_declared_at_dest)
     print_("                  Declared:", num_declared_at_dest)
     print_("              Not Declared:", num_undeclared_at_dest)
@@ -100,20 +102,32 @@ def audit( ds, dest,  verbose = False, experiment = None, keeplists=None ):
         misslist.close()
     return res
 
-if __name__ == '__main__':
-    
+
+if __name__ == "__main__":
+
     log_startup()
 
-    experiment = os.environ.get('EXPERIMENT',os.environ.get('SAM_EXPERIMENT',grp.getgrgid(os.getgid())[0]))
+    experiment = os.environ.get(
+        "EXPERIMENT", os.environ.get("SAM_EXPERIMENT", grp.getgrgid(os.getgid())[0])
+    )
 
-    parser = optparse.OptionParser(usage="usage: %prog [options] --name dataset --dest location\n Audit all files at destination location to see what files are and are not in named dataset")
-    parser.add_option('-v','--verbose',   action='count')
-    parser.add_option('-d','--dest',   help="location to audit")
-    parser.add_option('-e','--experiment', default=experiment, help='use this experiment server defaults to $SAM_EXPERIMENT if not set')
-    parser.add_option('-k','--keeplists', help="keep file lists in directory KEEPLISTS",default=None)
-    parser.add_option('-n', '--name',     help="dataset name to audit", )
+    parser = optparse.OptionParser(
+        usage="usage: %prog [options] --name dataset --dest location\n Audit all files at destination location to see what files are and are not in named dataset"
+    )
+    parser.add_option("-v", "--verbose", action="count")
+    parser.add_option("-d", "--dest", help="location to audit")
+    parser.add_option(
+        "-e",
+        "--experiment",
+        default=experiment,
+        help="use this experiment server defaults to $SAM_EXPERIMENT if not set",
+    )
+    parser.add_option(
+        "-k", "--keeplists", help="keep file lists in directory KEEPLISTS", default=None
+    )
+    parser.add_option("-n", "--name", help="dataset name to audit")
 
-    (o,a) = parser.parse_args()
+    (o, a) = parser.parse_args()
 
     if o.verbose > 1:
         logging.basicConfig(level=logging.DEBUG)
@@ -123,15 +137,19 @@ if __name__ == '__main__':
         logging.disable(logging.INFO)
 
     if o.experiment:
-        os.environ['EXPERIMENT']= o.experiment
-        os.environ['SAM_EXPERIMENT']= o.experiment
-        os.environ['IFDH_BASE_URI'] = "http://samweb.fnal.gov:8480/sam/%s/api" % o.experiment
-    else: 
-        sys.stderr.write("Error: Need either --experiment or $EXPERIMENT $SAM_EXPERIMENT in environment")
+        os.environ["EXPERIMENT"] = o.experiment
+        os.environ["SAM_EXPERIMENT"] = o.experiment
+        os.environ["IFDH_BASE_URI"] = (
+            "http://samweb.fnal.gov:8480/sam/%s/api" % o.experiment
+        )
+    else:
+        sys.stderr.write(
+            "Error: Need either --experiment or $EXPERIMENT $SAM_EXPERIMENT in environment"
+        )
         os.exit(1)
 
     cert = get_standard_certificate_path(o)
-    os.environ['X509_USER_PROXY'] = cert
+    os.environ["X509_USER_PROXY"] = cert
 
     if not o.name:
         parser.error("expected --name dataset-name")
@@ -141,7 +159,13 @@ if __name__ == '__main__':
         parser.error("expected --dest path")
         exit(1)
 
-    res = audit(dataset(o.name), dest = o.dest, verbose = o.verbose , experiment = o.experiment, keeplists= o.keeplists)
+    res = audit(
+        dataset(o.name),
+        dest=o.dest,
+        verbose=o.verbose,
+        experiment=o.experiment,
+        keeplists=o.keeplists,
+    )
     if res == 0:
         log_finish("Success")
     else:

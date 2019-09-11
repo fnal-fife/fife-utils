@@ -22,6 +22,7 @@ import socket
 import exceptions
 import grp
 import ifdh
+
 #
 # old python compatability hacks
 #
@@ -31,153 +32,176 @@ except:
     import simplejson as json
 
 try:
-   import uuid
+    import uuid
 except:
-   class uuid(object):
-       def uuid4():
-         return "%s-%s-%s-%s-%s" % (
-              hex(int(time.time()))[2:],
-              hex(os.getpid())[2:],
-              hex(os.getppid())[2:],
-              hex(os.getpid())[2:],
-              ''.join([hex(int(x))[2:] for x in socket.gethostbyname(socket.gethostname()).split('.')])
+
+    class uuid(object):
+        def uuid4():
+            return "%s-%s-%s-%s-%s" % (
+                hex(int(time.time()))[2:],
+                hex(os.getpid())[2:],
+                hex(os.getppid())[2:],
+                hex(os.getpid())[2:],
+                "".join(
+                    [
+                        hex(int(x))[2:]
+                        for x in socket.gethostbyname(socket.gethostname()).split(".")
+                    ]
+                ),
             )
-       uuid4 = staticmethod(uuid4)
-          
-#from fife_sam_utils import samprefix, is_cert_valid, has_uuid_prefix
-from fife_sam_utils import samprefix, has_uuid_prefix, replace_uuids, get_standard_certificate_path
+
+        uuid4 = staticmethod(uuid4)
+
+
+# from fife_sam_utils import samprefix, is_cert_valid, has_uuid_prefix
+from fife_sam_utils import (
+    samprefix,
+    has_uuid_prefix,
+    replace_uuids,
+    get_standard_certificate_path,
+)
 from fife_sam_utils import log_startup, log_finish
 
 
-
-
 def getJSONMetadata(jsonFile, tag):
-  logging.info('looking for json metadata from user at %s', jsonFile)
-  metadata = None
+    logging.info("looking for json metadata from user at %s", jsonFile)
+    metadata = None
 
-  try:
-    f = open(jsonFile)
-    metadata = json.loads(f.read())
-    f.close()
-  except Exception as e:
-    sys.exit('failed geting json data from %s: %s' % (jsonFile, e))
+    try:
+        f = open(jsonFile)
+        metadata = json.loads(f.read())
+        f.close()
+    except Exception as e:
+        sys.exit("failed geting json data from %s: %s" % (jsonFile, e))
 
-  logging.info('extracted user metadata which is %s', metadata)
+    logging.info("extracted user metadata which is %s", metadata)
 
+    if "data_tier" in metadata:
+        if metadata["data_tier"].endswith("-user"):
+            pass
+        else:
+            metadata["data_tier"] = metadata["data_tier"] + "-user"
 
-  if "data_tier" in metadata:
-    if metadata["data_tier"].endswith("-user"):
-      pass
-    else:
-      metadata["data_tier"] = metadata["data_tier"]+"-user"
+    logging.info("updating the metadata with Dataset.Tag: %s", tag)
+    metadata.update({"Dataset.Tag": tag})
 
-
-  logging.info('updating the metadata with Dataset.Tag: %s', tag)
-  metadata.update( {"Dataset.Tag": tag } )
-
-  logging.info('the metadata is now %s', metadata)
-  return metadata
+    logging.info("the metadata is now %s", metadata)
+    return metadata
 
 
 def checkfiletype(line):
     """ check first line of a file to see if its a data file or something """
-    if line[:5] == 'root\0':
-        raise TypeError("ERROR: Argument to -f must be a *text* file listing file names, not a .root file")
+    if line[:5] == "root\0":
+        raise TypeError(
+            "ERROR: Argument to -f must be a *text* file listing file names, not a .root file"
+        )
     if line[:10] == '#include "':
-        raise TypeError("ERROR: Argument to -f must be a text file listing file names, not a .fcl or .c file")
-    try: 
+        raise TypeError(
+            "ERROR: Argument to -f must be a text file listing file names, not a .fcl or .c file"
+        )
+    try:
         line.encode("ascii")
     except:
-        raise TypeError("ERROR: Argument to -f must be a text file listing file names, not a binary file")
+        raise TypeError(
+            "ERROR: Argument to -f must be a text file listing file names, not a binary file"
+        )
 
 
 def getFileList(txtFile):
-  logging.info('trying to create a python list of files from file %s', txtFile)
-  
-  try:
-    f = open(txtFile)
-    fileList = getFileListCommon(f)
-    f.close()
-  except Exception as e:
-    sys.exit('Failed reading file list from %s: %s' % (txtFile,e))
+    logging.info("trying to create a python list of files from file %s", txtFile)
 
-  logging.info('the python list is %s', fileList)
-  return fileList
+    try:
+        f = open(txtFile)
+        fileList = getFileListCommon(f)
+        f.close()
+    except Exception as e:
+        sys.exit("Failed reading file list from %s: %s" % (txtFile, e))
+
+    logging.info("the python list is %s", fileList)
+    return fileList
+
 
 def getFileListFromPipe():
-  logging.info('trying to create a python list of files from a pipe')
-  try:
-    fileList = getFileListCommon(sys.stdin)
-  except Exception as e:
-    sys.exit('Failed reading file list from pipe: %s' % e)
+    logging.info("trying to create a python list of files from a pipe")
+    try:
+        fileList = getFileListCommon(sys.stdin)
+    except Exception as e:
+        sys.exit("Failed reading file list from pipe: %s" % e)
 
-  logging.info('the python list is %s', fileList)
-  return fileList
+    logging.info("the python list is %s", fileList)
+    return fileList
+
 
 def getFileListCommon(f):
     first = True
     fileList = []
     for line in f:
 
-      line = line.strip('\n')
+        line = line.strip("\n")
 
+        # check for users doing "sam_add_datset -f foo.root"
+        if first:
+            first = False
+            checkfiletype(line)
 
-      # check for users doing "sam_add_datset -f foo.root"
-      if first:
-         first = False
-         checkfiletype(line)
+        # don't add empty line/empty strings it really confuses things later
+        if not line:
+            continue
 
-      # don't add empty line/empty strings it really confuses things later
-      if not line:
-          continue
-
-      if line[0] != '#':
-        fileList.append( os.path.abspath(line) )
+        if line[0] != "#":
+            fileList.append(os.path.abspath(line))
 
     return fileList
 
 
-
 def getFileListFromDir(directory, recurse):
-  logging.info('trying to create a python list of files from directory %s with recurse level set to %s', directory, recurse)
-    
-  fileList = []
-    
-  for root, dirs, files in os.walk(directory):
-        
-    for fileName in files:
-            
-      filePath = os.path.join(root, fileName)
-      fileList.append( os.path.abspath(filePath) )
-    
-    if recurse == False:
-        break
+    logging.info(
+        "trying to create a python list of files from directory %s with recurse level set to %s",
+        directory,
+        recurse,
+    )
 
-  logging.info('the python list is %s', fileList)
-  return fileList
+    fileList = []
+
+    for root, dirs, files in os.walk(directory):
+
+        for fileName in files:
+
+            filePath = os.path.join(root, fileName)
+            fileList.append(os.path.abspath(filePath))
+
+        if recurse == False:
+            break
+
+    logging.info("the python list is %s", fileList)
+    return fileList
 
 
 def getFileListFromGridFTP(directory_url, recurse):
-    #logging.info('trying to create a python list of files from gridftp accessible directory %s with recurse level set to %s',directory, recurse)
-    logging.info('trying to create a python list of files from gridftp accessible directory %s with recurse level set to NOT IMPLEMENTED' , directory_url)
+    # logging.info('trying to create a python list of files from gridftp accessible directory %s with recurse level set to %s',directory, recurse)
+    logging.info(
+        "trying to create a python list of files from gridftp accessible directory %s with recurse level set to NOT IMPLEMENTED",
+        directory_url,
+    )
 
     file_uri_list = []
     file_stats = {}
 
     ifdh_handle = ifdh.ifdh()
     if recurse:
-        ls_out = ifdh_handle.ls(directory_url, 3, '')
+        ls_out = ifdh_handle.ls(directory_url, 3, "")
     else:
-        ls_out = ifdh_handle.ls(directory_url, 1, '')
+        ls_out = ifdh_handle.ls(directory_url, 1, "")
 
     for ls_result in ls_out:
         identifier = os.path.basename(ls_result)
-        cmd = ['gfal-stat', ls_result]
+        cmd = ["gfal-stat", ls_result]
         gfal_stat_proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
         gfal_stat_output, err = gfal_stat_proc.communicate()
-        if err: raise ValueError('Value of err for gfal-stat set to %s' % err)
+        if err:
+            raise ValueError("Value of err for gfal-stat set to %s" % err)
 
-        if 'regular file' in gfal_stat_output:
+        if "regular file" in gfal_stat_output:
             file_uri_list.append(ls_result)
             file_stats[identifier] = gfal_stat_output
 
@@ -185,464 +209,548 @@ def getFileListFromGridFTP(directory_url, recurse):
 
 
 def getFileLocationFromGridFTPUrl(gridftp_url):
-    if gridftp_url.startswith('gsiftp://fndca1.fnal.gov'):
+    if gridftp_url.startswith("gsiftp://fndca1.fnal.gov"):
         loc = gridftp_url[47:]
-        return '/pnfs' + loc
-    if gridftp_url.startswith('gsiftp://eospublicftp.cern.ch'):
+        return "/pnfs" + loc
+    if gridftp_url.startswith("gsiftp://eospublicftp.cern.ch"):
         loc = gridftp_url[57:]
-        return '/eos' + loc 
+        return "/eos" + loc
 
 
 def declareFile(samweb, metadata):
-  logging.info('trying to declare the metadata to sam which is %s', json.dumps(metadata))
+    logging.info(
+        "trying to declare the metadata to sam which is %s", json.dumps(metadata)
+    )
 
-  try:
-    samweb.declareFile( metadata )
-  except Exception, e:
-    logging.error("Error declaring metadata for %s: %s", metadata['file_name'], e)
-    return 0
-  else:
-    logging.info('the metadata for %s was declared to sam', metadata['file_name'])
-   
-  return 1
-
-
-
-def renameFile(file, do_replace_uuids = False, gridftp_location=False):
-
-  fileName = os.path.basename(file)
-  dirName = os.path.dirname(file)
-
-
-  if do_replace_uuids:
-    filename = replace_uuids(fileName)
-
-  if not has_uuid_prefix(fileName):
-
-
-    logging.info('trying to rename %s on disk with a uuid', file)
-
-    uniquifier = str(uuid.uuid4()) + '-'
-
-    if dirName == '':
-      newFileName = uniquifier + fileName
+    try:
+        samweb.declareFile(metadata)
+    except Exception as e:
+        logging.error("Error declaring metadata for %s: %s", metadata["file_name"], e)
+        return 0
     else:
-      newFileName = dirName + '/' + uniquifier + fileName
+        logging.info("the metadata for %s was declared to sam", metadata["file_name"])
 
-    if not gridftp_location:
-        try:
-           os.rename(file, newFileName)
-        except Exception, e:
-           logging.error("ERROR: could not rename %s to %s\n... may not be unique", file, newFileName)
-           newFileName = file
+    return 1
+
+
+def renameFile(file, do_replace_uuids=False, gridftp_location=False):
+
+    fileName = os.path.basename(file)
+    dirName = os.path.dirname(file)
+
+    if do_replace_uuids:
+        filename = replace_uuids(fileName)
+
+    if not has_uuid_prefix(fileName):
+
+        logging.info("trying to rename %s on disk with a uuid", file)
+
+        uniquifier = str(uuid.uuid4()) + "-"
+
+        if dirName == "":
+            newFileName = uniquifier + fileName
+        else:
+            newFileName = dirName + "/" + uniquifier + fileName
+
+        if not gridftp_location:
+            try:
+                os.rename(file, newFileName)
+            except Exception as e:
+                logging.error(
+                    "ERROR: could not rename %s to %s\n... may not be unique",
+                    file,
+                    newFileName,
+                )
+                newFileName = file
+        else:
+            # Need to rename (i.e. copy and delete) the file with gridftp commands
+            cmd = ["gfal-copy", file, newFileName]
+            cp_proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+            ouput, err = cp_proc.communicate()
+            # Only remove the original file if the copy operation was succesful
+            if err is None:
+                cmd = ["gfal-rm", file]
+                rm_proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+                output, err = rm_proc.communicate()
+
+        logging.warning("renamed " + fileName + " to " + os.path.basename(newFileName))
+        logging.info("its location is %s", dirName)
+
     else:
-        # Need to rename (i.e. copy and delete) the file with gridftp commands
-        cmd = ['gfal-copy', file, newFileName]
-        cp_proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-        ouput, err = cp_proc.communicate()
-        # Only remove the original file if the copy operation was succesful 
-        if err is None:
-            cmd = ['gfal-rm', file]
-            rm_proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-            output, err = rm_proc.communicate()
+        logging.info("uuid detected for %s therefore not renaming", file)
+        if dirName == "":
+            newFileName = fileName
+        else:
+            newFileName = dirName + "/" + fileName
 
-    logging.warning('renamed ' + fileName + ' to ' + os.path.basename(newFileName))
-    logging.info('its location is %s', dirName)
-
-  else:
-    logging.info('uuid detected for %s therefore not renaming', file)
-    if dirName == '':
-      newFileName = fileName
-    else:
-      newFileName = dirName + '/' + fileName
-
-  return {"file_name": os.path.basename(newFileName), "location": dirName}
-
+    return {"file_name": os.path.basename(newFileName), "location": dirName}
 
 
 def statBuildMetaData(file):
-  logging.info('trying to stat %s for its size', file)
-  
-  try:
-    statinfo = os.stat(file)
-  except Exception as e:
-    sys.exit('oops: %s' % e)
-  size = statinfo.st_size
-        
-  metadata = {"file_name": file, "file_type": "unknown", "file_size": size}
-  
-  logging.info('just built generic json metadata object for this file %s which will be updated', metadata)
-  
-  return metadata
+    logging.info("trying to stat %s for its size", file)
+
+    try:
+        statinfo = os.stat(file)
+    except Exception as e:
+        sys.exit("oops: %s" % e)
+    size = statinfo.st_size
+
+    metadata = {"file_name": file, "file_type": "unknown", "file_size": size}
+
+    logging.info(
+        "just built generic json metadata object for this file %s which will be updated",
+        metadata,
+    )
+
+    return metadata
 
 
 def gfalStatBuildMetaData(filename, stat):
-  size_start, size_end = stat.find('Size:'), stat.find('\t')
-  size = stat[size_start:size_end]
-  size = size[6:]
-  metadata = { "file_name" : filename, "file_type" : "unknown", "file_size" : size }
+    size_start, size_end = stat.find("Size:"), stat.find("\t")
+    size = stat[size_start:size_end]
+    size = size[6:]
+    metadata = {"file_name": filename, "file_type": "unknown", "file_size": size}
 
-  return metadata
+    return metadata
 
 
 def declareFileLocation(samweb, fileName, location):
-  logging.info('trying to declare file location to sam with filename of %s and location of %s', fileName, location)
-  
-  location = samprefix(location) + location
+    logging.info(
+        "trying to declare file location to sam with filename of %s and location of %s",
+        fileName,
+        location,
+    )
 
-  try:
-    samweb.addFileLocation(fileName, location)
-    logging.info('file %s location %s was declared to SAM', fileName,location)
-    return True
-  except Exception as e:
-    if "Location" in str(e) and "not found" in str(e):
-      data_disks = samweb.listDataDisks()
-      logging.error("Valid data disks are:\n")
-      for item in data_disks:
-        logging.error(item['mount_point'])
-      logging.error('Error: %s is not a valid sam path', location)
-    else:
-      logging.exception('Failed trying to add location %s for file %s ', fileName,location)
-  return False
+    location = samprefix(location) + location
+
+    try:
+        samweb.addFileLocation(fileName, location)
+        logging.info("file %s location %s was declared to SAM", fileName, location)
+        return True
+    except Exception as e:
+        if "Location" in str(e) and "not found" in str(e):
+            data_disks = samweb.listDataDisks()
+            logging.error("Valid data disks are:\n")
+            for item in data_disks:
+                logging.error(item["mount_point"])
+            logging.error("Error: %s is not a valid sam path", location)
+        else:
+            logging.exception(
+                "Failed trying to add location %s for file %s ", fileName, location
+            )
+    return False
+
 
 def get_tag(options, datasetName):
-  logging.info('trying to resolve a tag')
-  
-  if options.tag:
-    tag = options.tag
-    logging.info('the tag is %s', tag)
-    return tag
-  else:
-    tag = datasetName
-    logging.info('the tag is %s', tag)
-    return tag
+    logging.info("trying to resolve a tag")
 
+    if options.tag:
+        tag = options.tag
+        logging.info("the tag is %s", tag)
+        return tag
+    else:
+        tag = datasetName
+        logging.info("the tag is %s", tag)
+        return tag
 
 
 def get_dataset_name(options, user):
-  logging.info('trying to resolve a dataset name')
+    logging.info("trying to resolve a dataset name")
 
-  if options.name:
-    datasetName = options.name
-  else:
-    datasetName = "userdataset_" + user + "_" + str(datetime.datetime.now().strftime("%Y-%m-%d-%H_%M_%S"))
-  logging.info('the dataset name is %s', datasetName)
-  return datasetName
+    if options.name:
+        datasetName = options.name
+    else:
+        datasetName = (
+            "userdataset_"
+            + user
+            + "_"
+            + str(datetime.datetime.now().strftime("%Y-%m-%d-%H_%M_%S"))
+        )
+    logging.info("the dataset name is %s", datasetName)
+    return datasetName
 
 
 def createDefinition(samweb, definitionName, dimensions):
-  logging.info('trying to create definition %s with dimensions %s to sam', definitionName, dimensions)
-  
-  try:
-    samweb.createDefinition(definitionName, dimensions)
-  except Exception as e:
-    logging.error('oops: %s', e)
-    sys.exit(1)
-  logging.info('dataset definition created')
+    logging.info(
+        "trying to create definition %s with dimensions %s to sam",
+        definitionName,
+        dimensions,
+    )
+
+    try:
+        samweb.createDefinition(definitionName, dimensions)
+    except Exception as e:
+        logging.error("oops: %s", e)
+        sys.exit(1)
+    logging.info("dataset definition created")
 
 
-supported_subprocesses = ["sam_metadata_dumper","extractCAFMetadata"]
+supported_subprocesses = ["sam_metadata_dumper", "extractCAFMetadata"]
+
 
 class Sam_Metadata_Dumper_Parser(object):
- 
-  SAM_METADATA = None
- 
-  def __init__(self, file, samweb, progname):
-    self.file = file
-    self.samweb = samweb
-    if not progname in supported_subprocesses:
-        raise KeyError("unknown metadata tool %s" % self.progname)
-    self.progname = progname
-    
-    
-  def get_json(self):
-    logging.info('trying to create subprocess for %s', self.progname)     
-   
-    try:
-      a = json.loads( subprocess.Popen([self.progname, self.file],stdout=subprocess.PIPE).stdout.read() )
-    except Exception as e:
-      sys.exit('oops: %s' % e)
 
-    logging.info('extracted the following metadata to be formated %s', a)        
+    SAM_METADATA = None
 
-    self.SAM_METADATA = a[self.file]
+    def __init__(self, file, samweb, progname):
+        self.file = file
+        self.samweb = samweb
+        if not progname in supported_subprocesses:
+            raise KeyError("unknown metadata tool %s" % self.progname)
+        self.progname = progname
 
-    return self.SAM_METADATA
+    def get_json(self):
+        logging.info("trying to create subprocess for %s", self.progname)
 
+        try:
+            a = json.loads(
+                subprocess.Popen(
+                    [self.progname, self.file], stdout=subprocess.PIPE
+                ).stdout.read()
+            )
+        except Exception as e:
+            sys.exit("oops: %s" % e)
 
-  def format_json(self):
-    logging.info('formatting the extracted metadata')  
-  
-    keys = list(self.SAM_METADATA.keys())
-    application = {}
-    found = False
+        logging.info("extracted the following metadata to be formated %s", a)
 
-    if 'applicationFamily' in keys:
-      found = True
-      application['family'] = self.SAM_METADATA['applicationFamily']
-      del self.SAM_METADATA['applicationFamily']
-    if 'applicationVersion' in keys:
-      found = True
-      application['version'] = self.SAM_METADATA['applicationVersion']
-      del self.SAM_METADATA['applicationVersion']
-    if 'process_name' in keys:
-      found = True
-      application['name'] = self.SAM_METADATA['process_name']
-      del self.SAM_METADATA['process_name']
+        self.SAM_METADATA = a[self.file]
 
-    if found:
-      self.SAM_METADATA["application"] = application
-                
-    if 'dataTier' in keys:
-      self.SAM_METADATA['data_tier'] = self.SAM_METADATA['dataTier']
-      del self.SAM_METADATA['dataTier']
-    if 'fileType' in keys:
-      self.SAM_METADATA['file_type'] = self.SAM_METADATA['fileType']
-      del self.SAM_METADATA['fileType']
-    if 'streamName' in keys:
-      self.SAM_METADATA['data_stream'] = self.SAM_METADATA['streamName']
-      del self.SAM_METADATA['streamName']
+        return self.SAM_METADATA
 
-    if 'first_event' in keys:
-      if isinstance(self.SAM_METADATA['first_event'], list):
-        self.SAM_METADATA['first_event'] = self.SAM_METADATA['first_event'][-1]
-    if 'last_event' in keys:
-      if isinstance(self.SAM_METADATA['last_event'], list):
-        self.SAM_METADATA['last_event'] = self.SAM_METADATA['last_event'][-1]
+    def format_json(self):
+        logging.info("formatting the extracted metadata")
 
-    try:
-      self.samweb.validateFileMetadata(md=self.SAM_METADATA)
-    except Exception as e:
-      lines = str(e.msg).split('\n')
-      for line in lines:
-        if 'Unknown' in line:
-          unknown_md_item =  line.split("'")[-2]
-          if unknown_md_item in keys:
-            logging.info('invalid metadata item %s deleting it', unknown_md_item)
-            del self.SAM_METADATA[unknown_md_item]
+        keys = list(self.SAM_METADATA.keys())
+        application = {}
+        found = False
 
-    for key, value in self.SAM_METADATA.items():
-      if isinstance(value, int):
-        self.SAM_METADATA[key] = str(value)
-        
-    return self.SAM_METADATA
+        if "applicationFamily" in keys:
+            found = True
+            application["family"] = self.SAM_METADATA["applicationFamily"]
+            del self.SAM_METADATA["applicationFamily"]
+        if "applicationVersion" in keys:
+            found = True
+            application["version"] = self.SAM_METADATA["applicationVersion"]
+            del self.SAM_METADATA["applicationVersion"]
+        if "process_name" in keys:
+            found = True
+            application["name"] = self.SAM_METADATA["process_name"]
+            del self.SAM_METADATA["process_name"]
 
+        if found:
+            self.SAM_METADATA["application"] = application
+
+        if "dataTier" in keys:
+            self.SAM_METADATA["data_tier"] = self.SAM_METADATA["dataTier"]
+            del self.SAM_METADATA["dataTier"]
+        if "fileType" in keys:
+            self.SAM_METADATA["file_type"] = self.SAM_METADATA["fileType"]
+            del self.SAM_METADATA["fileType"]
+        if "streamName" in keys:
+            self.SAM_METADATA["data_stream"] = self.SAM_METADATA["streamName"]
+            del self.SAM_METADATA["streamName"]
+
+        if "first_event" in keys:
+            if isinstance(self.SAM_METADATA["first_event"], list):
+                self.SAM_METADATA["first_event"] = self.SAM_METADATA["first_event"][-1]
+        if "last_event" in keys:
+            if isinstance(self.SAM_METADATA["last_event"], list):
+                self.SAM_METADATA["last_event"] = self.SAM_METADATA["last_event"][-1]
+
+        try:
+            self.samweb.validateFileMetadata(md=self.SAM_METADATA)
+        except Exception as e:
+            lines = str(e.msg).split("\n")
+            for line in lines:
+                if "Unknown" in line:
+                    unknown_md_item = line.split("'")[-2]
+                    if unknown_md_item in keys:
+                        logging.info(
+                            "invalid metadata item %s deleting it", unknown_md_item
+                        )
+                        del self.SAM_METADATA[unknown_md_item]
+
+        for key, value in self.SAM_METADATA.items():
+            if isinstance(value, int):
+                self.SAM_METADATA[key] = str(value)
+
+        return self.SAM_METADATA
 
 
 def check_options(p, options):
-  logging.info('checking options')
+    logging.info("checking options")
 
-  errors = "\n"
+    errors = "\n"
 
-  if options.file and options.directory:
-    errors += "you must specify either a text file or a directory not both\n"
+    if options.file and options.directory:
+        errors += "you must specify either a text file or a directory not both\n"
 
-  if options.file == None and options.directory == None:
-    errors += "you must specify either a text file or a directory\n"
+    if options.file == None and options.directory == None:
+        errors += "you must specify either a text file or a directory\n"
 
-  if options.subprocess and options.subprocess not in supported_subprocesses:
-    errors += "only the following subprocesses are supported: " + ', '.join(supported_subprocesses)
+    if options.subprocess and options.subprocess not in supported_subprocesses:
+        errors += "only the following subprocesses are supported: " + ", ".join(
+            supported_subprocesses
+        )
 
-  if errors != "\n":
-    p.error(errors)
+    if errors != "\n":
+        p.error(errors)
 
-  logging.info('options good')
-
+    logging.info("options good")
 
 
 def main():
 
-  user = getpass.getuser()
-  
-  """runs program and handles command line options"""
-  experiment = os.environ.get('EXPERIMENT',os.environ.get('SAM_EXPERIMENT',grp.getgrgid(os.getgid())[0]))
+    user = getpass.getuser()
 
-  p = optparse.OptionParser(description='Add a group of files to SAM and create a dataset out of it.',
-                            prog='sam_add_dataset',
-                            version='sam_add_dataset 0.9',
-                            usage='%prog <-f file | -d directory> [options]')
+    """runs program and handles command line options"""
+    experiment = os.environ.get(
+        "EXPERIMENT", os.environ.get("SAM_EXPERIMENT", grp.getgrgid(os.getgid())[0])
+    )
 
+    p = optparse.OptionParser(
+        description="Add a group of files to SAM and create a dataset out of it.",
+        prog="sam_add_dataset",
+        version="sam_add_dataset 0.9",
+        usage="%prog <-f file | -d directory> [options]",
+    )
 
-  p.add_option('-e','--experiment', default=experiment, help='use this experiment server defaults to $SAM_EXPERIMENT or group name if not set')
-  p.add_option('-u', '--user', help='default is %s' % user)
-  p.add_option('-t', '--tag', help='the value for Dataset.Tag which will be used to distinguish this new dataset default format is user+date')
-  p.add_option('-n', '--name', help='the dataset name default is userdataset+user+date')
-  p.add_option('-d', '--directory', help='directory of files to create dataset with')
-  p.add_option('-r', '--recurse', action ='store_true', default=False, help='walk down all levels of directory')
-  p.add_option('-f', '--file', help='file of file paths to create dataset with')
-  p.add_option('-m', '--metadata', help='json file of metadata you would like added to all files')
-  p.add_option('-s',  '--subprocess', help='execute a child program in a new process to extract metadata only sam_metadata_dumper currently supported')
-  p.add_option('-c', '--cert', help='x509 certificate for authentication. If not specified, use $X509_USER_PROXY, $X509_USER_CERT/$X509_USER_KEY or standard grid proxy location')
-  p.add_option('--no-rename', action='store_true', default = False, help = 'Do not rename files to ensure uniqueness')
-  p.add_option('--replace-uuids', action='store_true', default = False, help = 'Replace existing uuid strings to ensure uniqueness')
-  p.add_option('--data_tier', default="sam-user", help="default data_tier if no metadata is given; default 'sam-user'")
-  p.add_option('-v', '--verbose', action ='store_true', help='returns verbose output')
-  
-  
-  o, arguments = p.parse_args()
+    p.add_option(
+        "-e",
+        "--experiment",
+        default=experiment,
+        help="use this experiment server defaults to $SAM_EXPERIMENT or group name if not set",
+    )
+    p.add_option("-u", "--user", help="default is %s" % user)
+    p.add_option(
+        "-t",
+        "--tag",
+        help="the value for Dataset.Tag which will be used to distinguish this new dataset default format is user+date",
+    )
+    p.add_option(
+        "-n", "--name", help="the dataset name default is userdataset+user+date"
+    )
+    p.add_option("-d", "--directory", help="directory of files to create dataset with")
+    p.add_option(
+        "-r",
+        "--recurse",
+        action="store_true",
+        default=False,
+        help="walk down all levels of directory",
+    )
+    p.add_option("-f", "--file", help="file of file paths to create dataset with")
+    p.add_option(
+        "-m",
+        "--metadata",
+        help="json file of metadata you would like added to all files",
+    )
+    p.add_option(
+        "-s",
+        "--subprocess",
+        help="execute a child program in a new process to extract metadata only sam_metadata_dumper currently supported",
+    )
+    p.add_option(
+        "-c",
+        "--cert",
+        help="x509 certificate for authentication. If not specified, use $X509_USER_PROXY, $X509_USER_CERT/$X509_USER_KEY or standard grid proxy location",
+    )
+    p.add_option(
+        "--no-rename",
+        action="store_true",
+        default=False,
+        help="Do not rename files to ensure uniqueness",
+    )
+    p.add_option(
+        "--replace-uuids",
+        action="store_true",
+        default=False,
+        help="Replace existing uuid strings to ensure uniqueness",
+    )
+    p.add_option(
+        "--data_tier",
+        default="sam-user",
+        help="default data_tier if no metadata is given; default 'sam-user'",
+    )
+    p.add_option("-v", "--verbose", action="store_true", help="returns verbose output")
 
-  if o.verbose > 1:
-     logging.basicConfig(level=logging.DEBUG)
-  elif o.verbose > 0:
-     logging.basicConfig(level=logging.INFO)
-  else:
-     logging.disable(logging.INFO)
+    o, arguments = p.parse_args()
 
-  logging.info("options are: %s ", repr(o))
+    if o.verbose > 1:
+        logging.basicConfig(level=logging.DEBUG)
+    elif o.verbose > 0:
+        logging.basicConfig(level=logging.INFO)
+    else:
+        logging.disable(logging.INFO)
 
-  if len(sys.argv) == 1:
-    p.print_help()
-    return
+    logging.info("options are: %s ", repr(o))
 
+    if len(sys.argv) == 1:
+        p.print_help()
+        return
 
-  check_options(p, o)
-  
-  if o.experiment:
-        os.environ['EXPERIMENT']= o.experiment
-        os.environ['SAM_EXPERIMENT']= o.experiment
-        os.environ['IFDH_BASE_URI'] = "http://samweb.fnal.gov:8480/sam/%s/api" % o.experiment
+    check_options(p, o)
+
+    if o.experiment:
+        os.environ["EXPERIMENT"] = o.experiment
+        os.environ["SAM_EXPERIMENT"] = o.experiment
+        os.environ["IFDH_BASE_URI"] = (
+            "http://samweb.fnal.gov:8480/sam/%s/api" % o.experiment
+        )
         experiment = o.experiment
-  else: 
-        logging.error("Error: Need either --experiment or $EXPERIMENT $SAM_EXPERIMENT in environment")
+    else:
+        logging.error(
+            "Error: Need either --experiment or $EXPERIMENT $SAM_EXPERIMENT in environment"
+        )
         os.exit(1)
 
-  if o.user:
-    user = o.user
+    if o.user:
+        user = o.user
 
-  cert = get_standard_certificate_path(o)
-  os.environ['X509_USER_PROXY'] = cert
+    cert = get_standard_certificate_path(o)
+    os.environ["X509_USER_PROXY"] = cert
 
-  samweb = samweb_client.SAMWebClient(experiment=experiment, cert=cert)
+    samweb = samweb_client.SAMWebClient(experiment=experiment, cert=cert)
 
-  jsonFile = o.metadata
-  
-  datasetName = get_dataset_name(o, user)
+    jsonFile = o.metadata
 
-  tag = get_tag(o, datasetName)
+    datasetName = get_dataset_name(o, user)
 
-  logging.info('the o are %s', o)
-  logging.info('the arguments are %s', arguments)
-  logging.info('the user is %s', user)
+    tag = get_tag(o, datasetName)
 
+    logging.info("the o are %s", o)
+    logging.info("the arguments are %s", arguments)
+    logging.info("the user is %s", user)
 
-  if 5 > 3:  #still need to figure out this condition
-    gridftp_location = False
-    fileStats = None
+    if 5 > 3:  # still need to figure out this condition
+        gridftp_location = False
+        fileStats = None
 
-    if jsonFile:
-      universalMD = getJSONMetadata(o.metadata, tag)
-    else:
-      universalMD = {"Dataset.Tag": tag, "data_tier": o.data_tier }
-
-    if o.directory:
-      gridftp_location = o.directory.startswith('gsiftp:')
-      if os.path.isdir(o.directory):
-        fileList = getFileListFromDir(o.directory, o.recurse)
-      if gridftp_location:
-        fileList, fileStats = getFileListFromGridFTP(o.directory, o.recurse)
-    elif o.file == '-':
-      fileList = getFileListFromPipe()
-    else:
-      fileList = getFileList(o.file)
-
-    if not gridftp_location:
-        # expand globs
-        gflist = []
-        for filename in fileList:
-            for f2 in glob.glob(filename):
-                gflist.append(f2)
-        fileList = gflist
-
-        for fname in fileList:
-            if fname[0] == '/' and not os.access(fname, os.R_OK):
-                logging.error("WARNING: file %s not accessible", fname)
-
-    logging.info('entering for loop to process all the files to create the dataset')
-    if o.no_rename:
-        fname_limit = 154
-    else:
-        fname_limit = 200 
-
-    lengths_ok = True
-    for filename in fileList:
-      if len(os.path.basename(filename)) > fname_limit:
-          logging.error("file name too long: %s", os.path.basename(filename))
-          lengths_ok = False
-
-    if not lengths_ok:
-      exit(1)
-
-    failedfiles = 0
-    failedlocations = 0
-    totfiles = 0
-
-    for filename in fileList:
-      logging.info('processing %s', filename)
-
-      fileMD = {}
-      
-      if o.subprocess:
-        if not gridftp_location:
-            dumperObject = Sam_Metadata_Dumper_Parser(filename, samweb, o.subprocess)
-            dumperObject.get_json()
-            sam_metadata_dumper_metadata = dumperObject.format_json()
-            fileMD.update(sam_metadata_dumper_metadata)
+        if jsonFile:
+            universalMD = getJSONMetadata(o.metadata, tag)
         else:
-            logging.error('Subprocess not supported for directories accessed via gridftp')
+            universalMD = {"Dataset.Tag": tag, "data_tier": o.data_tier}
+
+        if o.directory:
+            gridftp_location = o.directory.startswith("gsiftp:")
+            if os.path.isdir(o.directory):
+                fileList = getFileListFromDir(o.directory, o.recurse)
+            if gridftp_location:
+                fileList, fileStats = getFileListFromGridFTP(o.directory, o.recurse)
+        elif o.file == "-":
+            fileList = getFileListFromPipe()
+        else:
+            fileList = getFileList(o.file)
+
+        if not gridftp_location:
+            # expand globs
+            gflist = []
+            for filename in fileList:
+                for f2 in glob.glob(filename):
+                    gflist.append(f2)
+            fileList = gflist
+
+            for fname in fileList:
+                if fname[0] == "/" and not os.access(fname, os.R_OK):
+                    logging.error("WARNING: file %s not accessible", fname)
+
+        logging.info("entering for loop to process all the files to create the dataset")
+        if o.no_rename:
+            fname_limit = 154
+        else:
+            fname_limit = 200
+
+        lengths_ok = True
+        for filename in fileList:
+            if len(os.path.basename(filename)) > fname_limit:
+                logging.error("file name too long: %s", os.path.basename(filename))
+                lengths_ok = False
+
+        if not lengths_ok:
             exit(1)
-       
-      if gridftp_location:
-          fname = os.path.basename(filename) # filelist in this case is a bunch of gsiftp://blahblahblah's
-          fileMD.update( gfalStatBuildMetaData(fname, fileStats[fname]) )
-      else:
-          fileMD.update( statBuildMetaData(filename) )
 
-      if o.no_rename:
-          renamedFile =  {"file_name": os.path.basename(filename), "location":os.path.dirname(filename)} 
-      else:
-          renamedFile = renameFile(filename, o.replace_uuids, gridftp_location)
+        failedfiles = 0
+        failedlocations = 0
+        totfiles = 0
 
-      fileLocation = renamedFile.pop("location")
-      if gridftp_location:
-          # Truncate 'gsiftp://fndca1.fnal.gov:2811/pnfs/fnal.gov/usr' and massage a bit to look like a normal path that samprefix() can work with
-          fileLocation = getFileLocationFromGridFTPUrl(fileLocation)
-          if not fileLocation: raise ValueError('Unable to deduce a file location from the gsiftp url.') 
+        for filename in fileList:
+            logging.info("processing %s", filename)
 
-      fileMD.update(renamedFile)
-      fileMD.update(universalMD)
-    
-      totfiles = totfiles + 1
-      if declareFile(samweb, fileMD):
-          # don't try to declare the location if you could not declare the filename
-          if not declareFileLocation(samweb, fileMD["file_name"], fileLocation):
-              failedlocations = failedlocations + 1
-      else:
-          logging.error("Could not declare file: %s ", filename)
-          failedfiles = failedfiles + 1
+            fileMD = {}
 
-    logging.info('for loop is done')
-    
-    
-    dimension = "Dataset.Tag " + tag
-    res = createDefinition(samweb, datasetName, dimension)
-    
-    logging.info('createDefinition returned %s', repr(res))
+            if o.subprocess:
+                if not gridftp_location:
+                    dumperObject = Sam_Metadata_Dumper_Parser(
+                        filename, samweb, o.subprocess
+                    )
+                    dumperObject.get_json()
+                    sam_metadata_dumper_metadata = dumperObject.format_json()
+                    fileMD.update(sam_metadata_dumper_metadata)
+                else:
+                    logging.error(
+                        "Subprocess not supported for directories accessed via gridftp"
+                    )
+                    exit(1)
 
-    logging.info('PROGRAM SUCCESS')
-    logging.warning('the dataset with name ' + datasetName + ' was created')
-    if failedfiles > 0:
-        logging.error("...however %d files out of %d failed to declare", failedfiles, totfiles)
+            if gridftp_location:
+                fname = os.path.basename(
+                    filename
+                )  # filelist in this case is a bunch of gsiftp://blahblahblah's
+                fileMD.update(gfalStatBuildMetaData(fname, fileStats[fname]))
+            else:
+                fileMD.update(statBuildMetaData(filename))
 
-    if failedlocations > 0:
-        logging.error("...however %d file locations failed to add", failedlocations)
+            if o.no_rename:
+                renamedFile = {
+                    "file_name": os.path.basename(filename),
+                    "location": os.path.dirname(filename),
+                }
+            else:
+                renamedFile = renameFile(filename, o.replace_uuids, gridftp_location)
 
-  else:
-    #p.print_help()
-    p.error("incorrect number of arguments")
+            fileLocation = renamedFile.pop("location")
+            if gridftp_location:
+                # Truncate 'gsiftp://fndca1.fnal.gov:2811/pnfs/fnal.gov/usr' and massage a bit to look like a normal path that samprefix() can work with
+                fileLocation = getFileLocationFromGridFTPUrl(fileLocation)
+                if not fileLocation:
+                    raise ValueError(
+                        "Unable to deduce a file location from the gsiftp url."
+                    )
+
+            fileMD.update(renamedFile)
+            fileMD.update(universalMD)
+
+            totfiles = totfiles + 1
+            if declareFile(samweb, fileMD):
+                # don't try to declare the location if you could not declare the filename
+                if not declareFileLocation(samweb, fileMD["file_name"], fileLocation):
+                    failedlocations = failedlocations + 1
+            else:
+                logging.error("Could not declare file: %s ", filename)
+                failedfiles = failedfiles + 1
+
+        logging.info("for loop is done")
+
+        dimension = "Dataset.Tag " + tag
+        res = createDefinition(samweb, datasetName, dimension)
+
+        logging.info("createDefinition returned %s", repr(res))
+
+        logging.info("PROGRAM SUCCESS")
+        logging.warning("the dataset with name " + datasetName + " was created")
+        if failedfiles > 0:
+            logging.error(
+                "...however %d files out of %d failed to declare", failedfiles, totfiles
+            )
+
+        if failedlocations > 0:
+            logging.error("...however %d file locations failed to add", failedlocations)
+
+    else:
+        # p.print_help()
+        p.error("incorrect number of arguments")
 
 
-
-if __name__ == '__main__':
-  log_startup()
-  main()
-  log_finish("Success")
+if __name__ == "__main__":
+    log_startup()
+    main()
+    log_finish("Success")

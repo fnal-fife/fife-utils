@@ -8,8 +8,10 @@ except:
 try:
     from past.utils import old_div
 except:
-    def old_div(x,y):
-        return x / y 
+
+    def old_div(x, y):
+        return x / y
+
 
 import grp
 import ifdh
@@ -25,30 +27,39 @@ from fife_sam_utils import dataset, sampath, get_standard_certificate_path
 from fife_sam_utils import log_startup, log_finish
 
 try:
-   import uuid
+    import uuid
 except:
-   class uuid(object):
-       def uuid4():
-         return "%s-%s-%s-%s-%s" % (
-              hex(int(time.time()))[2:],
-              hex(os.getpid())[2:],
-              hex(os.getppid())[2:],
-              hex(os.getpid())[2:],
-              ''.join([hex(int(x))[2:] for x in socket.gethostbyname(socket.gethostname()).split('.')])
+
+    class uuid(object):
+        def uuid4():
+            return "%s-%s-%s-%s-%s" % (
+                hex(int(time.time()))[2:],
+                hex(os.getpid())[2:],
+                hex(os.getppid())[2:],
+                hex(os.getpid())[2:],
+                "".join(
+                    [
+                        hex(int(x))[2:]
+                        for x in socket.gethostbyname(socket.gethostname()).split(".")
+                    ]
+                ),
             )
-       uuid4 = staticmethod(uuid4)
+
+        uuid4 = staticmethod(uuid4)
 
 
 import ifdh
 import os.path
 
+
 class restorer(object):
     def __init__(self):
-         self.fifopath = None
+        self.fifopath = None
 
     def __del__(self):
-         if self.fifopath:
+        if self.fifopath:
             import os
+
             os.unlink(self.fifopath)
 
     def list(self, o):
@@ -59,48 +70,84 @@ class restorer(object):
         print("Date\t\t\t\tsize(k)\tPath")
         for f in d.file_iterator():
             m = samweb.getMetadata(f)
-            print("%s\t%d\t%s" % (m['create_date'], old_div(m['file_size'],1024), m['Archive.source']))
+            print(
+                "%s\t%d\t%s"
+                % (m["create_date"], old_div(m["file_size"], 1024), m["Archive.source"])
+            )
 
     def restore(self, o):
         if not o.restore or not o.date:
-            parser.error("either --list or --restore=/some/path and --date=some-date required")
+            parser.error(
+                "either --list or --restore=/some/path and --date=some-date required"
+            )
 
         if o.just_say:
-            print("I would unpack the archvied areas in the dataset", o.name , "for location " , o.restore , " as of " , o.date)
+            print(
+                "I would unpack the archvied areas in the dataset",
+                o.name,
+                "for location ",
+                o.restore,
+                " as of ",
+                o.date,
+            )
             return
 
-        os.chdir('/')
+        os.chdir("/")
         for f in d.file_iterator():
             m = samweb.getMetadata(f)
-            if m['Archive.source'] == o.restore and m['create_date'] == o.date:
-                src = sampath(samweb.locateFile(f)[0]['full_path']) + '/' + f
-                self.fifopath = os.environ.get('TMPDIR','/tmp') + "/fifo_%d" % os.getpid()
+            if m["Archive.source"] == o.restore and m["create_date"] == o.date:
+                src = sampath(samweb.locateFile(f)[0]["full_path"]) + "/" + f
+                self.fifopath = (
+                    os.environ.get("TMPDIR", "/tmp") + "/fifo_%d" % os.getpid()
+                )
                 os.mkfifo(self.fifopath)
                 # copy retries and FIFO's dont mix...
-                os.environ["IFDH_CP_MAXRETRIES"] = '0'
-                p1 = subprocess.Popen(["ifdh", "cp",  src, self.fifopath])
+                os.environ["IFDH_CP_MAXRETRIES"] = "0"
+                p1 = subprocess.Popen(["ifdh", "cp", src, self.fifopath])
                 p2 = subprocess.Popen(["tar", "xzvf", self.fifopath])
                 p2.wait()
                 p1.wait()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
 
     log_startup()
 
-    parser = optparse.OptionParser(usage="usage: %prog [options] \n restore files from dcache archviver area.\n  (Use %prog --help for full options list)")
-    experiment = os.environ.get('EXPERIMENT',os.environ.get('SAM_EXPERIMENT',grp.getgrgid(os.getgid())[0]))
-    dname = os.environ.get('USER',os.environ.get('GRID_USER'))
-    default_dataset = dname + '_archive_images' 
+    parser = optparse.OptionParser(
+        usage="usage: %prog [options] \n restore files from dcache archviver area.\n  (Use %prog --help for full options list)"
+    )
+    experiment = os.environ.get(
+        "EXPERIMENT", os.environ.get("SAM_EXPERIMENT", grp.getgrgid(os.getgid())[0])
+    )
+    dname = os.environ.get("USER", os.environ.get("GRID_USER"))
+    default_dataset = dname + "_archive_images"
     datedir = time.strftime("%Y/%m-%d")
-    parser.add_option('-v','--verbose',   action='count')
-    parser.add_option('-j','--just_say',  action='store_true', help="do not actually copy, just say what you would do")
-    parser.add_option('-e','--experiment', default=experiment, help='use this experiment server defaults to $SAM_EXPERIMENT if not set')
-    parser.add_option('-n', '--name',     default= default_dataset, help="dataset name/tag to put in: default is %s" % default_dataset, )
-    parser.add_option('-l', '--list',      help="list available archived directories", action="store_true")
-    parser.add_option('-r', '--restore',   help="directory to restore")
-    parser.add_option('-d', '--date',      help="date of image to restore")
+    parser.add_option("-v", "--verbose", action="count")
+    parser.add_option(
+        "-j",
+        "--just_say",
+        action="store_true",
+        help="do not actually copy, just say what you would do",
+    )
+    parser.add_option(
+        "-e",
+        "--experiment",
+        default=experiment,
+        help="use this experiment server defaults to $SAM_EXPERIMENT if not set",
+    )
+    parser.add_option(
+        "-n",
+        "--name",
+        default=default_dataset,
+        help="dataset name/tag to put in: default is %s" % default_dataset,
+    )
+    parser.add_option(
+        "-l", "--list", help="list available archived directories", action="store_true"
+    )
+    parser.add_option("-r", "--restore", help="directory to restore")
+    parser.add_option("-d", "--date", help="date of image to restore")
 
-    (o,a) = parser.parse_args()
+    (o, a) = parser.parse_args()
 
     if o.verbose > 1:
         logging.basicConfig(level=logging.DEBUG)
@@ -110,18 +157,21 @@ if __name__ == '__main__':
         logging.disable(logging.INFO)
 
     if o.experiment:
-        os.environ['EXPERIMENT']= o.experiment
-        os.environ['SAM_EXPERIMENT']= o.experiment
-        os.environ['IFDH_BASE_URI'] = "http://samweb.fnal.gov:8480/sam/%s/api" % o.experiment
-    else: 
-        sys.stderr.write("Error: Need either --experiment or $EXPERIMENT $SAM_EXPERIMENT in environment")
+        os.environ["EXPERIMENT"] = o.experiment
+        os.environ["SAM_EXPERIMENT"] = o.experiment
+        os.environ["IFDH_BASE_URI"] = (
+            "http://samweb.fnal.gov:8480/sam/%s/api" % o.experiment
+        )
+    else:
+        sys.stderr.write(
+            "Error: Need either --experiment or $EXPERIMENT $SAM_EXPERIMENT in environment"
+        )
         os.exit(1)
 
     cert = get_standard_certificate_path(o)
-    os.environ['X509_USER_PROXY'] = cert
+    os.environ["X509_USER_PROXY"] = cert
 
-
-    samweb = samweb_client.SAMWebClient(experiment = o.experiment)
+    samweb = samweb_client.SAMWebClient(experiment=o.experiment)
 
     d = dataset(o.name)
     r = restorer()
