@@ -1374,7 +1374,8 @@ exit
 
             for ffl in self.options.filter_metadata:
                 for ff in ffl.split(","):
-                    del metadata_d[ff]
+                    if ff in metadata_d:
+                        del metadata_d[ff]
             # metadata = json.dumps(metadata_d)
 
             # add extra metadata fields from commandline
