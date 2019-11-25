@@ -1386,6 +1386,7 @@ exit
             metadata = json.dumps(metadata_d)
 
             if self.options.add_to_dataset:
+                do_extra_defs = False
                 # skip if it is in our exclude pattern
                 if self.options.dataset_exclude and match_list(
                     f, self.options.dataset_exclude
@@ -1396,6 +1397,7 @@ exit
                         datasetname = "poms_depends_%s_1" % os.environ.get(
                             "POMS_TASK_ID"
                         )
+                        do_extra_defs = True
                     elif self.options.add_to_dataset == "_poms_analysis":
                         datasetname = "poms_%s_depends_%s_1" % (
                             os.environ.get(
@@ -1403,6 +1405,7 @@ exit
                             ),
                             os.environ.get("POMS_TASK_ID"),
                         )
+                        do_extra_defs = True
                     else:
                         datasetname = self.options.add_to_dataset
 
@@ -1428,17 +1431,18 @@ exit
                             self.experiment,
                         )
                         # in case there are more dependencies
-                        for i in range(2, 6):
-                            datasetname2 = "poms_depends_%s_%d" % (
-                                os.environ.get("POMS_TASK_ID"),
-                                i,
-                            )
-                            self.ih.createDefinition(
-                                datasetname2,
-                                "defname:%s" % datasetname,
-                                self.user,
-                                self.experiment,
-                            )
+                        if do_extra_defs:
+                            for i in range(2, 6):
+                                datasetname2 = "poms_depends_%s_%d" % (
+                                    os.environ.get("POMS_TASK_ID"),
+                                    i,
+                                )
+                                self.ih.createDefinition(
+                                    datasetname2,
+                                    "defname:%s" % datasetname,
+                                    self.user,
+                                    self.experiment,
+                                )
 
                     except:
                         sys.stderr.write(
