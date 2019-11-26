@@ -419,6 +419,7 @@ class Wrapper:
             parser.add_option(
                 "--hash" + suffix,
                 help="hash depth argument to copyBackOutput",
+                type="int",
                 default=0,
             )
 
@@ -1270,7 +1271,8 @@ exit
                 self.ih.rename(src, dst)
 
             for of in self.alloutputs:
-                self.ih_addFileLocation(of, self.sam_prefix(dst) + dst)
+                hdir = self.hashdir(of, self.options.hash)
+                self.ih_addFileLocation(of, self.sam_prefix(dst) + dst + hdir)
 
     def get_output_files(self):
         if self.options.dry_run:
@@ -1469,6 +1471,13 @@ exit
 
         return metadata_d
 
+    def hashdir(self, name, hashdirs):
+        if hashdirs == 0:
+            return ""
+        hd = hashlib.md5(name).hexdigest()
+        cl = [hd[2*i]+hd[2*i+1] for i in range(len(hd)/2)]
+        return "/" + "/".join(cl[:hashdirs])
+
     def copy_back(self):
         self.options.origdest = self.options.dest
         self.options.origadd_location = self.options.add_location
@@ -1596,8 +1605,9 @@ exit
 
             if self.options.add_location and not self.options.dest_uniq_rename:
                 for of in oflist:
+                    hdir = self.hashdir(of, self.options.hash)
                     self.ih_addFileLocation(
-                        of, self.sam_prefix(actualdest) + actualdest
+                        of, self.sam_prefix(actualdest) + actualdest + hdir
                     )
             if self.options.add_location and self.options.dest_uniq_rename:
                 self.alloutputs = self.alloutputs + oflist
