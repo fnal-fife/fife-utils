@@ -14,6 +14,7 @@ import sys
 import time
 import traceback
 import uuid
+import hashlib
 
 try:
     import urllib.parse, urllib.error
