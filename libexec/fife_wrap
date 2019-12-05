@@ -556,7 +556,10 @@ cat <<'EOF' | python
 import os
 import re
 for v in os.environ.keys():
-    if v.find('()') > 0:
+
+    if v.find('()') > 0 or v.find('%%') > 0:
+        continue
+    if os.environ[v].find('\\n') > 0:
         continue
     fix= re.sub( "\'", "\\'", os.environ[v])
     print "os.environ['"+v+"'] = '" + fix + "'" 

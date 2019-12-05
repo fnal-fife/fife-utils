@@ -264,6 +264,13 @@ class launcher(object):
                 "job_output" + suffix, "dest_uniq_rename", vars=self.cfg_globals
             )
 
+            no_checkdir = self.cfg_get(
+                "job_output" + suffix, "launch_dest_check", vars=self.cfg_globals
+            ) in ("False", "false","f","0")
+
+            if no_checkdir:
+                continue
+
             ## do mkdir with the right experiment set...
             exp = self.get_experiment()
             if exp and not os.environ.get("EXPERIMENT", None):
