@@ -502,6 +502,10 @@ class launcher(object):
                     ):
                         k = k[:-3]
 
+                    # some flags don't get passed on...
+                    if k in ('launch_dest_check',):
+                        continue
+
                     if self.is_boolean_flag[k]:
                         if v == "True" or v == True:
                             res.append("    --%s%s \\" % (k, osuffix))
