@@ -17,6 +17,7 @@ import time
 import traceback
 import logging
 import ast
+import requests
 
 import ifdh
 from samweb_client import *
@@ -39,6 +40,24 @@ try:
 except:
    pass
 
+def check_dcache_queued():
+    r = requests.get("https://landscape.fnal.gov/api/datasources/proxy/1/render?target=dh.dcache.queues.PoolGroups.readWritePools.queues.FTP.queued&from=-15min&until=now&format=json")
+    if r.status_code == 200:
+        data = r.json()
+        return (data[0]["datapoints"][0][0] + data[0]["datapoints"][1][0])/2
+    else:
+        return None
+
+DCACHE_QUEUE_THRESHOLD = 200
+
+def wait_for_dcache():
+    dq = check_dcache_queued()
+    while dq > DCACHE_QUEUE_THRESHOLD:
+        print("DCache is too busy: %d ftp transfers already queued.  Waiting 1 minute..." % dq)
+        time.sleep(60)
+        dq = check_dcache_queued()
+        
+            
 def setup_environ(experiment = None):
     os.environ['EXPERIMENT'] = experiment
     os.environ['SAM_EXPERIMENT'] = experiment
@@ -633,6 +652,8 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
     samweb = SAMWebClient(experiment=experiment)
     res=0
 
+    wait_for_dcache()
+
     if isinstance(locality, dict):
         counts = locality 
         counts['ONLINE'] = 0
@@ -748,6 +769,9 @@ def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 1, verbose =
     # avoid dest//file syndrome...
     if dest[-1] == '/':
        dest = dest[:-1]
+
+    if dest.find('/pnfs') >= 0:
+        wait_for_dcache()
 
     # make gridftp tool add directories
     os.environ['IFDH_GRIDFTP_EXTRA'] = '-cd -sync'

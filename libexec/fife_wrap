@@ -812,8 +812,11 @@ exit
                     if not self.checktimeleft():
                         break
 
+                self.userscripts()
+
                 if 0 == res:
                     res = self.copy_back()
+
 
                 if self.options.dry_run:
                     print("     then")
@@ -848,6 +851,10 @@ exit
                         os.path.basename(self.furi),
                         "skipped",
                     )
+
+                if not self.checktimeleft():
+                    break
+
                 lastfuri = self.furi
                 self.furi = self.ih.getNextFile(self.cpurl, self.consumerid)
                 nthfile = nthfile + 1
@@ -1023,7 +1030,40 @@ exit
     def userscripts(self):
         if not self.options.userscript:
             return
+        if self.options.debug:
+            sys.stderr.write("\nuserscript:\n")
         self.run_extracting_environment(self.options.userscript)
+
+        if self.options.postscript:
+            cmdlist = []
+            if self.options.debug:
+                sys.stderr.write("\npostscripts:\n")
+            for s in self.options.postscript:
+                if os.access(s, os.R_OK) and not os.access(s, os.X_OK):
+                    try:
+                        os.chmod(s, 0o755)
+                    except:
+                        pass
+                if self.options.debug:
+                    sys.stderr.write("\npostscript: %s\n" % s)
+                cmdlist.append(urllib_unquote(s))
+            self.run_extracting_environment(cmdlist)
+
+        if self.options.postscript_unquote:
+            cmdlist = []
+            if self.options.debug:
+                sys.stderr.write("\npostscripts:\n")
+            for s in self.options.postscript_unquote:
+                sbase = s.split(" ")[0]
+                if os.access(sbase, os.R_OK) and not os.access(sbase, os.X_OK):
+                    try:
+                        os.chmod(sbase, 0o755)
+                    except:
+                        pass
+                if self.options.debug:
+                    sys.stderr.write("\npostscript: %s\n" % s)
+                cmdlist.append(urllib_unquote(s))
+            self.run_extracting_environment(cmdlist)
 
     def sam_prefix(self, path):
         """figure out a SAM prefix for a path..."""
@@ -1235,36 +1275,6 @@ exit
 
     def post_file_loop(self):
 
-        if self.options.postscript:
-            cmdlist = []
-            if self.options.debug:
-                sys.stderr.write("\npostscripts:\n")
-            for s in self.options.postscript:
-                if os.access(s, os.R_OK) and not os.access(s, os.X_OK):
-                    try:
-                        os.chmod(s, 0o755)
-                    except:
-                        pass
-                if self.options.debug:
-                    sys.stderr.write("\npostscript: %s\n" % s)
-                cmdlist.append(urllib_unquote(s))
-            self.run_extracting_environment(cmdlist)
-
-        if self.options.postscript_unquote:
-            cmdlist = []
-            if self.options.debug:
-                sys.stderr.write("\npostscripts:\n")
-            for s in self.options.postscript_unquote:
-                sbase = s.split(" ")[0]
-                if os.access(sbase, os.R_OK) and not os.access(sbase, os.X_OK):
-                    try:
-                        os.chmod(sbase, 0o755)
-                    except:
-                        pass
-                if self.options.debug:
-                    sys.stderr.write("\npostscript: %s\n" % s)
-                cmdlist.append(urllib_unquote(s))
-            self.run_extracting_environment(cmdlist)
 
         if self.options.dest_uniq_rename:
             src = self.options.origdest
@@ -1967,7 +1977,6 @@ if __name__ == "__main__":
         if not w.options.multifile:
             # multifile now copies out after each input file..
             w.copy_back()
-        w.userscripts()
         w.post_file_loop()
     except:
         if w.options.debug:
