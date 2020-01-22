@@ -461,7 +461,7 @@ class launcher(object):
                     # get run before the quoted ones which looks random
                     # to users.
                     if (
-                        k in ["export", "source", "setup", "prescript", "postscript"]
+                        k in ["export", "source", "setup", "prescript", "postscript", "spack-load"]
                         and v
                     ):
                         k = "%s-unquote" % k
