@@ -1047,11 +1047,11 @@ exit
                     os.system("tar xvf %s" % it)
 
     def userscripts(self):
-        if not self.options.userscript:
-            return
-        if self.options.debug:
-            sys.stderr.write("\nuserscript:\n")
-        self.run_extracting_environment(self.options.userscript)
+
+        if self.options.userscript:
+            if self.options.debug:
+                sys.stderr.write("\nuserscript:\n")
+            self.run_extracting_environment(self.options.userscript)
 
         if self.options.postscript:
             cmdlist = []
