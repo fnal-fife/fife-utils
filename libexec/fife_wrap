@@ -471,8 +471,8 @@ class Wrapper:
                 sys.stderr.write("path is: %s\n" % os.environ["PATH"])
             try:
                 import ifdh
-
-                print("imported ifdh")
+                if self.options.debug:
+                    sys.stderr.write("imported ifdh\n")
             except:
                 sys.stderr.write("fife_wrap: import ifdh failed\n")
                 if self.options.debug:
@@ -581,7 +581,7 @@ for v in os.environ.keys():
     if os.environ[v].find('\\n') > 0:
         continue
     fix= re.sub( "\'", "\\'", os.environ[v])
-    print "os.environ['"+v+"'] = '" + fix + "'" 
+    print("os.environ['"+v+"'] = '" + fix + "'")
 EOF
 exit
 """
