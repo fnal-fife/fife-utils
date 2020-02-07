@@ -1161,7 +1161,7 @@ exit
         checksum = None
 
         if self.options.checksum:
-            if pyver > 3.4:
+            if sys.version_info.major >= 3:
                 extra={"encoding": "utf8"}
             else:
                 extra={}
