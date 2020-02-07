@@ -346,11 +346,8 @@ class Wrapper:
             default=False,
         )
 
-        print("here1")
-
         for i in range(30):
             suffix = str(i)
-            print("i is %d suffix is %s" % (i,repr(suffix)))
             parser.add_option(
                 "--exe_stdout%s" % suffix, 
                 default=None,
@@ -361,8 +358,6 @@ class Wrapper:
                 default=None,
                 help="Specify error output redirect for executable",
             )
-
-        print("here2")
 
         # output options
         for i in range(30):
