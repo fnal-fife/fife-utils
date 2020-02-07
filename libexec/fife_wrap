@@ -30,6 +30,14 @@ except:
         return urllib.unquote(x)
 
 
+try:
+    from builtins import int, str, range
+    from future.utils import itervalues
+    from importlib import reload
+except:
+    pass
+
+
 # bodily included it below so we don't need it in our include path in the job
 # from path_template import CaseInsensitiveDict, format_path
 
@@ -286,7 +294,7 @@ class Wrapper:
             help="script to run after Art executable",
             default=[],
         )
-        parser.add_option("--debug", action="count", help="Turn on debugging")
+        parser.add_option("--debug", action="count", default=0, help="Turn on debugging")
         parser.add_option(
             "--ifdh_art",
             action="store_true",
@@ -338,15 +346,23 @@ class Wrapper:
             default=False,
         )
 
+        print("here1")
+
         for i in range(30):
             suffix = str(i)
+            print("i is %d suffix is %s" % (i,repr(suffix)))
             parser.add_option(
-                "--exe_stdout" + suffix, help="Specify output redirect for executable"
+                "--exe_stdout%s" % suffix, 
+                default=None,
+                help="Specify output redirect for executable",
             )
             parser.add_option(
-                "--exe_stderr" + suffix,
+                "--exe_stderr%s" % suffix,
+                default=None,
                 help="Specify error output redirect for executable",
             )
+
+        print("here2")
 
         # output options
         for i in range(30):
@@ -354,80 +370,81 @@ class Wrapper:
                 suffix = ""
             else:
                 suffix = str(i)
+
             parser.add_option(
-                "--dest" + suffix, help="Specify destination for copyBackOutput"
+                "--dest%s" % suffix, help="Specify destination for copyBackOutput"
             )
             parser.add_option(
-                "--dest_uniq_rename" + suffix,
+                "--dest_uniq_rename%s" % suffix,
                 help="Copy to unique-ified dest dir, rename to dest directory afterwards",
                 action="store_true",
                 default=None,
             )
             parser.add_option(
-                "--rename" + suffix,
+                "--rename%s" % suffix,
                 action="append",
                 help="Specify output file rename after Art runs",
                 default=[],
             )
             parser.add_option(
-                "--addoutput" + suffix,
+                "--addoutput%s" % suffix,
                 action="append",
                 help="glob pattern to match and call addOutputFile on",
                 default=[],
             )
             parser.add_option(
-                "--declare_metadata" + suffix,
+                "--declare_metadata%s" % suffix,
                 help="use given program to extract and declare metadata",
                 action="store_true",
                 default=None,
             )
             parser.add_option(
-                "--add_metadata" + suffix,
+                "--add_metadata%s" % suffix,
                 action="append",
                 help="single metadata field key=value to add when declaring output files",
                 default=[],
             )
             parser.add_option(
-                "--metadata_extractor" + suffix,
+                "--metadata_extractor%s" % suffix,
                 help="use given program to extract and declare metadata",
                 default=None,
             )
             parser.add_option(
-                "--metadata_extractor_unquote" + suffix,
+                "--metadata_extractor_unquote%s" % suffix,
                 help="use given program to extract and declare metadata",
                 default=None,
             )
             parser.add_option(
-                "--add_to_dataset" + suffix,
+                "--add_to_dataset%s" % suffix,
                 help="Add files to named dataset using Dataset.Tag",
                 default=None,
             )
             parser.add_option(
-                "--filter_metadata" + suffix,
+                "--filter_metadata%s" % suffix,
                 help="fields to filter out from metadata extractor, comma separated",
                 action="append",
                 default=[],
             )
             parser.add_option(
-                "--dataset_exclude" + suffix,
+                "--dataset_exclude%s" % suffix,
                 action="append",
                 help="glob pattern of output files to exclude from the --add_to_dataset=dataset",
                 default=[],
             )
             parser.add_option(
-                "--add_location" + suffix,
+                "--add_location%s" % suffix,
                 action="store_true",
                 default=None,
                 help="Add locations of output files to SAM",
             )
             parser.add_option(
-                "--outputlist" + suffix,
+                "--outputlist%s" % suffix,
                 action="append",
                 help="ifdh cp -f file to run to copy out outputs",
                 default=[],
             )
             parser.add_option(
-                "--hash" + suffix,
+                "--hash%s" % suffix,
                 help="hash depth argument to copyBackOutput",
                 type="int",
                 default=0,
@@ -581,7 +598,7 @@ for v in os.environ.keys():
     if os.environ[v].find('\\n') > 0:
         continue
     fix= re.sub( "\'", "\\'", os.environ[v])
-    print("os.environ['"+v+"'] = '" + fix + "'")
+    print( "os.environ['"+v+"'] = '" + fix + "'" )
 EOF
 exit
 """
@@ -601,6 +618,7 @@ exit
                 )
             cmds = "\n".join(scriptlist)
             p.stdin.write(cmds)
+            p.stdin.close()
             found = False
             evallist = []
             for l in p.stdout.readlines():
@@ -612,7 +630,6 @@ exit
                     else:
                         print(l)
 
-            p.stdin.close()
             p.stdout.close()
             res = p.wait()
             sys.stdout.flush()
@@ -630,9 +647,9 @@ exit
 
         hostname = socket.getfqdn()
 
-        if os.environ.has_key("JOBSUBJOBID"):
+        if "JOBSUBJOBID" in os.environ:
             description = os.environ["JOBSUBJOBID"]
-        elif os.environ.has_key("CLUSTER"):
+        elif "CLUSTER" in os.environ:
             description = "%s.%s" % (
                 os.environ.get("CLUSTER", ""),
                 os.environ.get("PROCESS", ""),
@@ -784,7 +801,7 @@ exit
                 res = 0
                 if self.options.dry_run:
                     print("     if ")
-                for i in xrange(len(self.options.exe)):
+                for i in range(len(self.options.exe)):
                     cmdlist = [self.options.exe[i]]
                     if self.options.getconfig and i == 0:
                         cmdlist.extend(self.args[i])
@@ -884,7 +901,7 @@ exit
             # so we have to pass options in to it to
             # invoke the loop
 
-            for i in xrange(len(self.options.exe)):
+            for i in range(len(self.options.exe)):
                 cmdlist = [self.options.exe[i]]
                 if i == 0:
                     if self.options.config:
@@ -916,7 +933,7 @@ exit
             if self.options.exe == None:
                 sys.stderr.write("No executable specified to run...\n")
                 return
-            for i in xrange(len(self.options.exe)):
+            for i in range(len(self.options.exe)):
                 cmdlist = [self.options.exe[i]]
                 cmdlist.extend(self.args[i])
                 if self.options.with_gdb:
@@ -1144,8 +1161,13 @@ exit
         checksum = None
 
         if self.options.checksum:
+            if pyver > 3.4:
+                extra={"encoding": "utf8"}
+            else:
+                extra={}
             p = subprocess.Popen(
-                "ifdh checksum %s" % f, shell=True, stdout=subprocess.PIPE
+                "ifdh checksum %s" % f, shell=True, stdout=subprocess.PIPE,
+                **extra
             )
             checksum = p.stdout.read()
             p.stdout.close()
@@ -1170,10 +1192,10 @@ exit
 
         dm1 = json.loads(m1)
         dm2 = json.loads(m2)
-        if dm2.has_key(dm1["file_name"]):
+        if dm1["file_name"] in dm2:
             # sam_metadata_dumper multi-file format
             dm1.update(dm2[dm1["file_name"]])
-        elif dm2.has_key("file_name") and dm1["file_name"] == dm2["file_name"]:
+        elif "file_name" in dm2 and dm1["file_name"] == dm2["file_name"]:
             dm1.update(dm2)
         else:
             # for now just punt, we're just adding data?
@@ -1507,7 +1529,7 @@ exit
     def hashdir(self, name, hashdirs):
         if hashdirs == 0:
             return ""
-        hd = hashlib.md5(name).hexdigest()
+        hd = hashlib.md5(name.encode('utf-8')).hexdigest()
         cl = [hd[2*i]+hd[2*i+1] for i in range(len(hd)/2)]
         return "/" + "/".join(cl[:hashdirs])
 
@@ -1764,7 +1786,7 @@ class CaseInsensitiveDict(collections.MutableMapping):
         self.update(data, **kwargs)
 
     def _get_lkey(self, key):
-        if isinstance(key, basestring):
+        if isinstance(key, str):
             return key.lower()
         else:
             return key
@@ -1813,7 +1835,7 @@ class _MDTemplate(string.Template):
 
 def _convert_timeval(v):
     # convert from string iso format
-    if isinstance(v, basestring):
+    if isinstance(v, str):
         return datetime.strptime(v, "%Y-%m-%dT%H:%M:%S")
     else:
         # assume int/float and just return it
@@ -1867,7 +1889,7 @@ class _MDMapping(object):
                 denom = int(m.group(3))
                 val = self._getValue(m.group(1))
                 try:
-                    val = long(val)
+                    val = int(val)
                 except ValueError:
                     pass
                 else:
@@ -1881,7 +1903,7 @@ class _MDMapping(object):
             if length:
                 # formats are only supported for integer values
                 try:
-                    val = long(val)
+                    val = int(val)
                 except ValueError:
                     pass
                 else:
@@ -1889,14 +1911,14 @@ class _MDMapping(object):
                     if fixedlength:
                         val = val[-length:]
                     if sublength:
-                        import itertools
+                        from future.moves.itertools import zip_longest
 
                         # Split the results into chunks of size sublength. The use of reversed is so any padding is applied at the beginning, not the end
                         val = "/".join(
                             reversed(
                                 [
                                     "".join(reversed(i))
-                                    for i in itertools.izip_longest(
+                                    for i in itertools.zip_longest(
                                         fillvalue="0",
                                         *([iter(reversed(val))] * sublength)
                                     )
