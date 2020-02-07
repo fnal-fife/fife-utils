@@ -1525,7 +1525,7 @@ exit
         if hashdirs == 0:
             return ""
         hd = hashlib.md5(name.encode('utf-8')).hexdigest()
-        cl = [hd[2*i]+hd[2*i+1] for i in range(len(hd)/2)]
+        cl = [hd[2*i]+hd[2*i+1] for i in range(len(hd)//2)]
         return "/" + "/".join(cl[:hashdirs])
 
     def copy_back(self):
