@@ -32,11 +32,18 @@ except:
 
 try:
     from builtins import int, str, range
-    from future.utils import itervalues
-    from importlib import reload
 except:
     pass
 
+try:
+    from future.utils import itervalues
+except:
+    pass
+
+try:
+    from importlib import reload
+except:
+    pass
 
 # bodily included it below so we don't need it in our include path in the job
 # from path_template import CaseInsensitiveDict, format_path
@@ -1511,6 +1518,7 @@ exit
                 sys.stderr.write(
                     "error declaring metadata:" + repr(sys.exc_info()) + "\n"
                 )
+                res = -1
                 pass
 
             # some ifdh versions return 1 on success from HTTP 201 result...

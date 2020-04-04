@@ -48,7 +48,7 @@ if __name__ == "__main__":
     parser = optparse.OptionParser(
         usage="usage: %prog [options] dataset [dataset ...] \n make sure files in dataset actually exist"
     )
-    parser.add_option("-v", "--verbose", action="count")
+    parser.add_option("-v", "--verbose", action="count", default=0)
     parser.add_option(
         "-j",
         "--just_say",

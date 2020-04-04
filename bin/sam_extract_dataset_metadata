@@ -69,7 +69,7 @@ if __name__ == "__main__":
     parser = optparse.OptionParser(
         usage="usage: %prog [options] \n modify metadata on all files in dataset"
     )
-    parser.add_option("-v", "--verbose", action="count")
+    parser.add_option("-v", "--verbose", action="count", default=0)
     parser.add_option(
         "-j",
         "--just_say",

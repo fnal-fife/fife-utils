@@ -169,7 +169,7 @@ if __name__ == "__main__":
         usage="usage: %prog [options] \n slurp dataset through program and generate summed files"
     )
     parser.add_option("-p", "--projname", default="condense-%s" % uuid.uuid4())
-    parser.add_option("-v", "--verbose", action="count")
+    parser.add_option("-v", "--verbose", action="count", default=0)
     parser.add_option(
         "-e",
         "--experiment",

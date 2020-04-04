@@ -360,7 +360,7 @@ class launcher(object):
                 # we already counted the dataset files in pre_launch,
                 # so just compute
                 if self.nfiles_in_dataset != None:
-                    self.cfg.set("submit", "N", str((self.nfiles_in_dataset + int(nfpj)-1) / int(nfpj)))
+                    self.cfg.set("submit", "N", str(int((self.nfiles_in_dataset + int(nfpj)-1) / int(nfpj))))
 
                 else:
                     sys.stderr.write(

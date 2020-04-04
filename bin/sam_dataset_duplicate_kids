@@ -106,7 +106,7 @@ if __name__ == "__main__":
     parser = optparse.OptionParser(
         usage="usage: %prog [options] --dims dimensions \n Check files in dims for duplicate children of same parent"
     )
-    parser.add_option("-v", "--verbose", action="count")
+    parser.add_option("-v", "--verbose", action="count", default=0)
     parser.add_option(
         "-e",
         "--experiment",

@@ -425,7 +425,7 @@ if __name__ == "__main__":
         help="Copy via an intermediate file",
         default=False,
     )
-    parser.add_option("-v", "--verbose", action="count")
+    parser.add_option("-v", "--verbose", action="count", default=0)
     parser.add_option(
         "--host",
         action="append",

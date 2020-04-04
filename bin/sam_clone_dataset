@@ -123,7 +123,7 @@ if __name__ == "__main__":
     )
     parser.add_option("-n", "--name", help="dataset name to copy")
     parser.add_option("-f", "--file", help="file name to copy")
-    parser.add_option("-v", "--verbose", action="count")
+    parser.add_option("-v", "--verbose", action="count", default=0)
     parser.add_option(
         "-0",
         "--zerodeep",
