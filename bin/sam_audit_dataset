@@ -55,8 +55,6 @@ def audit(ds, dest, verbose=False, experiment=None, keeplists=None):
         wronglist = open("%s/dataset_files_misfiled" % keeplists, "w")
 
     for f in ds.file_iterator():
-        import pdb
-        pdb.set_trace()
         if keeplists != None:
             flistf.write(f + "\n")
         num_in_dataset += 1
