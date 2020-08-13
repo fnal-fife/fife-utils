@@ -83,6 +83,10 @@ cpfiles=""
 
 for f in "$@"
 do
+   if echo $f | grep -q "/"; then
+       echo "Please provide a SAM filename, not a local file path."
+       exit 1
+   fi
   
    flocs=`ifdh locateFile $f gsiftp`
    pflocs=`echo "$flocs" | grep '://fndca1.*/persistent/' | tail -1`
