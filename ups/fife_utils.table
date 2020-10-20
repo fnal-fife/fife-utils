@@ -37,7 +37,6 @@ Action=setup
     SetupOptional(jobsub_client)
     SetupOptional(poms_client)
     SetupOptional(awscli)
-    SetupOptional(encp -q stken)
     PathPrepend(PATH, ${UPS_PROD_DIR}/bin)
     PathPrepend(PYTHONPATH, ${UPS_PROD_DIR}/lib)
     EnvSet(FIFE_UTILS_VERSION, ${UPS_PROD_VERSION})
