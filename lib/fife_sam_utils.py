@@ -41,18 +41,21 @@ except:
    pass
 
 def check_dcache_queued():
-    r = requests.get("https://landscape.fnal.gov/api/datasources/proxy/1/render?target=dh.dcache.queues.PoolGroups.readWritePools.queues.FTP.queued&from=-15min&until=now&format=json")
-    if r.status_code == 200:
-        data = r.json()
-        return (data[0]["datapoints"][0][0] + data[0]["datapoints"][1][0])/2
-    else:
+    try:
+        r = requests.get("https://landscape.fnal.gov/api/datasources/proxy/1/render?target=dh.dcache.queues.PoolGroups.readWritePools.queues.FTP.queued&from=-15min&until=now&format=json")
+        if r.status_code == 200:
+            data = r.json()
+            return (data[0]["datapoints"][0][0] + data[0]["datapoints"][1][0])/2
+        else:
+            return None
+    except:
         return None
 
 DCACHE_QUEUE_THRESHOLD = 200
 
 def wait_for_dcache():
     dq = check_dcache_queued()
-    while dq > DCACHE_QUEUE_THRESHOLD:
+    while dq and dq > DCACHE_QUEUE_THRESHOLD:
         print("DCache is too busy: %d ftp transfers already queued.  Waiting 1 minute..." % dq)
         time.sleep(60)
         dq = check_dcache_queued()
@@ -116,6 +119,82 @@ def get_standard_certificate_path(options):
 
   logging.debug('cert is %s' % cert)
   return cert
+
+class fake_project_dataset:
+
+    def __init__( self, name ):
+        self.ifdh_handle = ifdh.ifdh()   
+        self.name = name
+        self.dims = "defname:%s" % name
+        self.have_pnfs = os.access("/pnfs/", os.R_OK)
+        self.flist = None
+        self.locmap = None
+
+    def get_flist( self ):
+        if self.flist == None:
+            self.flist =  self.ifdh_handle.translateConstraints(self.dims)
+        return self.flist
+
+    def file_iterator(self):
+        flist = self.get_flist()
+        return flist.__iter__()
+
+    def get_locmap(self, fulllocflag = False):
+        if self.locmap != None:
+            return
+        #print "get_locmap: starting", time.ctime()
+        flist = self.get_flist()
+        self.locmap = {}
+        while len(flist) > 0:
+            first_k = flist[:500]
+            flist = flist[500:]
+            self.locmap.update(self.ifdh_handle.locateFiles(first_k))
+        #print "get_locmap: finishing", time.ctime()
+
+    def fullpath_iterator(self, fulllocflag = False, tapeset = None):
+        self.get_locmap(fulllocflag)
+        return dataset._loc_iterator(self.locmap, fulllocflag, tapeset = tapeset)
+
+    def location_has_file(self,fullpath):
+        # optimize location checks for pnfs if mounted
+        if fullpath[:6] == '/pnfs/' and self.have_pnfs and os.access(fullpath, os.R_OK):
+            return 1
+        res = self.ifdh_handle.ls(fullpath,1,'')
+        return len(res) != 0
+
+    def uncache_location(self,fp):
+        pass
+
+    def get_paths_for(self,filename):
+        loclist = self.ifdh_handle.locateFile( filename )
+        loclist = [ sampath(loc) + '/' + filename  for loc in loclist]
+        return loclist
+         
+    def remove_path_for(filename, fp):
+        pass
+
+    def startProject(self, projname, station, dataset, user, experiment):
+        return "fake://fake"
+
+    def findProject(self, projname, station):
+        return "fake://fake"
+
+    def establishProcess(self,  purl, a, vers, hostname, user, pkg, desc, lim , schema):
+        self.count = 0
+        self.fakeproc = self.file_iterator()
+        return "1"
+
+    def updateFileStatus(self, purl, consumer_id,f, status):
+        return 1
+
+    def getNextFile(self, purl, consumer_id):
+        try:
+            return self.fakeproc.next()
+        except:
+            return ""
+      
+    def endProject(self, purl):
+        return 1
 
 class fake_file_dataset:
 
@@ -527,6 +606,10 @@ def fourdeep(f):
     h = hashlib.md5(f.encode("utf-8")).hexdigest()
     return "/%s/%s/%s/%s/" % (h[0], h[1], h[2], h[3])
 
+def doublesha256(f):
+    h = hashlib.sha256(f.encode("utf-8")).hexdigest()
+    return "/%s/%s/" % (h[0:2], h[2:4])
+
 notmade = {}
 def dodir(ih, dir):
     
@@ -810,7 +893,7 @@ def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 1, verbose =
         time.sleep(6)
 
     if verbose or just_start_project:
-        logging.info(("found" if connect_project else "started"), "project:", projname, "->", purl)
+        logging.info("%s %s %s %s %s", ("found" if connect_project else "started"), "project:", projname, "->", purl)
 
     if (just_start_project):
         return 

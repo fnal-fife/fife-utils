@@ -18,6 +18,8 @@ from fife_sam_utils import (
     fourdeep,
     unclone,
     dataset,
+    fake_project_dataset,
+    fake_file_dataset,
     get_standard_certificate_path,
     validate,
 )
@@ -98,6 +100,12 @@ if __name__ == "__main__":
         "--just_say",
         action="store_true",
         help="do not actually copy, just say what you would do",
+    )
+    parser.add_option(
+        "--no_project",
+        action="store_true",
+        default=False,
+        help="do not use a SAM project for files",
     )
     parser.add_option(
         "-e",
@@ -222,7 +230,12 @@ if __name__ == "__main__":
     check_dest(o.dest, dest)
 
     if o.name:
-        d = dataset(o.name)
+        if o.no_project:
+            d = fake_project_dataset(o.name)
+            # fake_project_dataset can't coordinate multiple copiers...
+            o.ncopies = 1
+        else:
+            d = dataset(o.name)
 
     if o.file:
         d = fake_file_dataset(o.file)
