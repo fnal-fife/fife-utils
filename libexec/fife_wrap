@@ -846,13 +846,14 @@ exit
 
                     if res != 0:
                         self.rres = res
+                        break
 
                     if not self.checktimeleft():
                         break
 
                 self.userscripts()
 
-                if 0 == res:
+                if 0 == self.rres:
                     res = self.copy_back()
 
 
