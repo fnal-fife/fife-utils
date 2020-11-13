@@ -199,9 +199,11 @@ add_dataset() {
    for i in 1 2 3 4 5 6 7 8 9
    do
        fname="${dataset}_f${i}"
+       rm -f $fname
        echo "file $i" > $fname
        checksum=`ifdh checksum $fname 2>/dev/null`
        size=`cat $fname | wc -c`
+       rm -f $fname.json 
        cat > $fname.json <<EOF
 {
  "file_name": "$fname", 

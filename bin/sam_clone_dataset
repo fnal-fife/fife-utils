@@ -254,11 +254,11 @@ if __name__ == "__main__":
 
     if o.name:
         if o.no_project:
-            d = fake_project_dataset(o.name)
+            ds = fake_project_dataset(o.name)
             # fake_project_dataset can't coordinate multiple copiers...
             o.ncopies = 1
         else:
-            d = dataset(o.name)
+            ds = dataset(o.name)
 
     if o.file:
         ds = fake_file_dataset(o.file)

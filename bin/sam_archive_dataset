@@ -15,7 +15,12 @@ import sys
 
 from fife_sam_utils import (
     clone,
+    zerodeep,
+    onedeep,
+    twodeep,
+    threedeep,
     fourdeep,
+    doublesha256,
     unclone,
     dataset,
     fake_project_dataset,
