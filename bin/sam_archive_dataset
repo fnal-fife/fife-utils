@@ -152,6 +152,55 @@ if __name__ == "__main__":
     )
     parser.add_option("--setup", help="set up products", default=None)
 
+    parser.add_option(
+        "-0",
+        "--zerodeep",
+        dest="dirfunc",
+        action="store_const",
+        const=zerodeep,
+        help="make no subdirectories in destination",
+    )
+    parser.add_option(
+        "-1",
+        "--onedeep",
+        dest="dirfunc",
+        action="store_const",
+        const=onedeep,
+        help="make hash subdirectories one deep in destination with md5",
+    )
+    parser.add_option(
+        "-2",
+        "--twodeep",
+        dest="dirfunc",
+        action="store_const",
+        const=twodeep,
+        help="make hash subdirectories two deep in destination with md5",
+    )
+    parser.add_option(
+        "-3",
+        "--threedeep",
+        dest="dirfunc",
+        action="store_const",
+        const=threedeep,
+        help="make hash subdirectories two deep in destination with md5",
+    )
+    parser.add_option(
+        "-4",
+        "--fourdeep",
+        dest="dirfunc",
+        action="store_const",
+        const=fourdeep,
+        help="make hash subdirectories two deep in destination with md5",
+    )
+    parser.add_option(
+        "--doublesha256",
+        dest="dirfunc",
+        action="store_const",
+        const=doublesha256,
+        help="make hash subdirectories two deep in destination with 2-digit sha256",
+    )
+
+
     #
     # rough guess at dest, for usage message..
     #

@@ -599,7 +599,7 @@ for v in os.environ.keys():
         continue
     if os.environ[v].find('\\n') > 0:
         continue
-    fix= re.sub( "\'", "\\'", os.environ[v])
+    fix = re.sub("'","\\\\'", os.environ[v])
     print( "os.environ['"+v+"'] = '" + fix + "'" )
 EOF
 exit
