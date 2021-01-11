@@ -57,6 +57,7 @@ def wait_for_dcache():
     dq = check_dcache_queued()
     while dq and dq > DCACHE_QUEUE_THRESHOLD:
         print("DCache is too busy: %d ftp transfers already queued.  Waiting 1 minute..." % dq)
+        sys.stdout.flush()
         time.sleep(60)
         dq = check_dcache_queued()
         
