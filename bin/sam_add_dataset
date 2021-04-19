@@ -19,7 +19,6 @@ import subprocess
 import re
 import time
 import socket
-import exceptions
 import grp
 import ifdh
 
