@@ -574,9 +574,9 @@ def main():
 
     o, arguments = p.parse_args()
 
-    if o.verbose > 1:
+    if o.verbose and o.verbose > 1:
         logging.basicConfig(level=logging.DEBUG)
-    elif o.verbose > 0:
+    elif o.verbose and o.verbose > 0:
         logging.basicConfig(level=logging.INFO)
     else:
         logging.disable(logging.INFO)
