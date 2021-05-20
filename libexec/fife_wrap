@@ -719,6 +719,7 @@ exit
             self.consumerid = self.consumerid.strip()
             if self.options.debug:
                 sys.stderr.write("\nGot consumerid of: %s\n" % self.consumerid)
+            os.environ["SAM_CONSUMER_ID"] = self.consumerid
 
         except Exception as e:
             sys.stderr.write(
