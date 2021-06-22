@@ -74,6 +74,19 @@ class launcher(object):
         # now pull in the config file with includes
         self.do_cfg_includes(cfgfilename)
 
+        #
+        # fife_launch originally, and for a long time, thought
+        # the jobsub option was --dataset and not --dataset_definition
+        # (which is an undocumented alias...) so we allow it as a
+        # backwards compatability hack...
+        #
+        dataset = self.cfg_get("submit", "dataset_definition", vars=self.cfg_globals)
+        if not dataset:
+            dataset = self.cfg_get("submit", "dataset", vars=self.cfg_globals)
+            if dataset:
+                self.cfg.set("submit","dataset_definition", dataset)
+                self.cfg.remove_option("submit","dataset")
+
         if config_dump == "before" or config_dump == "both":
             sys.stderr.write("config before expansion:\n================\n")
             self.cfg.write(sys.stderr)
@@ -285,7 +298,7 @@ class launcher(object):
                     ih = ifdh.ifdh()
                     ih.mkdir_p(dest)
 
-        dataset = self.cfg_get("submit", "dataset", vars=self.cfg_globals)
+        dataset = self.cfg_get("submit", "dataset_definition", vars=self.cfg_globals)
         if dataset:
             if dry_run:
                 print("I would: samweb count_definition_files %s" % dataset)

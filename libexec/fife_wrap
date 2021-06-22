@@ -725,6 +725,7 @@ exit
             self.consumerid = self.consumerid.strip()
             if self.options.debug:
                 sys.stderr.write("\nGot consumerid of: %s\n" % self.consumerid)
+            os.environ["SAM_CONSUMER_ID"] = self.consumerid
 
         except Exception as e:
             sys.stderr.write(
@@ -926,6 +927,15 @@ exit
                     f.close()
                     cmdlist = ["gdb", "-x", ".gdbcmds", "--args"] + cmdlist
 
+                if getattr(self.options, "exe_stderr" + str(i)):
+                    cmdlist.append(
+                        "2>%s" % getattr(self.options, "exe_stderr" + str(i))
+                    )
+                if getattr(self.options, "exe_stdout" + str(i)):
+                    cmdlist.append(
+                        ">%s" % getattr(self.options, "exe_stdout" + str(i))
+                    )
+
                 if self.options.dry_run:
                     print(" ".join(cmdlist))
                     print("rres=$?")
@@ -945,6 +955,14 @@ exit
             for i in range(len(self.options.exe)):
                 cmdlist = [self.options.exe[i]]
                 cmdlist.extend(self.args[i])
+                if getattr(self.options, "exe_stderr" + str(i)):
+                    cmdlist.append(
+                        "2>%s" % getattr(self.options, "exe_stderr" + str(i))
+                    )
+                if getattr(self.options, "exe_stdout" + str(i)):
+                    cmdlist.append(
+                        ">%s" % getattr(self.options, "exe_stdout" + str(i))
+                    )
                 if self.options.with_gdb:
                     f = open(".gdbcmds")
                     f.write("run\nwhere\nquit\n")
