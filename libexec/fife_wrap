@@ -451,6 +451,12 @@ class Wrapper:
                 type="int",
                 default=0,
             )
+            parser.add_option(
+                "--hash_alg%s" % suffix,
+                help="hash algorithm value for IFDH_DIR_HASH_ALG for copyBackOutput",
+                type="string",
+                default="md5",
+            )
 
         (self.options, self.args) = parser.parse_args()
 
@@ -1329,7 +1335,7 @@ exit
                 self.ih.rename(src, dst)
 
             for of in self.alloutputs:
-                hdir = self.hashdir(of, self.options.hash)
+                hdir = self.hashdir(of, self.options.hash, self.options.hash_alg)
                 self.ih_addFileLocation(of, self.sam_prefix(dst) + dst + hdir)
 
     def get_output_files(self):
@@ -1530,10 +1536,13 @@ exit
 
         return metadata_d
 
-    def hashdir(self, name, hashdirs):
+    def hashdir(self, name, hashdirs, hash_alg):
         if hashdirs == 0:
             return ""
-        hd = hashlib.md5(name.encode('utf-8')).hexdigest()
+        if hash_alg == "sha256":
+            hd = hashlib.sha256(name.encode('utf-8')).hexdigest()
+        else:
+            hd = hashlib.md5(name.encode('utf-8')).hexdigest()
         cl = [hd[2*i]+hd[2*i+1] for i in range(len(hd)//2)]
         return "/" + "/".join(cl[:hashdirs])
 
@@ -1568,6 +1577,7 @@ exit
                 "add_location",
                 "filter_metadata",
                 "hash",
+                "hash_alg",
             ):
                 self.options.__dict__[k] = self.options.__dict__.get(k + str(i), None)
 
@@ -1644,8 +1654,8 @@ exit
 
             if self.options.dry_run:
                 print(
-                    "        # ifdh copyBackOutput  %s %s"
-                    % (self.options.dest, self.options.hash)
+                    "        # IFDH_DIR_HASH_ALG=%s ifdh copyBackOutput  %s %s"
+                    % (self.options.hash_alg, self.options.dest, self.options.hash)
                 )
                 if self.options.add_location:
                     print(
@@ -1654,6 +1664,7 @@ exit
                     )
             else:
                 if self.options.hash:
+                    os.environ['IFDH_DIR_HASH_ALG'] = self.options.hash_alg
                     res = self.ih.copyBackOutput(actualdest, int(self.options.hash))
                 else:
                     res = self.ih.copyBackOutput(actualdest)
