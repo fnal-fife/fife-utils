@@ -15,6 +15,8 @@ import time
 import traceback
 import uuid
 import hashlib
+import threading
+import queue
 
 try:
     import urllib.parse, urllib.error
@@ -453,6 +455,12 @@ class Wrapper:
             )
             parser.add_option(
                 "--hash_alg%s" % suffix,
+                help="hash algorithm value for IFDH_DIR_HASH_ALG for copyBackOutput",
+                type="string",
+                default="md5",
+            )
+            parser.add_option(
+                "--parallel%s" % suffix,
                 help="hash algorithm value for IFDH_DIR_HASH_ALG for copyBackOutput",
                 type="string",
                 default="md5",
@@ -1568,12 +1576,22 @@ exit
         self.options.origdest = self.options.dest
         self.options.origadd_location = self.options.add_location
         self.find_ifdhc()
-        rres = 0
+        self.rres = 0
         for i in range(30):
             res = self.copy_back_n(i)
             if res != 0:
-                rres = res
-        return rres
+                self.rres = res
+
+    def copy_worker(self):
+        # used with Threads to emulate copyBackOutput, but in parallel
+        while not self.workq.empty():
+            of = self.workq.get()
+            if self.options.hash:
+                hdir = self.hashdir(of, self.options.hash, self.options.hash_alg)
+                res = self.ih.cp('-D', of, self.dest+hdir)
+             else:
+                res = self.ih.cp('-D', of, self.dest)
+             self.copyres.add(res)
 
     def copy_back_n(self, i):
 
@@ -1596,6 +1614,7 @@ exit
                 "filter_metadata",
                 "hash",
                 "hash_alg",
+                "parallel",
             ):
                 self.options.__dict__[k] = self.options.__dict__.get(k + str(i), None)
 
@@ -1611,6 +1630,7 @@ exit
             sys.stderr.write("\nEntering copy_back:\n")
 
         if self.ih == None:
+
             try:
                 import ifdh
 
@@ -1681,19 +1701,50 @@ exit
                         % self.options.dest
                     )
             else:
-                if self.options.hash:
-                    os.environ['IFDH_DIR_HASH_ALG'] = self.options.hash_alg
-                    res = self.ih.copyBackOutput(actualdest, int(self.options.hash))
-                else:
-                    res = self.ih.copyBackOutput(actualdest)
+                   
+                if self.options.parallel:
+                    # emulate copyBackOutput, but in parallel...
+                    # uses worker method, above. 
+                    # first queue up all the files to be copied
+                    # in a python threadsafe queue:
+                    self.workq = queue.Queue()
+                    for of in oflist:
+                        self.workq.add(of)
+                    # now kick off n threads running copies:
+                    t=[]
+                    self.copyres = queue.Queue()
+                    for i in range(int(options.parallel)):
+                        t[i] = Thread( target=self.copy_worker )
+                        t[i].start()
+                    # and wait for them all to finish
+                    for i in range(int(options.parallel)):
+                        t[i].join()
+
+                    # and set res=-1 if any of the copies failed
+                    res = 0
+                    while not self.copyres.emtpy():
+                        if self.copyres.get() != 0:
+                           res = -1
+                    
+                else:                   
+                    if self.options.hash:
+                        os.environ['IFDH_DIR_HASH_ALG'] = self.options.hash_alg
+                        res = self.ih.copyBackOutput(actualdest, int(self.options.hash))
+                    else:
+                        res = self.ih.copyBackOutput(actualdest)
+  
+            if res != 0:
+                # don't continue and declare etc if the copies failed...
+                return res
 
             # if we're doing the dest_uniq_rename thing, we're going to
             # rename the directory when we're done, and if that works
             # add all the locations (to avoid file duplication)
 
+
             if self.options.add_location and not self.options.dest_uniq_rename:
                 for of in oflist:
-                    hdir = self.hashdir(of, self.options.hash)
+                    hdir = self.hashdir(of, self.options.hash, self.options.hash_alg)
                     self.ih_addFileLocation(
                         of, self.sam_prefix(actualdest) + actualdest + hdir
                     )
@@ -1717,8 +1768,9 @@ exit
             for it in self.options.outputlist:
                 cplist.append("-f")
                 cplist.append(it)
+
         if len(cplist) > 1:
-            self.ih.cp(cplist)
+            res = self.ih.cp(cplist)
 
         return res
 
