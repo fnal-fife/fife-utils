@@ -463,7 +463,7 @@ class Wrapper:
                 "--parallel%s" % suffix,
                 help="hash algorithm value for IFDH_DIR_HASH_ALG for copyBackOutput",
                 type="string",
-                default="md5",
+                default=None,
             )
 
         (self.options, self.args) = parser.parse_args()
@@ -1588,10 +1588,11 @@ exit
             of = self.workq.get()
             if self.options.hash:
                 hdir = self.hashdir(of, self.options.hash, self.options.hash_alg)
-                res = self.ih.cp('-D', of, self.dest+hdir)
-             else:
-                res = self.ih.cp('-D', of, self.dest)
-             self.copyres.add(res)
+                self.ih_mkdir_p(self.dest+hdir)
+                res = self.ih.cp(['-D', of, self.dest+hdir])
+            else:
+                res = self.ih.cp(['-D', of, self.dest])
+            self.copyres.put(res)
 
     def copy_back_n(self, i):
 
@@ -1709,15 +1710,15 @@ exit
                     # in a python threadsafe queue:
                     self.workq = queue.Queue()
                     for of in oflist:
-                        self.workq.add(of)
+                        self.workq.put(of)
                     # now kick off n threads running copies:
                     t=[]
                     self.copyres = queue.Queue()
-                    for i in range(int(options.parallel)):
+                    for i in range(int(self.options.parallel)):
                         t[i] = Thread( target=self.copy_worker )
                         t[i].start()
                     # and wait for them all to finish
-                    for i in range(int(options.parallel)):
+                    for i in range(int(self.options.parallel)):
                         t[i].join()
 
                     # and set res=-1 if any of the copies failed
