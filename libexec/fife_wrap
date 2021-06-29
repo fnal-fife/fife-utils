@@ -16,7 +16,10 @@ import traceback
 import uuid
 import hashlib
 import threading
-import queue
+try:
+    import queue
+except:
+    import Queue
 
 try:
     import urllib.parse, urllib.error
