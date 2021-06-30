@@ -1587,14 +1587,18 @@ exit
 
     def copy_worker(self):
         # used with Threads to emulate copyBackOutput, but in parallel
+        if self.options.debug:
+            sys.stderr.write("copy_worker: starting\n")
         while not self.workq.empty():
             of = self.workq.get()
+            if self.options.debug:
+                sys.stderr.write("copy_worker: writing %s\n" % of)
             if self.options.hash:
                 hdir = self.hashdir(of, self.options.hash, self.options.hash_alg)
-                self.ih_mkdir_p(self.dest+hdir)
-                res = self.ih.cp(['-D', of, self.dest+hdir])
+                self.ih_mkdir_p(self.options.dest+hdir)
+                res = self.ih.cp(['-D', of, self.options.dest+hdir])
             else:
-                res = self.ih.cp(['-D', of, self.dest])
+                res = self.ih.cp(['-D', of, self.options.dest])
             self.copyres.put(res)
 
     def copy_back_n(self, i):
@@ -1712,21 +1716,24 @@ exit
                     # first queue up all the files to be copied
                     # in a python threadsafe queue:
                     self.workq = queue.Queue()
+                    if self.options.debug:
+                        sys.stderr.write("Starting parallel")
                     for of in oflist:
                         self.workq.put(of)
                     # now kick off n threads running copies:
-                    t=[]
+                    tl=[]
                     self.copyres = queue.Queue()
                     for i in range(int(self.options.parallel)):
-                        t[i] = Thread( target=self.copy_worker )
-                        t[i].start()
+                        t = threading.Thread( target=self.copy_worker )
+                        t.start()
+                        tl.append(t)
                     # and wait for them all to finish
                     for i in range(int(self.options.parallel)):
-                        t[i].join()
+                        tl[i].join()
 
                     # and set res=-1 if any of the copies failed
                     res = 0
-                    while not self.copyres.emtpy():
+                    while not self.copyres.empty():
                         if self.copyres.get() != 0:
                            res = -1
                     

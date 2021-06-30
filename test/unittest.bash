@@ -37,7 +37,7 @@ testsuite() {
                then
 	           printf '%s \t...' \$_t
                fi
-	       \$${suitename}_test_setup > /dev/null 2>&1
+	       \$${suitename}_test_setup > ${TMPDIR:-/tmp}/setup_out\$n_tests 2>&1
 	       if \$_t > ${TMPDIR:-/tmp}/test_case_out_\$\$ 2>&1
                then
                    if [ x\$verbose = "x-v" -o x\$verbose = "x-vv" ]
