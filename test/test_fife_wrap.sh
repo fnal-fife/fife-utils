@@ -81,14 +81,26 @@ test_parallel() {
     rm -rf /tmp/out$$
     return $res
 }
+test_parallel_hashdir() {
+    export POMS_TASK_ID=9999
+    mkdir /tmp/out$$
+    ../libexec/fife_wrap --debug --limit 4 --multifile --appname demo --appfamily demo --appvers v1_0  --exe cat --addoutput 'bar*.root' --rename unique --declare_metadata --add_location --parallel=2 --hash 2 --hash_alg sha256 --dest=/tmp/out$$ -- '>bar${nthfile}.root' '<' 
+    res=$?
+    ls -Rl /tmp/out$$
+    rm -rf /tmp/out$$
+    return $res
+}
 
 test_quot_env() {
     export POMS_TASK_ID=9999
     ../libexec/fife_wrap --debug --export-unquote FOO%3d%60bar%60_%60baz%60 --find_setups --setup fife_utils --limit 4 --multifile --appname demo --appfamily demo --appvers v1_0  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_location --add_to_dataset _poms_task --dataset_exclude '*.xyzzy' --dest /pnfs/nova/scratch/users/mengel --hash 2 -- '>bar.root' '<'  | tee tqe.out
 }
 
-testsuite fife_wrap_tests -s setup_proj -t end_proj test_parallel
+. `ups setup hypotcode`
+$HYPOTCODE_DIR/bin/rebuild_gen_cfg
 
-#testsuite fife_wrap_tests -s setup_proj -t end_proj test_parallel test_pre_post_1 test_env_meta test_client_tmpl test_client_1 test_client_2 test_client_2a test_client_3 test_client_4 test_client_excl test_hash_dir test_hash_dir_sha test_quot_env
+#testsuite fife_wrap_tests -s setup_proj -t end_proj test_parallel test_parallel_hashdir
+
+testsuite fife_wrap_tests -s setup_proj -t end_proj test_parallel_hashdir test_parallel test_pre_post_1 test_env_meta test_client_tmpl test_client_1 test_client_2 test_client_2a test_client_3 test_client_4 test_client_excl test_hash_dir test_hash_dir_sha test_quot_env
 
 fife_wrap_tests "$@"

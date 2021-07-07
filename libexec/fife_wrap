@@ -17,9 +17,9 @@ import uuid
 import hashlib
 import threading
 try:
-    import queue
+    from queue import Queue
 except:
-    import Queue
+    from Queue import Queue
 
 try:
     import urllib.parse, urllib.error
@@ -1595,7 +1595,7 @@ exit
                 sys.stderr.write("copy_worker: writing %s\n" % of)
             if self.options.hash:
                 hdir = self.hashdir(of, self.options.hash, self.options.hash_alg)
-                self.ih_mkdir_p(self.options.dest+hdir)
+                self.ih.mkdir_p(self.options.dest+hdir)
                 res = self.ih.cp(['-D', of, self.options.dest+hdir])
             else:
                 res = self.ih.cp(['-D', of, self.options.dest])
@@ -1715,14 +1715,14 @@ exit
                     # uses worker method, above. 
                     # first queue up all the files to be copied
                     # in a python threadsafe queue:
-                    self.workq = queue.Queue()
+                    self.workq = Queue()
                     if self.options.debug:
                         sys.stderr.write("Starting parallel")
                     for of in oflist:
                         self.workq.put(of)
                     # now kick off n threads running copies:
                     tl=[]
-                    self.copyres = queue.Queue()
+                    self.copyres = Queue()
                     for i in range(int(self.options.parallel)):
                         t = threading.Thread( target=self.copy_worker )
                         t.start()
