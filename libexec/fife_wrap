@@ -1599,6 +1599,7 @@ exit
                 res = self.ih.cp(['-D', of, self.options.dest+hdir])
             else:
                 res = self.ih.cp(['-D', of, self.options.dest])
+            self.workq.task_done()
             self.copyres.put(res)
 
     def copy_back_n(self, i):
@@ -1725,11 +1726,16 @@ exit
                     self.copyres = Queue()
                     for i in range(int(self.options.parallel)):
                         t = threading.Thread( target=self.copy_worker )
-                        t.start()
-                        tl.append(t)
+                        if t != None:
+                            t.start()
+                            tl.append(t)
+
                     # and wait for them all to finish
-                    for i in range(int(self.options.parallel)):
-                        tl[i].join()
+                    self.workq.join()
+                    # try to clean up the threads, they should all be done
+                    # so don't wait long for them
+                    for t in tl:
+                        t.join(timeout=1)
 
                     # and set res=-1 if any of the copies failed
                     res = 0
