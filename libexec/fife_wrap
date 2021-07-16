@@ -872,8 +872,7 @@ exit
                 self.userscripts()
 
                 if 0 == self.rres:
-                    res = self.copy_back()
-
+                    self.copy_back()
 
                 if self.options.dry_run:
                     print("     then")
@@ -890,7 +889,7 @@ exit
                     self.furi = None  # leave loop gracefully(?)
                     break
 
-                if 0 == res:
+                if 0 == self.rres:
                     if self.options.debug:
                         sys.stderr.write("\nSuccess, marking consumed\n")
                     self.ih.updateFileStatus(
