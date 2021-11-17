@@ -560,7 +560,7 @@ class Wrapper:
                 scriptlist.append("mf=`spack module tcl find %s`;eval `modulecmd bash load $mf`" % urllib_unquote(s))
 
         if self.options.setup_local:
-            d = os.path.dirname(os.environ.get("INPUT_TAR_DIR_LOCAL",os.environ.get("INPUT_TAR_FILE", "/tmp/x")))
+            d = os.environ.get("INPUT_TAR_DIR_LOCAL",os.path.dirname(os.environ.get("INPUT_TAR_FILE", "/tmp/x")))
             scriptlist.append(
                 "for f in $(ups list -aK+ -z %s|while read p v f q c; do echo UPS_OVERRIDE= ups setup -z %s:$PRODUCTS $p $v -f $f -q $q; done|sh);do source $f; done"
                 % (d, d)
@@ -2116,7 +2116,7 @@ if __name__ == "__main__":
             w.start_client()
         w.pre_file_loop()
         w.file_loop()
-        if not w.options.multifile and not w.options.getconfig:
+        if w.rres == 0 and not w.options.multifile and not w.options.getconfig:
             # multifile now does userscripts and copies out after each input 
             # so if we're not doing that, we need to do them now.
             w.userscripts()
