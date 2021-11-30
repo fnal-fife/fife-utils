@@ -15,6 +15,11 @@ import time
 import traceback
 import uuid
 import hashlib
+import threading
+try:
+    from queue import Queue
+except:
+    from Queue import Queue
 
 try:
     import urllib.parse, urllib.error
@@ -457,6 +462,12 @@ class Wrapper:
                 type="string",
                 default="md5",
             )
+            parser.add_option(
+                "--parallel%s" % suffix,
+                help="hash algorithm value for IFDH_DIR_HASH_ALG for copyBackOutput",
+                type="string",
+                default=None,
+            )
 
         (self.options, self.args) = parser.parse_args()
 
@@ -549,7 +560,7 @@ class Wrapper:
                 scriptlist.append("mf=`spack module tcl find %s`;eval `modulecmd bash load $mf`" % urllib_unquote(s))
 
         if self.options.setup_local:
-            d = os.path.dirname(os.environ.get("INPUT_TAR_DIR_LOCAL",os.environ.get("INPUT_TAR_FILE", "/tmp/x")))
+            d = os.environ.get("INPUT_TAR_DIR_LOCAL",os.path.dirname(os.environ.get("INPUT_TAR_FILE", "/tmp/x")))
             scriptlist.append(
                 "for f in $(ups list -aK+ -z %s|while read p v f q c; do echo UPS_OVERRIDE= ups setup -z %s:$PRODUCTS $p $v -f $f -q $q; done|sh);do source $f; done"
                 % (d, d)
@@ -861,8 +872,7 @@ exit
                 self.userscripts()
 
                 if 0 == self.rres:
-                    res = self.copy_back()
-
+                    self.copy_back()
 
                 if self.options.dry_run:
                     print("     then")
@@ -879,7 +889,7 @@ exit
                     self.furi = None  # leave loop gracefully(?)
                     break
 
-                if 0 == res:
+                if 0 == self.rres:
                     if self.options.debug:
                         sys.stderr.write("\nSuccess, marking consumed\n")
                     self.ih.updateFileStatus(
@@ -1568,12 +1578,28 @@ exit
         self.options.origdest = self.options.dest
         self.options.origadd_location = self.options.add_location
         self.find_ifdhc()
-        rres = 0
+        self.rres = 0
         for i in range(30):
             res = self.copy_back_n(i)
             if res != 0:
-                rres = res
-        return rres
+                self.rres = res
+
+    def copy_worker(self):
+        # used with Threads to emulate copyBackOutput, but in parallel
+        if self.options.debug:
+            sys.stderr.write("copy_worker: starting\n")
+        while not self.workq.empty():
+            of = self.workq.get()
+            if self.options.debug:
+                sys.stderr.write("copy_worker: writing %s\n" % of)
+            if self.options.hash:
+                hdir = self.hashdir(of, self.options.hash, self.options.hash_alg)
+                self.ih.mkdir_p(self.options.dest+hdir)
+                res = self.ih.cp(['-D', of, self.options.dest+hdir])
+            else:
+                res = self.ih.cp(['-D', of, self.options.dest])
+            self.workq.task_done()
+            self.copyres.put(res)
 
     def copy_back_n(self, i):
 
@@ -1596,6 +1622,7 @@ exit
                 "filter_metadata",
                 "hash",
                 "hash_alg",
+                "parallel",
             ):
                 self.options.__dict__[k] = self.options.__dict__.get(k + str(i), None)
 
@@ -1611,6 +1638,7 @@ exit
             sys.stderr.write("\nEntering copy_back:\n")
 
         if self.ih == None:
+
             try:
                 import ifdh
 
@@ -1681,15 +1709,54 @@ exit
                         % self.options.dest
                     )
             else:
-                if self.options.hash:
-                    os.environ['IFDH_DIR_HASH_ALG'] = self.options.hash_alg
-                    res = self.ih.copyBackOutput(actualdest, int(self.options.hash))
-                else:
-                    res = self.ih.copyBackOutput(actualdest)
+                   
+                if self.options.parallel:
+                    # emulate copyBackOutput, but in parallel...
+                    # uses worker method, above. 
+                    # first queue up all the files to be copied
+                    # in a python threadsafe queue:
+                    self.workq = Queue()
+                    if self.options.debug:
+                        sys.stderr.write("Starting parallel")
+                    for of in oflist:
+                        self.workq.put(of)
+                    # now kick off n threads running copies:
+                    tl=[]
+                    self.copyres = Queue()
+                    for i in range(int(self.options.parallel)):
+                        t = threading.Thread( target=self.copy_worker )
+                        if t != None:
+                            t.start()
+                            tl.append(t)
+
+                    # and wait for them all to finish
+                    self.workq.join()
+                    # try to clean up the threads, they should all be done
+                    # so don't wait long for them
+                    for t in tl:
+                        t.join(timeout=1)
+
+                    # and set res=-1 if any of the copies failed
+                    res = 0
+                    while not self.copyres.empty():
+                        if self.copyres.get() != 0:
+                           res = -1
+                    
+                else:                   
+                    if self.options.hash:
+                        os.environ['IFDH_DIR_HASH_ALG'] = self.options.hash_alg
+                        res = self.ih.copyBackOutput(actualdest, int(self.options.hash))
+                    else:
+                        res = self.ih.copyBackOutput(actualdest)
+  
+            if res != 0:
+                # don't continue and declare etc if the copies failed...
+                return res
 
             # if we're doing the dest_uniq_rename thing, we're going to
             # rename the directory when we're done, and if that works
             # add all the locations (to avoid file duplication)
+
 
             if self.options.add_location and not self.options.dest_uniq_rename:
                 for of in oflist:
@@ -1717,8 +1784,9 @@ exit
             for it in self.options.outputlist:
                 cplist.append("-f")
                 cplist.append(it)
+
         if len(cplist) > 1:
-            self.ih.cp(cplist)
+            res = self.ih.cp(cplist)
 
         return res
 
@@ -2048,7 +2116,7 @@ if __name__ == "__main__":
             w.start_client()
         w.pre_file_loop()
         w.file_loop()
-        if not w.options.multifile and not w.options.getconfig:
+        if w.rres == 0 and not w.options.multifile and not w.options.getconfig:
             # multifile now does userscripts and copies out after each input 
             # so if we're not doing that, we need to do them now.
             w.userscripts()
