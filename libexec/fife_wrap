@@ -1693,7 +1693,7 @@ exit
 
             if self.options.add_location and not self.options.dest_uniq_rename:
                 for of in oflist:
-                    hdir = self.hashdir(of, self.options.hash)
+                    hdir = self.hashdir(of, self.options.hash, self.options.hash_alg)
                     self.ih_addFileLocation(
                         of, self.sam_prefix(actualdest) + actualdest + hdir
                     )
