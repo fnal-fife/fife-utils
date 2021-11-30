@@ -600,7 +600,7 @@ def main():
         logging.error(
             "Error: Need either --experiment or $EXPERIMENT $SAM_EXPERIMENT in environment"
         )
-        os.exit(1)
+        sys.exit(1)
 
     if o.user:
         user = o.user

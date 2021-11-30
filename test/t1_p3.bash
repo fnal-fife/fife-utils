@@ -5,6 +5,8 @@
 test -d /tmp/py3 || mkdir /tmp/py3
 ln -s /bin/python3 /tmp/py3/python
 PATH=/tmp/py3:$PATH
+. `ups unsetup python_future_six_request`
+. `ups setup ifdhc v2_5_4 -q python36`
 
 count_report_files() {
     echo

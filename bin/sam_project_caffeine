@@ -138,7 +138,7 @@ if __name__ == "__main__":
         sys.stderr.write(
             "Error: Need either --experiment or $EXPERIMENT $SAM_EXPERIMENT in environment"
         )
-        os.exit(1)
+        sys.exit(1)
 
     if not o.station:
         o.station = o.experiment

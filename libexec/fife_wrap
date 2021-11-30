@@ -1043,7 +1043,7 @@ exit
                 vers,
                 self.options.cvmfs_revision,
             )
-            os.exit(1)
+            sys.exit(1)
 
     def fetch_inputs(self):
         if self.options.nosetup:

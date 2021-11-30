@@ -890,7 +890,7 @@ def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 1, verbose =
         purl = d.startProject(projname, os.environ.get('SAM_STATION',experiment), d.name, user, experiment)
         if not purl:
             logging.error("startProject failed.")
-            os.exit(1)
+            sys.exit(1)
         time.sleep(6)
 
     if verbose or just_start_project:

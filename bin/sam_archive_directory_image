@@ -140,7 +140,7 @@ if __name__ == "__main__":
         sys.stderr.write(
             "Error: Need either --experiment or $EXPERIMENT $SAM_EXPERIMENT in environment"
         )
-        os.exit(1)
+        sys.exit(1)
 
     res = 0
 
@@ -148,7 +148,7 @@ if __name__ == "__main__":
         sys.stderr.write(
             "Error: need a --src= directory whose contents are to be archived!"
         )
-        os.exit(1)
+        sys.exit(1)
 
     cert = get_standard_certificate_path(o)
     os.environ["X509_USER_PROXY"] = cert
