@@ -89,7 +89,7 @@ test_add_dataset_flist_norename() {
 }
 EOF
 
-   sam_add_dataset --no-rename --cert=/tmp/x509up_u`id -u` -e $EXPERIMENT --file file_list --metadata meta.json --name ${dataset}
+   sam_add_dataset --no-rename -e $EXPERIMENT --file file_list --metadata meta.json --name ${dataset}
 
    echo "dataset $dataset contains:" 
    ifdh translateConstraints "defname: $dataset" 
@@ -122,7 +122,7 @@ test_add_dataset_flist() {
 }
 EOF
 
-   sam_add_dataset --cert=/tmp/x509up_u`id -u` -e $EXPERIMENT --file file_list --metadata meta.json --name ${dataset}
+   sam_add_dataset -e $EXPERIMENT --file file_list --metadata meta.json --name ${dataset}
 
    echo "dataset $dataset contains:" 
    ifdh translateConstraints "defname: $dataset" 
@@ -154,8 +154,8 @@ test_add_dataset_flist_glob() {
 }
 EOF
 
-   sam_add_dataset --cert=/tmp/x509up_u`id -u` -e $EXPERIMENT --directory `pwd`/data --metadata meta.json --name ${dataset}
-   #sam_add_dataset --cert=/tmp/x509up_u`id -u` -e $EXPERIMENT `pwd`/data meta.json ${dataset}
+   sam_add_dataset -e $EXPERIMENT --directory `pwd`/data --metadata meta.json --name ${dataset}
+   #sam_add_dataset -e $EXPERIMENT `pwd`/data meta.json ${dataset}
 
    echo "dataset $dataset contains:" 
    ifdh translateConstraints "defname: $dataset" 
@@ -186,7 +186,7 @@ test_add_dataset_directory() {
 }
 EOF
 
-   sam_add_dataset --cert=/tmp/x509up_u`id -u` -e $EXPERIMENT --directory `pwd`/data --metadata meta.json --name ${dataset}
+   sam_add_dataset -e $EXPERIMENT --directory `pwd`/data --metadata meta.json --name ${dataset}
 
    echo "dataset $dataset contains:" 
    ifdh translateConstraints "defname: $dataset" 
