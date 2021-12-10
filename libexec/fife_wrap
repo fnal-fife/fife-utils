@@ -1688,7 +1688,6 @@ exit
                     # if we are doing metadata, allow FTS-format path templating
 
                     if metadata_d and actualdest.find("$") >= 0:
-                        sys.stderr.write("calling format_path on %s with metadata %s\n" % (actualdest,repr(metadata_d)))
                         actualdest = format_path(
                             actualdest, CaseInsensitiveDict(metadata_d), time.time()
                         )
