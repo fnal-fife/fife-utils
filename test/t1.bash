@@ -68,6 +68,7 @@ test_add_dataset_flist_norename() {
        echo `pwd`/data/$fname 
    done > file_list
 
+   rm -f meta.json
    cat > meta.json <<EOF
 {
  "file_type": "test", 
@@ -83,7 +84,7 @@ test_add_dataset_flist_norename() {
 }
 EOF
 
-   sam_add_dataset --no-rename -u` -e $EXPERIMENT --file file_list --metadata meta.json --name ${dataset}
+   sam_add_dataset --no-rename -e $EXPERIMENT --file file_list --metadata meta.json --name ${dataset}
 
    echo "dataset $dataset contains:" 
    ifdh translateConstraints "defname: $dataset" 
@@ -101,6 +102,7 @@ test_add_dataset_flist() {
        echo `pwd`/data/$fname 
    done > file_list
 
+   rm -f meta.json
    cat > meta.json <<EOF
 {
  "file_type": "test", 
@@ -116,7 +118,7 @@ test_add_dataset_flist() {
 }
 EOF
 
-   sam_add_dataset -u` -e $EXPERIMENT --file file_list --metadata meta.json --name ${dataset}
+   sam_add_dataset -e $EXPERIMENT --file file_list --metadata meta.json --name ${dataset}
 
    echo "dataset $dataset contains:" 
    ifdh translateConstraints "defname: $dataset" 
@@ -133,6 +135,7 @@ test_add_dataset_flist_glob() {
    done
    echo `pwd`/data/f*.txt >  file_list
 
+   rm -f meta.json
    cat > meta.json <<EOF
 {
  "file_type": "test", 
@@ -165,6 +168,7 @@ test_add_dataset_directory() {
        echo "file $i" > data/$fname
    done
 
+   rm -f meta.json
    cat > meta.json <<EOF
 {
  "file_type": "test", 
@@ -180,7 +184,7 @@ test_add_dataset_directory() {
 }
 EOF
 
-   sam_add_dataset -e $EXPERIMENT --directory `pwd`/data --metadata meta.json --name ${dataset}
+   sam_add_dataset -e $EXPERIMENT --directory `pwd`/data --metadata `pwd`/meta.json --name ${dataset}
 
    echo "dataset $dataset contains:" 
    ifdh translateConstraints "defname: $dataset" 
@@ -287,6 +291,9 @@ test_validate_prune() {
     mv ${dataset}_f2 ${dataset}_f2_hide
     sam_validate_dataset --name $dataset --prune 2>&1 | tee /tmp/out$$
     grep '_f2 has 0 locations' /tmp/out$$
+    res=$?
+    mv ${dataset}_f2_hide ${dataset}_f2
+    return $res
 }
 
 test_validate_locality() {
