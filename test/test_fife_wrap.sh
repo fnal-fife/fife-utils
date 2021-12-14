@@ -18,9 +18,9 @@ end_proj() {
     ifdh cleanup
 }
 
-test_client_1() {
+test_ucondb_path() {
     export POMS_TASK_ID=9999
-    ../libexec/fife_wrap --debug --find_setups --setup fife_utils --limit 1 --multifile --appname demo --appfamily demo --appvers demo  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_to_dataset _poms_task --add_location --dest /pnfs/nova/scratch/users/mengel/ -- '>bar.root' '<' 
+    ../libexec/fife_wrap --find_setups --dry_run --setup fife_utils --limit 1 --multifile --appname demo --appfamily demo --appvers demo  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_to_dataset _poms_task --add_location --dest 'https://dbdata0vm.fnal.gov:9443/mu2e_ucondb_prod/app/data/mwmtest' -- '>bar.root' '<' 
 }
 
 test_client_2() {
@@ -117,10 +117,14 @@ test_quot_env() {
 . `ups setup ifdhc`
 export EXPERIMENT=samdev
 export X509_USER_PROXY=`ifdh getProxy`
-$HYPOTCODE_DIR/bin/rebuild_gen_cfg
+if [ ! -r /tmp/did_gen_cfg ]
+then
+    $HYPOTCODE_DIR/bin/rebuild_gen_cfg
+    touch /tmp/did_gen_cfg
+fi
 
-#testsuite fife_wrap_tests -s setup_proj -t end_proj test_multi_format_path
+#testsuite fife_wrap_tests -s setup_proj -t end_proj test_ucondb_path
 
-testsuite fife_wrap_tests -s setup_proj -t end_proj test_parallel_hashdir_lots test_parallel test_pre_post_1 test_env_meta test_client_tmpl test_client_1 test_client_2 test_client_2a test_client_3 test_client_4 test_client_excl test_hash_dir test_hash_dir_sha test_quot_env test_multi_format_path
+testsuite fife_wrap_tests -s setup_proj -t end_proj test_parallel_hashdir_lots test_parallel test_pre_post_1 test_env_meta test_client_tmpl test_client_1 test_client_2 test_client_2a test_client_3 test_client_4 test_client_excl test_hash_dir test_hash_dir_sha test_quot_env test_multi_format_path test_ucondb_path
 
 fife_wrap_tests "$@"
