@@ -20,7 +20,12 @@ end_proj() {
 
 test_ucondb_path() {
     export POMS_TASK_ID=9999
-    ../libexec/fife_wrap --find_setups --dry_run --setup fife_utils --limit 1 --multifile --appname demo --appfamily demo --appvers demo  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_to_dataset _poms_task --add_location --dest 'https://dbdata0vm.fnal.gov:9443/mu2e_ucondb_prod/app/data/mwmtest' -- '>bar.root' '<' 
+    ../libexec/fife_wrap --debug --find_setups --dry_run --setup fife_utils --limit 1 --multifile --appname demo --appfamily demo --appvers demo  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_to_dataset _poms_task --add_location --dest 'https://dbdata0vm.fnal.gov:9443/mu2e_ucondb_prod/app/data/mwmtest' -- '>bar.root' '<' 
+}
+
+test_client_1() {
+    export POMS_TASK_ID=9999
+    ../libexec/fife_wrap --debug --find_setups --setup fife_utils --limit 1 --multifile --appname demo --appfamily demo --appvers demo  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_to_dataset _poms_task --add_location --dest /pnfs/nova/scratch/users/mengel/ -- '>bar.root' '<' 
 }
 
 test_client_2() {
