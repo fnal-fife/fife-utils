@@ -763,6 +763,8 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
         fp = "%s/%s" % (sp,f)
         samloc = dirname(p)
 
+        logging.debug("p : %s sp: %s fp: %s " % (p, sp, fp))
+
         if not locationre.match(fp):
             logging.debug("skipping: %s" % fp)
             continue
