@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
 import datetime
 import fnmatch
 import glob
@@ -16,6 +17,7 @@ import traceback
 import uuid
 import hashlib
 import threading
+
 try:
     from queue import Queue
 except:
@@ -83,10 +85,11 @@ class Wrapper:
         self.rres = 0
         # regexps to match past renameOutput uniq...
         self.uuid_re = (
-            "-?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-?"
+            r"-?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-?"
         )
-        self.old_uniq_re = "_?[-.a-zA-Z]*_[0-9]{10}_[0-9][0-9]*_[0-9]"
-        self.uuid_re = "(%s|%s)" % (self.uuid_re, self.old_uniq_re)
+        self.urlstart_re = r"\A[a-z]+://[^/]*"
+        self.old_uniq_re = r"_?[-.a-zA-Z]*_[0-9]{10}_[0-9][0-9]*_[0-9]"
+        self.uuid_re = r"(%s|%s)" % (self.uuid_re, self.old_uniq_re)
         self.user = os.environ.get("GRID_USER", os.environ.get("USER", "sam"))
         self.alloutputs = []
         self.metadata_dest = {}
@@ -998,7 +1001,7 @@ exit
             return
 
         pf = os.popen(
-            "for f in /cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups /grid/fermiapp/products/common/etc/setups; do if [ -r $f ] ; then source $f; fi; done; source `ups setup ifdhc $IFDH_VERSION`; echo $IFDHC_DIR/lib/python; echo $IFDHC_CONFIG_DIR"
+            "for f in /cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups /grid/fermiapp/products/common/etc/setups; do if [ -r $f ] ; then source $f; fi; done; source `ups setup ifdhc $IFDH_VERSION`; source `ups setup ifdhc_config $IFDH_VERSION`||true; echo $IFDHC_DIR/lib/python; echo $IFDHC_CONFIG_DIR"
         )
         l = pf.readlines()
         if len(l):
@@ -1137,6 +1140,14 @@ exit
     def sam_prefix(self, path):
         """figure out a SAM prefix for a path..."""
 
+        if self.options.debug or self.options.dry_run:
+            sys.stderr.write("\nentering sam_prefix(%s)" % path)
+        res = self.sam_prefix_impl(path)
+        if self.options.debug or self.options.dry_run:
+            sys.stderr.write("\nreturning from sam_prefix(%s): %s" % (path, res))
+        return res
+
+    def sam_prefix_impl(self, path):
         if path.find("s3:") == 0:
             return ""
 
@@ -1160,8 +1171,11 @@ exit
             for pp in l:
                 pp = pp.strip("\n")
                 prefix, rest = pp.split(":", 1)
-                # print "checking:", pp, "->",  prefix,  ":", rest
+                if self.options.debug:
+                    print( "checking:", pp, "->",  prefix,  ":", rest, file=sys.stderr)
                 if path.startswith(rest):
+                    if self.options.debug:
+                        print( "found it: ", prefix, file=sys.stderr)
                     return "%s:" % prefix
         except:
             sys.stderr.write("ignroing exception in samweb list-data-disks...")
@@ -1344,10 +1358,10 @@ exit
 
     def post_file_loop(self):
 
-
         if self.options.dest_uniq_rename:
             src = self.options.origdest
             dst = re.sub(self.uuid_re, "", self.options.origdest)
+            dst = re.sub(self.urlstart_re, "", dst)
             if self.options.dry_run:
                 print("I would rename %s to %s" % (src, dst))
             else:
@@ -1355,6 +1369,8 @@ exit
 
             for of in self.alloutputs:
                 hdir = self.hashdir(of, self.options.hash, self.options.hash_alg)
+                dst = re.sub(self.uuid_re, "", dst)
+                dst = re.sub(self.urlstart_re, "", dst)
                 self.ih_addFileLocation(of, self.sam_prefix(dst) + dst + hdir)
 
     def get_output_files(self):
@@ -1688,7 +1704,6 @@ exit
                     # if we are doing metadata, allow FTS-format path templating
 
                     if metadata_d and actualdest.find("$") >= 0:
-                        sys.stderr.write("calling format_path on %s with metadata %s\n" % (actualdest,repr(metadata_d)))
                         actualdest = format_path(
                             actualdest, CaseInsensitiveDict(metadata_d), time.time()
                         )
@@ -1731,9 +1746,12 @@ exit
                     % (self.options.hash_alg, self.options.dest, self.options.hash)
                 )
                 if self.options.add_location:
+                    dst = re.sub(self.uuid_re, "", self.options.origdest)
+                    dst = re.sub(self.urlstart_re, "", dst)
+                   
                     print(
-                        "            # we add file locations of %s in SAM"
-                        % self.options.dest
+                        "            # we add file locations of %s in SAM "
+                        % (self.sam_prefix(dst) + dst)
                     )
             else:
                    
@@ -1788,6 +1806,8 @@ exit
             if self.options.add_location and not self.options.dest_uniq_rename:
                 for of in oflist:
                     hdir = self.hashdir(of, self.options.hash, self.options.hash_alg)
+                    actualdest = re.sub(self.uuid_re, "", actualdest)
+                    actualdest = re.sub(self.urlstart_re, "", actualdest)
                     self.ih_addFileLocation(
                         of, self.sam_prefix(actualdest) + actualdest + hdir
                     )
