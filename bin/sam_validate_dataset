@@ -111,6 +111,8 @@ if __name__ == "__main__":
     else:
         logging.disable(logging.INFO)
 
+    logging.debug('options %s' % repr(o))
+
     if o.experiment:
         os.environ["EXPERIMENT"] = o.experiment
         os.environ["SAM_EXPERIMENT"] = o.experiment
