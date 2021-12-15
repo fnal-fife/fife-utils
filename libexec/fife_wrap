@@ -1790,9 +1790,9 @@ exit
                 else:                   
                     if self.options.hash:
                         os.environ['IFDH_DIR_HASH_ALG'] = self.options.hash_alg
-                        res = self.ih.copyBackOutput(actualdest, int(self.options.hash))
+                        res = self.ih.copyBackOutput(self.options.dest, int(self.options.hash))
                     else:
-                        res = self.ih.copyBackOutput(actualdest)
+                        res = self.ih.copyBackOutput(self.options.dest)
   
             if res != 0:
                 # don't continue and declare etc if the copies failed...
