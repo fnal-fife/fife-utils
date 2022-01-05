@@ -1301,6 +1301,8 @@ exit
             print('ifdh addFileLocation "%s" "%s"' % (of, loc))
 
         else:
+            # XXX this needs either token conversion, or to get switched to
+            # using ifdh or samweb...
             """ifdh doesn't have addFileLocation (yet) so fake it with wget since curl is having trouble with proxies..."""
             os.system(
                 "wget --no-check-certificate  --certificate=$X509_USER_PROXY --ca-certificate=$X509_USER_PROXY --ca-directory=/etc/grid-security/certificates --private-key=$X509_USER_PROXY --post-data 'add=%s' 'https://samweb.fnal.gov:8483/sam/%s/api/files/name/%s/locations'"
