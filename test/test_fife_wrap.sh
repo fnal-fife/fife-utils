@@ -2,6 +2,11 @@
 
 . unittest.bash
 
+case "x$1" in
+x--python3) export p3=true; shift;;
+*)          export p3=false;;
+esac
+
 setup_proj() {
     #echo "setup_proj: starting" >&3
     export EXPERIMENT=samdev
@@ -65,7 +70,7 @@ test_client_excl() {
 test_env_meta() {
    export POMS_TASK_ID=9999
    export HYPOTCODE_FAST=1
-   ../libexec/fife_wrap --debug --find_setups --setup hypotcode --setup fife_utils --limit 4 --multifile --appname demo --appfamily demo --appvers demo --exe hypot.exe --postscript 'export INTENSITY=12.5' --addoutput foo.txt --rename unique --declare_metadata --add_metadata secondary.intensity=\$INTENSITY --add_location --add_to_dataset _poms_task --dest /pnfs/nova/scratch/users/mengel -- -o foo.txt -c
+   ../libexec/fife_wrap --debug --find_setups --setup hypotcode --setup fife_utils --setup "ifdhc $IFDH_VERSION" --limit 4 --multifile --appname demo --appfamily demo --appvers demo --exe hypot.exe --postscript 'export INTENSITY=12.5' --addoutput foo.txt --rename unique --declare_metadata --add_metadata secondary.intensity=\$INTENSITY --add_location --add_to_dataset _poms_task --dest /pnfs/nova/scratch/users/mengel -- -o foo.txt -c
 }
 
 test_hash_dir() {
@@ -118,8 +123,19 @@ test_quot_env() {
     ../libexec/fife_wrap --debug --export-unquote FOO%3d%60bar%60_%60baz%60 --find_setups --setup fife_utils --limit 4 --multifile --appname demo --appfamily demo --appvers v1_0  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_location --add_to_dataset _poms_task --dataset_exclude '*.xyzzy' --dest /pnfs/nova/scratch/users/mengel --hash 2 -- '>bar.root' '<'  | tee tqe.out
 }
 
-. `ups setup hypotcode`
-. `ups setup ifdhc`
+if p3
+then
+    test -d /tmp/py3 || mkdir /tmp/py3
+    ln -s /bin/python3 /tmp/py3/python
+    PATH=/tmp/py3:$PATH
+    . `ups unsetup python_future_six_request`
+    . `ups setup hypotcode`
+    . `ups setup -j ifdhc v2_6_1 -q +python36, ifdhc_config v2_6_1a`
+    export IFDH_VERSION="v2_6_1 -q +python36"
+else
+    . `ups setup ifdhc`
+fi
+
 export EXPERIMENT=samdev
 export X509_USER_PROXY=`ifdh getProxy`
 if [ ! -r /tmp/did_gen_cfg ]
@@ -128,7 +144,11 @@ then
     touch /tmp/did_gen_cfg
 fi
 
-#testsuite fife_wrap_tests -s setup_proj -t end_proj test_ucondb_path
+printf "python: "
+which python
+ups active
+
+#testsuite fife_wrap_tests -s setup_proj -t end_proj test_env_meta
 
 testsuite fife_wrap_tests -s setup_proj -t end_proj test_parallel_hashdir_lots test_parallel test_pre_post_1 test_env_meta test_client_tmpl test_client_1 test_client_2 test_client_2a test_client_3 test_client_4 test_client_excl test_hash_dir test_hash_dir_sha test_quot_env test_multi_format_path test_ucondb_path
 

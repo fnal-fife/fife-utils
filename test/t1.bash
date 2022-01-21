@@ -2,6 +2,20 @@
 
 . ./unittest.bash
 
+case "x$1" in
+x--python3) export p3=true; shift;;
+*)          export p3=false;;
+esac
+
+if p3
+then
+    test -d /tmp/py3 || mkdir /tmp/py3
+    ln -s /bin/python3 /tmp/py3/python
+    PATH=/tmp/py3:$PATH
+    . `ups unsetup python_future_six_request`
+    . `ups setup ifdhc v2_6_1 -q python36`
+fi
+
 count_report_files() {
     echo
     echo "$1 $dataset:"
