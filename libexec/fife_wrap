@@ -620,17 +620,15 @@ exit
                 % cuthere
             )
             if sys.version_info[0] > 2:
-                p = subprocess.Popen(
-                    "/bin/bash",
-                    stdin=subprocess.PIPE,
-                    stdout=subprocess.PIPE,
-                    encoding="utf-8",
-                    errors="replace",
-                )
+                extra = {"encoding": "utf8", "errors": "replace"}
             else:
-                p = subprocess.Popen(
-                    "/bin/bash", stdin=subprocess.PIPE, stdout=subprocess.PIPE
-                )
+                extra = {}
+            p = subprocess.Popen(
+                "/bin/bash",
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                **extra
+            )
             cmds = "\n".join(scriptlist)
             p.stdin.write(cmds)
             p.stdin.close()
@@ -1160,12 +1158,17 @@ exit
         #
         try:
             nowhere = open("/dev/null", "w")
+            if sys.version_info[0] > 2:
+                extra = {"encoding": "utf-8", "errors": "replace"}
+            else:
+                extra = {}
             l = subprocess.Popen(
                 "wget -O - 'http://samweb.fnal.gov:8480/sam/%s/api/values/data_disks'"
                 % self.experiment,
                 shell = True,
                 stdout=subprocess.PIPE,
                 stderr=nowhere,
+                **extra
             ).stdout.readlines()
             nowhere.close()
             for pp in l:
@@ -1212,11 +1215,13 @@ exit
 
         if self.options.checksum:
             if sys.version_info.major >= 3:
-                extra={"encoding": "utf8"}
+                extra = {"encoding": "utf-8", "errors": "replace"}
             else:
                 extra={}
             p = subprocess.Popen(
-                "ifdh checksum %s" % f, shell=True, stdout=subprocess.PIPE,
+                "ifdh checksum %s" % f, 
+                shell=True, 
+                stdout=subprocess.PIPE,
                 **extra
             )
             checksum = p.stdout.read()
@@ -1301,13 +1306,14 @@ exit
             print('ifdh addFileLocation "%s" "%s"' % (of, loc))
 
         else:
-            # XXX this needs either token conversion, or to get switched to
-            # using ifdh or samweb...
-            """ifdh doesn't have addFileLocation (yet) so fake it with wget since curl is having trouble with proxies..."""
-            os.system(
-                "wget --no-check-certificate  --certificate=$X509_USER_PROXY --ca-certificate=$X509_USER_PROXY --ca-directory=/etc/grid-security/certificates --private-key=$X509_USER_PROXY --post-data 'add=%s' 'https://samweb.fnal.gov:8483/sam/%s/api/files/name/%s/locations'"
-                % (loc, self.experiment, of)
-            )
+            try: 
+                self.ih.addFileLocation(of, loc)
+            except: 
+                """older ifdhs don't have addFileLocation so fake it with wget since curl is having trouble with proxies..."""
+                os.system(
+                    "wget --no-check-certificate  --certificate=$X509_USER_PROXY --ca-certificate=$X509_USER_PROXY --ca-directory=/etc/grid-security/certificates --private-key=$X509_USER_PROXY --post-data 'add=%s' 'https://samweb.fnal.gov:8483/sam/%s/api/files/name/%s/locations'"
+                    % (loc, self.experiment, of)
+                )
 
     def pre_file_loop(self):
 
@@ -1464,8 +1470,16 @@ exit
                         md_cmd = self.options.metadata_extractor % f
                     else:
                         md_cmd = "%s %s" % (self.options.metadata_extractor, f)
+                if sys.version_info[0] > 2:
+                    extra = {"encoding": "utf-8", "errors": "replace"}
+                else:
+                    extra = {}
                 p = subprocess.Popen(
-                    md_cmd, shell=True, stdout=subprocess.PIPE, close_fds=True
+                    md_cmd, 
+                    shell=True, 
+                    stdout=subprocess.PIPE, 
+                    close_fds=True,
+                    **extra
                 )
                 added_metadata = p.stdout.read()
                 p.stdout.close()
