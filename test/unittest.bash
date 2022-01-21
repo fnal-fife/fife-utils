@@ -23,7 +23,13 @@ testsuite() {
             local verbose=\$1
             local n_tests
             local n_fails
-            
+
+            if [ x\$verbose = "x--only" ]
+            then
+                ${suitename}_test_list=\"\$2\"
+                verbose=\$3
+            fi
+
             trap wrapup \$siglist
 
             : > ${TMPDIR:-/tmp}/test_out_$$

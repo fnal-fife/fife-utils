@@ -7,7 +7,7 @@ x--python3) export p3=true; shift;;
 *)          export p3=false;;
 esac
 
-if p3
+if $p3
 then
     test -d /tmp/py3 || mkdir /tmp/py3
     ln -s /bin/python3 /tmp/py3/python

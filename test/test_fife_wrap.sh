@@ -123,7 +123,7 @@ test_quot_env() {
     ../libexec/fife_wrap --debug --export-unquote FOO%3d%60bar%60_%60baz%60 --find_setups --setup fife_utils --limit 4 --multifile --appname demo --appfamily demo --appvers v1_0  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_location --add_to_dataset _poms_task --dataset_exclude '*.xyzzy' --dest /pnfs/nova/scratch/users/mengel --hash 2 -- '>bar.root' '<'  | tee tqe.out
 }
 
-if p3
+if $p3
 then
     test -d /tmp/py3 || mkdir /tmp/py3
     ln -s /bin/python3 /tmp/py3/python
