@@ -299,6 +299,12 @@ class Wrapper:
             default=[],
         )
         parser.add_option(
+            "--finally",
+            action="append",
+            help="script to run before Art executable",
+            default=[],
+        )
+        parser.add_option(
             "--finally-unquote",
             action="append",
             help="script to run before Art executable",
