@@ -299,6 +299,12 @@ class Wrapper:
             default=[],
         )
         parser.add_option(
+            "--finally-unquote",
+            action="append",
+            help="script to run before Art executable",
+            default=[],
+        )
+        parser.add_option(
             "--postscript",
             action="append",
             help="script to run after Art executable",
@@ -1365,6 +1371,24 @@ exit
             self.run_extracting_environment(cmdlist)
 
     def post_file_loop(self):
+
+        if self.options.finally_unquote:
+            cmdlist = []
+            if self.options.debug:
+                sys.stderr.write("\nfinallies:\n")
+            for s in self.options.finally_unquote:
+                sbase = s.split(" ")[0]
+                if os.access(sbase, os.R_OK) and not os.access(sbase, os.X_OK):
+                    try:
+                        os.chmod(sbase, 0o755)
+                    except:
+                        pass
+                if self.options.debug:
+                    sys.stderr.write("\nfinally: %s\n" % s)
+                cmdlist.append(urllib_unquote(s))
+            self.run_extracting_environment(cmdlist)
+            # run one more copy_back in case the finally stuff wrote anything
+            self.copy_back()
 
         if self.options.dest_uniq_rename:
             src = self.options.origdest
