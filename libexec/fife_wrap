@@ -18,7 +18,7 @@ import uuid
 import hashlib
 import threading
 
-from data_dispatcher.api import DataDispatcherClient
+#from data_dispatcher.api import DataDispatcherClient
 
 try:
     from queue import Queue
@@ -1093,6 +1093,7 @@ exit
                         break
 
         elif self.options.data_dispatcher:
+            print('Running with data dispatcher')
             for i in range(len(self.options.exe)):
                 cmdlist = [self.options.exe[i]]
                 if i == 0:
@@ -1105,6 +1106,7 @@ exit
                     for inputfile in self.dd_interface.lar_file_list.split(' '):
                       cmdlist.append(inputfile)
                 cmdlist.extend(self.args[i])
+                print('cmd:', cmdlist)
 
                 if self.options.with_gdb:
                     f = open(".gdbcmds")
@@ -2396,9 +2398,14 @@ if __name__ == "__main__":
             w.start_project()
         if w.options.ifdh_art or w.options.multifile or w.options.getconfig:
             w.start_client()
-        elif w.options.data_dispatcher:
-            w.dd_pre_loop()
+        #elif w.options.data_dispatcher:
+        #    w.dd_pre_loop()
         w.pre_file_loop()
+        help('modules')
+        print('pythonpath:', os.environ['PYTHONPATH'])
+        from data_dispatcher.api import DataDispatcherClient
+        if w.options.data_dispatcher:
+          w.dd_pre_loop()
         w.file_loop()
         if w.rres == 0 and not w.options.multifile and not w.options.getconfig:
             # multifile now does userscripts and copies out after each input 
