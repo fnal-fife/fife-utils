@@ -89,6 +89,8 @@ class DDInterface:
     self.dd_client = DataDispatcherClient(server_url='https://metacat.fnal.gov:9443/dune/dd/data',
                                   auth_server_url='https://metacat.fnal.gov:8143/auth/dune')
 
+  def Login(self, username):
+    self.dd_client.login_x509(username, os.environ['X509_USER_PROXY'])
   def SetLarLimit(self, limit):
     self.lar_limit = limit
 
@@ -453,6 +455,11 @@ class Wrapper:
             "--data_dispatcher_load_limit",
             type="int",
             help="Data Dispatcher Load File Limit",
+        )
+        parser.add_option(
+            "--data_dispatcher_user",
+            type="str",
+            help="Data Dispatcher User",
         )
         parser.add_option("--appname", help="application name for SAM", default="demo")
         parser.add_option(
@@ -876,6 +883,8 @@ exit
       self.dd_interface = DDInterface(self.options.data_dispatcher_namespace,
                                       self.options.data_dispatcher_load_limit)
       if self.options.dry_run: return
+      self.dd_interface.Login(self.options.data_dispatcher_user)
+      #self.dd_interface.login_x509('calcuttj', os.environ['X509_USER_PROXY'])
       self.dd_interface.AttachProject(self.options.data_dispatcher_project)
       self.dd_interface.LoadFiles()
       self.dd_interface.BuildFileListString()
@@ -1094,6 +1103,9 @@ exit
 
         elif self.options.data_dispatcher:
             print('Running with data dispatcher')
+            if len(self.dd_interface.loaded_files) == 0:
+              print('No files loaded with data dispatcher. Exiting gracefully')
+              return
             for i in range(len(self.options.exe)):
                 cmdlist = [self.options.exe[i]]
                 if i == 0:
@@ -2401,8 +2413,6 @@ if __name__ == "__main__":
         #elif w.options.data_dispatcher:
         #    w.dd_pre_loop()
         w.pre_file_loop()
-        help('modules')
-        print('pythonpath:', os.environ['PYTHONPATH'])
         from data_dispatcher.api import DataDispatcherClient
         if w.options.data_dispatcher:
           w.dd_pre_loop()

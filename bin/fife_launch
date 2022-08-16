@@ -54,7 +54,7 @@ class launcher(object):
         stages=[],
         fake=None,
         config_dump=None,
-        use_dd=False, #Using new Data Dispatcher system
+        #use_dd=False, #Using new Data Dispatcher system
         arg_push=[],
         arg_del=[],
     ):
@@ -67,7 +67,8 @@ class launcher(object):
         self.is_boolean_flag = {}
         self.included = {}
         self.fake = fake
-        self.use_dd = use_dd #Using new Data Dispatcher system
+        self.use_dd = False #use_dd #Using new Data Dispatcher system
+        self.use_sam = False
         self.jobname = jobname
         self.searchpath = os.environ.get("FIFE_LAUNCH_PATH", "").split(":")
         self.nfiles_in_dataset = None
@@ -312,7 +313,9 @@ class launcher(object):
                     ih = ifdh.ifdh()
                     ih.mkdir_p(dest)
 
-        if not self.use_dd:
+        self.use_sam = self.cfg.has_section('sam_consumer')
+        self.use_dd = self.cfg.has_section('data_dispatcher')
+        if self.use_sam and not self.use_dd:
           dataset = self.cfg_get("submit", "dataset_definition", vars=self.cfg_globals)
           if dataset:
               if dry_run:
@@ -325,10 +328,7 @@ class launcher(object):
                   if self.nfiles_in_dataset == 0:
                       print("Ignoring launch request on empty dataset")
                       sys.exit(1)
-        else:
-          if self.cfg.has_section("sam_consumer"):
-            print("ERROR: USING DATA DISPATCHER -- CANNOT HAVE A sam_consumer SECTION DEFINED WITHIN THE CONFIGURATION")
-            sys.exit(1)
+        elif self.use_dd and not self.use_sam:
           dataset = self.cfg_get("data_dispatcher", "dataset", vars=self.cfg_globals)
           self.dd_namespace = self.cfg_get("data_dispatcher", "namespace", vars=self.cfg_globals)
           self.dd_load_limit = self.cfg_get("data_dispatcher", "load_limit", vars=self.cfg_globals)
@@ -361,6 +361,9 @@ class launcher(object):
           proj_dict = self.dd_client.create_project(query_files, query=query)
           self.dd_proj_id = proj_dict['project_id']
           ## TODO -- add check for project state?
+        else:
+          print("ERROR: USING DATA DISPATCHER -- CANNOT HAVE A sam_consumer SECTION DEFINED WITHIN THE CONFIGURATION")
+          sys.exit(1)
 
 
         for i in range(100):
@@ -550,6 +553,7 @@ class launcher(object):
               res.append('    --data_dispatcher_project %i \\'%self.dd_proj_id)
               res.append('    --data_dispatcher_namespace %s \\'%self.dd_namespace)
               res.append('    --data_dispatcher_load_limit %s \\'%self.dd_load_limit)
+              res.append('    --data_dispatcher_user %s \\'%os.environ['USER'])
 
             for i in range(30):
                 if i == 0:
@@ -883,14 +887,11 @@ class launcher(object):
                     submit_cmd.append("    --%s '%s' \\\n" % (k, v))
 
             if self.use_dd:
-              #res.append('    --data_dispatcher \\')
-              #res.append('    --data_dispatcher_project %i \\'%self.dd_proj_id)
-              #res.append('    --data_dispatcher_namespace %s \\'%self.dd_namespace)
-              #res.append('    --data_dispatcher_load_limit %s \\'%self.dd_load_limit)
               submit_cmd.append('    --data_dispatcher \\\n')
               submit_cmd.append('    --data_dispatcher_project %i \\\n'%self.dd_proj_id)
               submit_cmd.append('    --data_dispatcher_namespace %s \\\n'%self.dd_namespace)
               submit_cmd.append('    --data_dispatcher_load_limit %s \\\n'%self.dd_load_limit)
+              submit_cmd.append('    --data_dispatcher_user %s \\\n'%os.environ['USER'])
 
             for i in range(30):
                 if i == 0:
@@ -1060,11 +1061,11 @@ if __name__ == "__main__":
         help='dump our config "before" or "after" expansion and overrides (or "both")',
         default=None,
     )
-    p.add_option(
-        "--use_dd",
-        help='Use new Data Dispatcher rather than SAM?',
-        action='store_true',
-    )
+    #p.add_option(
+    #    "--use_dd",
+    #    help='Use new Data Dispatcher rather than SAM?',
+    #    action='store_true',
+    #)
     p.add_option(
         "--arg_push",
         action="append",
@@ -1093,7 +1094,7 @@ if __name__ == "__main__":
             options.stage,
             options.fake,
             options.config_dump,
-            options.use_dd,
+            #options.use_dd,
             options.arg_push,
             options.arg_del,
         )
