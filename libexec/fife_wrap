@@ -66,7 +66,7 @@ def match_list(f, globlist):
 
 class DDInterface:
   #def __init__(self, dataset, limit, namespace, lar_limit):
-  def __init__(self, namespace, lar_limit):
+  def __init__(self, namespace, lar_limit, timeout=120, wait_time=60, wait_limit=5):
     self.dataset = "" #dataset
     self.limit = 1#limit
     self.namespace = namespace
@@ -79,13 +79,16 @@ class DDInterface:
     self.loaded_files = []
     self.loaded_file_uris = []
     self.loaded = False
-    self.timeout = 60
+    self.dd_timeout = timeout 
+    self.wait_time = wait_time
+    self.max_wait_attempts = wait_limit
     self.hit_timeout = False
     self.lar_return = -1
     self.lar_file_list = ''
+    self.n_waited = 0
     self.next_failed = False
     self.next_replicas = []
-    self.next_name = ''
+    from data_dispatcher.api import DataDispatcherClient
     self.dd_client = DataDispatcherClient(server_url='https://metacat.fnal.gov:9443/dune/dd/data',
                                   auth_server_url='https://metacat.fnal.gov:8143/auth/dune')
 
@@ -102,39 +105,81 @@ class DDInterface:
     self.proj_exists = True
     print(proj_dict)
 
-  def Next(self):
-    if self.proj_id < 0:
-      raise ValueError('DDLArInterface::Next -- Project ID is %i. Has a project been created?'%self.proj_id)
-    ## exists, state, etc. -- TODO
-    self.next_output = self.dd_client.next_file(self.proj_id)['handle']
-
-    if self.next_output == None:
-      self.next_failed = True
-      return
-
-    self.next_name = self.next_output['name']
-    self.next_replicas = list(self.next_output['replicas'].values())
-
   def PrintFiles(self):
     print('Printing files')
     for j in self.loaded_files:
       print(j['name'])
+
   def LoadFiles(self):
     count = 0
+    ##Should we take out the proj_state clause?
     while (count < self.lar_limit and not self.next_failed and
            self.proj_state == 'active'):
       print('Attempting fetch %i/%i'%(count, self.lar_limit), self.next_failed)
       self.Next()
       if self.next_output == None:
-        continue
-      elif len(self.next_replicas) > 0:
-        self.loaded_files.append(self.next_output)
-        count += 1
+        ## this shouldn't happen, but if it does just exit the loop
+        break 
+      elif self.next_output == True:
+        ##this means the fetch timed out.
+
+        ##First --> check that there are files reserved by other jobs.
+        ##          If there aren't, just exit the loop and try processing
+        ##          any files (if any) we have
+        file_handles = self.dd_client.get_project(self.proj_id)['file_handles']
+        total_reserved = sum([fh['state'] == 'reserved' for fh in file_handles])
+        if total_reserved == count:
+          print('Equal number of reserved and loaded files. Ending loop')
+          break
+        elif total_reserved < count:
+          ##This shouldn't happen... If it does, fail and make some noise
+          sys.stderr.write("Something bad happened. N reserved in project < n reserved in this job: (%i/%i) \n"%(total_reserved, count))
+          sys.exit(1)
+        else: 
+          ##We know we have externally-reserved files. 
+          ##try waiting a user-defined amount of time
+          ##for a maximum number of attempts
+          ##-- if at max, go on to loop
+          if self.n_waited < self.max_wait_attempts:
+            print("data dispatcher next_file timed out. Waiting %i seconds before attempting again"%self.wait_time)
+            print("Wait attempts: %i/%i"%(self.n_waited, self.max_wait_attempts))
+            time.sleep(self.wait_time)
+            self.n_waited += 1
+          else:
+            print("Hit max wait limit. Ending attempts to load files")
+            break
+      elif self.next_output == False: 
+        ##this means the project is done -- just exit the loop.
+        print("Project is done -- exiting file fetch loop")
+        break
       else:
-        print('Empty replicas -- marking as failed')
-        self.dd_client.file_failed(self.proj_id, '%s:%s'%(self.next_output['namespace'], self.next_output['name']))
-        ##Mark that file as failed -- TODO
+        ##we successfully got a file (at least nominally). Check that it has replicas available.
+        ##If it doesn't, compromise it to a permament end
+        if len(self.next_replicas) > 0:
+          self.loaded_files.append(self.next_output)
+          count += 1
+          ##also reset the number of times waited
+          self.n_waited = 0
+        else:
+          print('Empty replicas -- marking as failed')
+          self.dd_client.file_failed(self.proj_id, '%s:%s'%(self.next_output['namespace'], self.next_output['name']), retry=False)
     self.loaded = True
+    print("Loaded %i files. Moving on."%len(self.loaded_files))
+
+  def Next(self):
+    if self.proj_id < 0:
+      raise ValueError('DDLArInterface::Next -- Project ID is %i. Has a project been created?'%self.proj_id)
+    ## exists, state, etc. -- TODO
+    self.next_output = self.dd_client.next_file(self.proj_id, timeout=self.dd_timeout) #['handle']
+
+    if self.next_output == None:
+      self.next_failed = True
+      return
+
+    if type(self.next_output) == dict:
+      self.next_replicas = list(self.next_output['replicas'].values())
+
+
   def MarkFiles(self, failed=False):
     state = 'failed' if failed else 'done'
     for j in self.loaded_files:
@@ -2413,7 +2458,7 @@ if __name__ == "__main__":
         #elif w.options.data_dispatcher:
         #    w.dd_pre_loop()
         w.pre_file_loop()
-        from data_dispatcher.api import DataDispatcherClient
+        #from data_dispatcher.api import DataDispatcherClient
         if w.options.data_dispatcher:
           w.dd_pre_loop()
         w.file_loop()
