@@ -128,13 +128,16 @@ class DDInterface:
         ##          any files (if any) we have
         file_handles = self.dd_client.get_project(self.proj_id)['file_handles']
         total_reserved = sum([fh['state'] == 'reserved' for fh in file_handles])
-        if total_reserved == count:
-          print('Equal number of reserved and loaded files. Ending loop')
+        #if total_reserved == count:
+        #  print('Equal number of reserved and loaded files. Ending loop')
+        #  break
+        #elif total_reserved < count:
+        #  ##This shouldn't happen... If it does, fail and make some noise
+        #  sys.stderr.write("Something bad happened. N reserved in project < n reserved in this job: (%i/%i) \n"%(total_reserved, count))
+        #  sys.exit(1)
+        if count > 0:
+          print('data dispatcher next_file timed out. This job has at least one file reserved. Will continue.')
           break
-        elif total_reserved < count:
-          ##This shouldn't happen... If it does, fail and make some noise
-          sys.stderr.write("Something bad happened. N reserved in project < n reserved in this job: (%i/%i) \n"%(total_reserved, count))
-          sys.exit(1)
         else: 
           ##We know we have externally-reserved files. 
           ##try waiting a user-defined amount of time
