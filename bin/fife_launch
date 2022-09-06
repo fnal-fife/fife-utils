@@ -31,8 +31,11 @@ except:
 
 import shutil
 from samweb_client import *
-from metacat.webapi import MetaCatClient
-from data_dispatcher.api import DataDispatcherClient
+try:
+  from metacat.webapi import MetaCatClient
+  from data_dispatcher.api import DataDispatcherClient
+except:
+  pass
 
 try:
     import poms_client
@@ -54,7 +57,6 @@ class launcher(object):
         stages=[],
         fake=None,
         config_dump=None,
-        #use_dd=False, #Using new Data Dispatcher system
         arg_push=[],
         arg_del=[],
     ):
@@ -336,13 +338,15 @@ class launcher(object):
 
           # dataset and namespace are required, limit is optional
           if not (dataset and self.dd_namespace):
-            print("ERROR: USING DATA DISPATCHER -- NEED TO PROVIDE BOTH dataset AND namespace WITHIN SUBMIT SECTION")
+            sys.stderr.write("ERROR: USING DATA DISPATCHER -- NEED TO PROVIDE BOTH dataset AND namespace WITHIN SUBMIT SECTION")
             sys.exit(1)
 
           self.mc_client = MetaCatClient()
           self.dd_client = DataDispatcherClient(
               server_url='https://metacat.fnal.gov:9443/dune/dd/data',
               auth_server_url='https://metacat.fnal.gov:8143/auth/dune')
+          self.dd_client.login_x509(os.environ['USER'],
+                                    os.environ['X509_USER_PROXY'])
 
           ##build up query
           query = 'files from %s where namespace="%s"'%(dataset, self.dd_namespace)
@@ -353,8 +357,8 @@ class launcher(object):
           #check size
           self.nfiles_in_dataset = len(query_files)
           if self.nfiles_in_dataset == 0:
-              print("Ignoring launch request on empty metacat query")
-              print("Query: %s"%query)
+              sys.stderr.write("Ignoring launch request on empty metacat query")
+              sys.stderr.write("Query: %s"%query)
               sys.exit(1)
 
           #make project in data dispatcher
@@ -362,7 +366,9 @@ class launcher(object):
           self.dd_proj_id = proj_dict['project_id']
           ## TODO -- add check for project state?
         elif self.use_sam and self.use_dd :
-          print("ERROR: USING DATA DISPATCHER -- CANNOT HAVE A sam_consumer SECTION DEFINED WITHIN THE CONFIGURATION")
+          sys.stderr.write("ERROR: USING DATA DISPATCHER -- CANNOT HAVE A " +
+                           "sam_consumer SECTION DEFINED WITHIN THE " +
+                           "CONFIGURATION")
           sys.exit(1)
 
 
@@ -1061,11 +1067,6 @@ if __name__ == "__main__":
         help='dump our config "before" or "after" expansion and overrides (or "both")',
         default=None,
     )
-    #p.add_option(
-    #    "--use_dd",
-    #    help='Use new Data Dispatcher rather than SAM?',
-    #    action='store_true',
-    #)
     p.add_option(
         "--arg_push",
         action="append",
@@ -1094,7 +1095,6 @@ if __name__ == "__main__":
             options.stage,
             options.fake,
             options.config_dump,
-            #options.use_dd,
             options.arg_push,
             options.arg_del,
         )
@@ -1112,7 +1112,3 @@ if __name__ == "__main__":
         sys.exit(1)
 
     l.launch(options.dry_run)
-    #if l.use_dd:
-    #  l.launch_dd(options.dry_run)
-    #else:
-    #  l.launch(options.dry_run)
