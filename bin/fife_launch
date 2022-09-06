@@ -361,7 +361,7 @@ class launcher(object):
           proj_dict = self.dd_client.create_project(query_files, query=query)
           self.dd_proj_id = proj_dict['project_id']
           ## TODO -- add check for project state?
-        else:
+        elif self.use_sam and self.use_dd :
           print("ERROR: USING DATA DISPATCHER -- CANNOT HAVE A sam_consumer SECTION DEFINED WITHIN THE CONFIGURATION")
           sys.exit(1)
 
