@@ -201,6 +201,14 @@ class launcher(object):
                 self.cfg.set("submit","dataset_definition", dataset)
                 self.cfg.remove_option("submit","dataset")
 
+    self.mc_servers = {
+      'dune':'https://metacat.fnal.gov:9443/dune_meta_demo/app',
+    }
+
+    self.dd_servers = {
+      'dune':('https://metacat.fnal.gov:9443/dune/dd/data',
+              'https://metacat.fnal.gov:8143/auth/dune'),
+    }
 
     def expand_parents(self, stages):
         res = []
@@ -282,6 +290,11 @@ class launcher(object):
             experiment = self.cfg_get("submit", "G", vars=self.cfg_globals)
         return experiment
 
+    def get_mc_dd_urls(self, experiment):
+      return (self.mc_servers['dune'], self.dd_servers['dune'][0],
+              self.dd_servers['dune'][1])
+
+
     def pre_launch(self, dry_run=False):
         for i in range(30):
             if i > 0:
@@ -341,10 +354,13 @@ class launcher(object):
             sys.stderr.write("ERROR: USING DATA DISPATCHER -- NEED TO PROVIDE BOTH dataset AND namespace WITHIN SUBMIT SECTION")
             sys.exit(1)
 
-          self.mc_client = MetaCatClient()
+          ##TODO -- Replace with internat MC/DD functionality eventually -- Talk to Igor
+          (mc_server, dd_server, dd_auth) = self.get_mc_dd_urls(self.get_experiment())
+          self.mc_client = MetaCatClient(mc_server)
           self.dd_client = DataDispatcherClient(
-              server_url='https://metacat.fnal.gov:9443/dune/dd/data',
-              auth_server_url='https://metacat.fnal.gov:8143/auth/dune')
+              server_url=dd_server, auth_server_url=dd_auth)
+              #server_url='https://metacat.fnal.gov:9443/dune/dd/data',
+              #auth_server_url='https://metacat.fnal.gov:8143/auth/dune')
           self.dd_client.login_x509(os.environ['USER'],
                                     os.environ['X509_USER_PROXY'])
 
