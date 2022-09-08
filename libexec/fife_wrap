@@ -508,6 +508,24 @@ class Wrapper:
             help="Data Dispatcher Load File Limit",
         )
         parser.add_option(
+            "--data_dispatcher_timeout",
+            type="int",
+            help="Data Dispatcher Timeout (seconds)",
+            default=120,
+        )
+        parser.add_option(
+            "--data_dispatcher_wait_time",
+            type="int",
+            help="Data Dispatcher Time to Wait Between Load Attempts (seconds)",
+            default=60,
+        )
+        parser.add_option(
+            "--data_dispatcher_wait_limit",
+            type="int",
+            help="Data Dispatcher Max Number of Timeouts allowed",
+            default=5,
+        )
+        parser.add_option(
             "--data_dispatcher_user",
             type="str",
             help="Data Dispatcher User",
@@ -932,7 +950,10 @@ exit
 
     def dd_pre_loop(self):
       self.dd_interface = DDInterface(self.options.data_dispatcher_namespace,
-                                      self.options.data_dispatcher_load_limit)
+                                      self.options.data_dispatcher_load_limit,
+                                      timeout=self.options.data_dispatcher_timeout,
+                                      wait_time=self.options.data_dispatcher_wait_time,
+                                      wait_limit=self.options.data_dispatcher_wait_limit)
       if self.options.dry_run: return
       self.dd_interface.Login(self.options.data_dispatcher_user)
       #self.dd_interface.login_x509('calcuttj', os.environ['X509_USER_PROXY'])

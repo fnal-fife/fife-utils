@@ -577,6 +577,18 @@ class launcher(object):
               res.append('    --data_dispatcher_load_limit %s \\'%self.dd_load_limit)
               res.append('    --data_dispatcher_user %s \\'%os.environ['USER'])
 
+              wait_limit = self.cfg_get("data_dispatcher", "wait_limit", vars=self.cfg_globals)
+              if wait_limit:
+                res.append('    --data_dispatcher_wait_limit %s \\'%wait_limit) 
+
+              wait_time = self.cfg_get("data_dispatcher", "wait_time", vars=self.cfg_globals)
+              if wait_time:
+                res.append('    --data_dispatcher_wait_time %s \\'%wait_time) 
+
+              timeout = self.cfg_get("data_dispatcher", "timeout", vars=self.cfg_globals)
+              if timeout:
+                res.append('    --data_dispatcher_timeout %s \\'%timeout)
+
             for i in range(30):
                 if i == 0:
                     ssuffix = ""
