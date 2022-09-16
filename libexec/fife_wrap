@@ -408,6 +408,18 @@ class Wrapper:
             default=[],
         )
         parser.add_option(
+            "--spack-env-activate",
+            action="append",
+            help="setup product before running",
+            default=[],
+        )
+        parser.add_option(
+            "--spack-env-activate-unquote",
+            action="append",
+            help="setup product before running",
+            default=[],
+        )
+        parser.add_option(
             "--setup-local",
             dest="setup_local",
             action="store_true",
@@ -762,11 +774,19 @@ class Wrapper:
 
         if self.options.spack_load:
             for s in self.options.spack_load:
-                scriptlist.append("mf=`spack module tcl find %s`;eval `modulecmd load $mf`" % urllib_unquote(s))
+                scriptlist.append("spack load %s" % urllib_unquote(s))
 
         if self.options.spack_load_unquote:
             for s in self.options.spack_load_unquote:
-                scriptlist.append("mf=`spack module tcl find %s`;eval `modulecmd bash load $mf`" % urllib_unquote(s))
+                scriptlist.append("spack load %s"  % urllib_unquote(s))
+
+        if self.options.spack_env_activate:
+            for s in self.options.spack_load_unquote:
+                scriptlist.append("spack env activate %s" % urllib_unquote(s))
+
+        if self.options.spack_env_activate_unquote:
+            for s in self.options.spack_load_unquote:
+                scriptlist.append("spack env activate %s" % urllib_unquote(s))
 
         if self.options.setup_local:
             d = os.environ.get("INPUT_TAR_DIR_LOCAL",os.path.dirname(os.environ.get("INPUT_TAR_FILE", "/tmp/x")))
