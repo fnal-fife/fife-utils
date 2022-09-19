@@ -7,14 +7,20 @@ x--python3) export p3=true; shift;;
 *)          export p3=false;;
 esac
 
+
+. /grid/fermiapp/products/common/etc/setups
+
 if $p3
 then
     test -d /tmp/py3 || mkdir /tmp/py3
     ln -s /bin/python3 /tmp/py3/python
     PATH=/tmp/py3:$PATH
     . `ups unsetup python_future_six_request`
-    . `ups setup ifdhc v2_6_1 -q python36`
+    . `ups setup ifdhc v2_6_8 -q python36`
+else
+    . `ups setup ifhdc v2_6_8`
 fi
+. `ups setup ifdhc_config v2_6_8`
 
 count_report_files() {
     echo

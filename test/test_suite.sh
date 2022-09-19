@@ -6,4 +6,4 @@
     bash test_fife_wrap.sh -v
     bash test_fife_wrap.sh --python3 -v
     python test_mu2e_sam_prefix.py
-) 2>&1 | tee test_suite.out
+) test_suite.out 2>&1 < /dev/null &
