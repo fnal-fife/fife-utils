@@ -10,17 +10,18 @@ esac
 
 . /grid/fermiapp/products/common/etc/setups
 
+. `ups setup sam_web_client`
 if $p3
 then
     test -d /tmp/py3 || mkdir /tmp/py3
     ln -s /bin/python3 /tmp/py3/python
     PATH=/tmp/py3:$PATH
     . `ups unsetup python_future_six_request`
-    . `ups setup ifdhc v2_6_8 -q python36`
+    . `ups setup -j ifdhc v2_6_8 -q python36`
 else
-    . `ups setup ifhdc v2_6_8`
+    . `ups setup -j ifdhc v2_6_8`
 fi
-. `ups setup ifdhc_config v2_6_8`
+. `ups setup -j ifdhc_config v2_6_9`
 
 count_report_files() {
     echo
@@ -43,7 +44,7 @@ setup_tests() {
    export IFDH_CP_MAXRETRIES=0
 
    # pick an experiment pnfs area from whats available
-   for e in nova dune uboone minerva
+   for e in dune nova uboone minerva
    do
        if [ -d /pnfs/$e ]
        then
@@ -75,6 +76,8 @@ setup_tests() {
    export X509_USER_PROXY=/tmp/x509up_u`id -u`
    export SSL_CERT_DIR=/etc/grid-security/certificates
    export CPN_DIR=/no/such/dir
+   echo FIFE_UTILS_DIR=$FIFE_UTILS_DIR
+   echo PATH=$PATH
 }
 
 test_add_dataset_flist_norename() {
@@ -225,7 +228,7 @@ add_dataset() {
        fname="${dataset}_f${i}"
        rm -f $fname
        echo "file $i" > $fname
-       checksum=`ifdh checksum $fname 2>/dev/null`
+       checksum=`ifdh checksum $fname`
        size=`cat $fname | wc -c`
        rm -f $fname.json 
        cat > $fname.json <<EOF
@@ -245,6 +248,9 @@ add_dataset() {
  } 
 }
 EOF
+       echo "metadata:"
+       cat $fname.json
+       echo "========"
        case `pwd` in
        /pnfs/*/scratch/*) location="dcache:`pwd`";;
        /pnfs/*) location="enstore:`pwd`";;
