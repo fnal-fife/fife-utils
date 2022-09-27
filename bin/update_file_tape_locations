@@ -12,12 +12,19 @@ import grp
 import os
 import sys
 from samweb_client import *
-from fife_sam_utils import update_dcache_tape_location, get_paths_for
+from fife_sam_utils import update_dcache_tape_location, fake_project_dataset, log_startup, log_finish
 
 #def update_dcache_tape_location(sp, f):
 
+ff = fake_project_dataset("f")
+
 def find_dcache_path(f):
-    dlocs = [x for x in get_paths_for(f) if x.find('/pnfs/')>= 0]
+    dlocs = ff.get_paths_for(f)
+    logging.debug("getting locations for %s found %s" % (f, repr(dlocs)))
+    dlocs = [x for x in dlocs if x.find('/pnfs/')== 0 and x.find('/scratch') < 0]
+    dlocs.sort(reverse=True)
+
+    logging.debug("getting locations for %s pruned to %s" % (f, repr(dlocs)))
     if dlocs:
         return dlocs[0]
     else:
@@ -56,13 +63,18 @@ def main():
         parser.error("expected filename(s) containing a list(s) of files")
         exit(1)
 
+    samweb = SAMWebClient(experiment=experiment)
+
     for fn in a:
-        fd = open(a,"r")
+        fd = open(fn,"r")
         for fn in fd.readlines():
             fn = fn.strip()
-            if f.find("/") < 0:
-                f = find_dcache_path(f)
-            update_dcache_location(os.path.dirname(f), os.path.basename(f))
+            if fn.find("/") < 0:
+                fn = find_dcache_path(fn)
+            if fn:
+                update_dcache_tape_location(
+                   os.path.dirname(fn), os.path.basename(fn), samweb
+                )
         fd.close()
     log_finish("Success")
 

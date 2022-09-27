@@ -732,33 +732,32 @@ def get_enstore_info(bfid , maxdepth = 3):
          enstore_info = get_enstore_info(package_id, maxdepth - 1)
     return enstore_info
 
-def update_dcache_tape_location(sp, f):
-    if tapeloc and tl == None:
-        logging.debug('checking: %s/.(use)(4)(%s)' % (sp,f))
-        fd = open( "%s/.(use)(4)(%s)" % (sp, f), "r")
-        l4 = fd.read().strip()
-        fd.close()
-        l4s = l4.split("\n")
-        bfid = l4s[8]
-        label = l4s[0]
-        cookie = l4s[1]
-        checksum = l4s[10]
-        if label and ':' in label:
-            label = None
-            cookie = None
-            enstore_info = get_enstore_info(bfid)
-            label = enstore_info.get('tape_label', None)
-            cookie = enstore_info.get('location_cookie',None)
-            
-        if label:
-            if cookie:
-                sequence = int(str(cookie).replace('_',''))
-            else:
-                sequence = 0
+def update_dcache_tape_location(sp, f, samweb):
+    logging.debug('checking: %s/.(use)(4)(%s)' % (sp,f))
+    fd = open( "%s/.(use)(4)(%s)" % (sp, f), "r")
+    l4 = fd.read().strip()
+    fd.close()
+    l4s = l4.split("\n")
+    bfid = l4s[8]
+    label = l4s[0]
+    cookie = l4s[1]
+    checksum = l4s[10]
+    if label and ':' in label:
+        label = None
+        cookie = None
+        enstore_info = get_enstore_info(bfid)
+        label = enstore_info.get('tape_label', None)
+        cookie = enstore_info.get('location_cookie',None)
+        
+    if label:
+        if cookie:
+            sequence = int(str(cookie).replace('_',''))
+        else:
+            sequence = 0
 
-            fulloc = "%s%s(%s@%s)" % (samprefix(sp),sp, sequence,label)
-            if verbose: print('Adding tape label location for %s: %s' % (f, fulloc))
-            samweb.addFileLocation( f, fulloc )
+        fulloc = "%s%s(%s@%s)" % (samprefix(sp),sp, sequence,label)
+        logging.debug('Adding tape label location for %s: %s' % (f, fulloc))
+        samweb.addFileLocation( f, fulloc )
 
 def validate( ds, just_say = False, prune = False, verbose = False, experiment = None , locality = False, list_tapes=False, tapeloc= False, location = []):
     samweb = SAMWebClient(experiment=experiment)
@@ -834,7 +833,8 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
                         stat = os.stat("%s/%s" % (sp, f))
                         counts["%s_size"%loc] = counts.get("%s_size"%loc,0) + stat.st_size
 
-                    update_dcache_tape_location(sp, f)
+                    if tapeloc and tl == None:
+                        update_dcache_tape_location(sp, f, samweb)
 
                 except Exception as e:
                     logging.error("Exception checking PNFS info: %s" % e)
