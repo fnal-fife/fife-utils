@@ -1,0 +1,70 @@
+#!/usr/bin/env python
+
+try:
+    from six import *
+except:
+    pass
+
+
+import logging
+import optparse
+import grp
+import os
+import sys
+from samweb_client import *
+from fife_sam_utils import update_dcache_tape_location, get_paths_for
+
+#def update_dcache_tape_location(sp, f):
+
+def find_dcache_path(f):
+    dlocs = [x for x in get_paths_for(f) if x.find('/pnfs/')>= 0]
+    if dlocs:
+        return dlocs[0]
+    else:
+        return None
+
+def main():
+    log_startup()
+    experiment = os.environ.get(
+        "EXPERIMENT", os.environ.get(
+            "SAM_EXPERIMENT", 
+            grp.getgrgid(os.getgid())[0]
+        )
+    )
+    parser = optparse.OptionParser( 
+        usage = "look up tape locations of files in DCache and add them to SAM"
+    )
+    parser.add_option(
+        "-e",
+        "--experiment",
+        default=experiment,
+        help="use this experiment server defaults to $SAM_EXPERIMENT if not set"
+,
+    )
+    parser.add_option("-v", "--verbose", action="count", default=0)
+
+    (o,a) = parser.parse_args()
+
+    if o.verbose > 1:
+        logging.basicConfig(level=logging.DEBUG)
+    elif o.verbose > 0:
+        logging.basicConfig(level=logging.INFO)
+    else:
+        logging.disable(logging.INFO)
+
+    if not a:
+        parser.error("expected filename(s) containing a list(s) of files")
+        exit(1)
+
+    for fn in a:
+        fd = open(a,"r")
+        for fn in fd.readlines():
+            fn = fn.strip()
+            if f.find("/") < 0:
+                f = find_dcache_path(f)
+            update_dcache_location(os.path.dirname(f), os.path.basename(f))
+        fd.close()
+    log_finish("Success")
+
+if __name__ == '__main__':
+   main()
