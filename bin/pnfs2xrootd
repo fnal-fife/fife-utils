@@ -2,7 +2,8 @@
 
 while true
 do
-    echo -n `readlink -f $1` | sed -e ‘s%/pnfs%root://fndca1.fnal.gov:1094//pnfs/fnal.gov/usr%’
+    echo -n `readlink -f $1|| echo $1` | 
+       sed -e 's|/pnfs|root://fndca1.fnal.gov:1094//pnfs/fnal.gov/usr|'
     shift
     if [ x$1 == x ]; then break; fi
     echo -n ' '
