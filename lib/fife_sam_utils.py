@@ -750,7 +750,7 @@ def update_dcache_tape_location(sp, f, samweb):
         cookie = enstore_info.get('location_cookie',None)
         
     if label:
-        if cookie:
+        if cookie and cookie[0] in "0123456789_":
             sequence = int(str(cookie).replace('_',''))
         else:
             sequence = 0

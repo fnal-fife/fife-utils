@@ -1,0 +1,71 @@
+#!/bin/sh
+
+# datestamps, current in sec, ISO dates for start and end
+dsn=`date +%s`
+dse=`date -I -d now-2days`
+dss=`date -I -d now-365days`
+# experiment
+exp=${EXPERIMENT:-${SAM_EXPERIMENT:-$(id --group --name)}}
+case $exp in
+$USER)      exp=samdev;;
+microboone) exp=uboone;;
+esac
+
+# parse arguments
+while :
+do
+case x$1 in
+x--help)
+    echo "Usage: $0  [-e EXPERIMENT] [--last-week] [--all]"
+    echo "  -- find /pnfs files missing tape labels in SAM and try to update them from DCache"
+    exit 0
+    ;;
+x--last-week)
+    dse=`date -I -d now-7days`
+    dss=`date -I -d now-14days`
+    shift
+    continue
+    ;;
+x--all) 
+    dse=`date -I -d now-2days`
+    dss='1970-01-01'
+    shift
+    continue
+    ;;
+x-e|x--experiment)
+    exp=$2
+    shift; shift;
+    continue
+    ;;
+x)  break
+    ;;
+x*) echo Unknown option $1 >&2
+    exit 1
+    ;;
+esac
+done
+
+
+export EXPERIMENT=$exp
+
+dims="full_path like '/pnfs/%' and 
+      not full_path like '/pnfs/${exp}/scratch%' and 
+      not full_path like '/pnfs/${exp}/persistent%' and 
+      not full_path like '/pnfs/${exp}/resilient%' and 
+      create_date < '${dse} 00:00:00' and
+      create_date > '${dss} 00:00:00' 
+    minus tape_label like '%'"
+
+defname="${USER}_tape_scan_${dsn}"
+samweb create-definition ${defname} "$dims"
+samweb describe-definition ${defname}
+printf "Before update: $exp files missing labels: "
+samweb count-definition-files $defname
+
+. /grid/fermiapp/products/common/etc/setups
+setup fife_utils
+export EXPERIMENT=${exp}
+sam_validate_dataset --tapeloc --name=${defname} --location=/pnfs
+
+printf "After update: $exp files missing labels: "
+samweb count-definition-files $defname
