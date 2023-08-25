@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 from __future__ import print_function
 import datetime
 import fnmatch
@@ -17,8 +16,8 @@ import traceback
 import uuid
 import hashlib
 import threading
+import subprocess
 
-#from data_dispatcher.api import DataDispatcherClient
 
 try:
     from queue import Queue
@@ -65,14 +64,20 @@ def match_list(f, globlist):
     return False
 
 class DDInterface:
-  def __init__(self, namespace, lar_limit, timeout=120, wait_time=60, wait_limit=5):
+  def __init__(self, project_id, namespace, lar_limit, timeout=120, wait_time=60, wait_limit=5, parameter=None):
     self.dataset = "" #dataset
     self.limit = 1#limit
     self.namespace = namespace
+    self.lar_limit = lar_limit
+    self.proj_id = project_id if project_id else -1
+    self.parameter = parameter
+    self.poms_env = os.environ.get("POMS_ENV", None)
+    self.poms_launch = self.poms_env != None
+    if self.poms_launch:
+        self.proj_id = os.environ.get("POMS_DATA_DISPATCHER_PROJECT_ID", self.proj_id)
+        self.parameter = os.environ.get("POMS_DATA_DISPATCHER_PARAMETER", parameter)
     query_args = (self.dataset, self.namespace, self.limit)
     self.query = '''files from %s where namespace="%s" limit %i'''%query_args
-    self.lar_limit = lar_limit
-    self.proj_id = -1
     self.proj_exists = False
     self.proj_state = None
     self.loaded_files = []
@@ -515,6 +520,12 @@ class Wrapper:
             help="Data Dispatcher Project namespace",
         )
         parser.add_option(
+            "--data_dispatcher_parameter",
+            type="str",
+            help="Data Dispatcher Custom Parameter",
+            default=None,
+        )
+        parser.add_option(
             "--data_dispatcher_load_limit",
             type="int",
             help="Data Dispatcher Load File Limit",
@@ -932,54 +943,60 @@ exit
                 )
             )
             return
-
-        if self.cpurl == None:
-            self.cpurl = self.ih.findProject(
-                os.environ["SAM_PROJECT"],
-                os.environ.get("SAM_STATION", os.environ.get("EXPERIMENT", "")),
-            )
-        self.consumerid = None
-
-        try:
-            if self.options.debug:
-                sys.stderr.write("\ntrying to establish consumer process\n")
-            self.consumerid = self.ih.establishProcess(
-                self.cpurl,
-                self.options.appname,
-                self.options.appvers,
-                hostname,
-                os.environ.get("GRID_USER", os.environ.get("USER")),
-                self.options.appfamily,
-                description,
-                int(self.options.limit),
-                self.options.schema,
-            )
-            self.consumerid = self.consumerid.strip()
-            if self.options.debug:
-                sys.stderr.write("\nGot consumerid of: %s\n" % self.consumerid)
-            os.environ["SAM_CONSUMER_ID"] = self.consumerid
-
-        except Exception as e:
-            sys.stderr.write(
-                "fife_wrap: Got exception: %s while trying to establish consumer\n" % e
-            )
-            if self.options.debug:
-                sys.stderr.write(traceback.format_exc())
-            raise
+        if not self.dd_interface:
+            if self.cpurl == None:
+                self.cpurl = self.ih.findProject(
+                    os.environ["SAM_PROJECT"],
+                    os.environ.get("SAM_STATION", os.environ.get("EXPERIMENT", "")),
+                )
+            self.consumerid = None
+            
+            try:
+                if self.options.debug:
+                    sys.stderr.write("\ntrying to establish consumer process\n")
+                self.consumerid = self.ih.establishProcess(
+                    self.cpurl,
+                    self.options.appname,
+                    self.options.appvers,
+                    hostname,
+                    os.environ.get("GRID_USER", os.environ.get("USER")),
+                    self.options.appfamily,
+                    description,
+                    int(self.options.limit),
+                    self.options.schema,
+                )
+                self.consumerid = self.consumerid.strip()
+                if self.options.debug:
+                    sys.stderr.write("\nGot consumerid of: %s\n" % self.consumerid)
+                os.environ["SAM_CONSUMER_ID"] = self.consumerid
+                
+            except Exception as e:
+                sys.stderr.write(
+                    "fife_wrap: Got exception: %s while trying to establish consumer\n" % e
+                )
+                if self.options.debug:
+                    sys.stderr.write(traceback.format_exc())
+                raise
 
 
     def dd_pre_loop(self):
-      self.dd_interface = DDInterface(self.options.data_dispatcher_namespace,
+        self.dd_interface = DDInterface(self.options.data_dispatcher_project,
+                                      self.options.data_dispatcher_namespace,
                                       self.options.data_dispatcher_load_limit,
                                       timeout=self.options.data_dispatcher_timeout,
                                       wait_time=self.options.data_dispatcher_wait_time,
-                                      wait_limit=self.options.data_dispatcher_wait_limit)
-      if self.options.dry_run: return
-      self.dd_interface.Login(self.options.data_dispatcher_user)
-      #self.dd_interface.login_x509('calcuttj', os.environ['X509_USER_PROXY'])
-      self.dd_interface.AttachProject(self.options.data_dispatcher_project)
-      self.dd_interface.LoadFiles()
-      self.dd_interface.BuildFileListString()
+                                      wait_limit=self.options.data_dispatcher_wait_limit,
+                                      parameter=self.options.data_dispatcher_parameter)
+        if self.options.dry_run: return
+        if self.dd_interface.poms_launch:
+            self.dd_interface.Login(self.dd_interface.user)
+            self.dd_interface.AttachProject(self.dd_interface.proj_id)
+        else:
+            #self.dd_interface.login_x509('calcuttj', os.environ['X509_USER_PROXY'])
+            self.dd_interface.Login(self.options.data_dispatcher_user)
+            self.dd_interface.AttachProject(self.options.data_dispatcher_project)
+        self.dd_interface.LoadFiles()
+        self.dd_interface.BuildFileListString()
       ### TODO -- need check at this point if this fails
 
     def checktimeleft(self):
@@ -2500,14 +2517,14 @@ if __name__ == "__main__":
         w.start_self_destruct()
         if w.options.start_project_on:
             w.start_project()
+        if w.options.data_dispatcher:
+            w.dd_pre_loop()
         if w.options.ifdh_art or w.options.multifile or w.options.getconfig:
             w.start_client()
         #elif w.options.data_dispatcher:
         #    w.dd_pre_loop()
         w.pre_file_loop()
         #from data_dispatcher.api import DataDispatcherClient
-        if w.options.data_dispatcher:
-          w.dd_pre_loop()
         w.file_loop()
         if w.rres == 0 and not w.options.multifile and not w.options.getconfig:
             # multifile now does userscripts and copies out after each input 
