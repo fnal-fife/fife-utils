@@ -28,7 +28,8 @@ except:
     def urllib_quote(x):
         return urllib.quote(x)
 
-
+import metacat
+import data_dispatcher
 import shutil
 from samweb_client import *
 try:
@@ -74,6 +75,7 @@ class launcher(object):
         self.jobname = jobname
         self.searchpath = os.environ.get("FIFE_LAUNCH_PATH", "").split(":")
         self.nfiles_in_dataset = None
+        self.poms_flags = {}
 
         if cfgfilename == None:
             sys.stderr.write("Error: missing required -c configfile option\n")
@@ -203,11 +205,14 @@ class launcher(object):
 
         self.mc_servers = {
           'dune':'https://metacat.fnal.gov:9443/dune_meta_demo/app',
+          'hypot': 'https://metacat.fnal.gov:9443/hypot_meta_dev/app'
         }
 
         self.dd_servers = {
           'dune':('https://metacat.fnal.gov:9443/dune/dd/data',
                   'https://metacat.fnal.gov:8143/auth/dune'),
+          'hypot': ('https://metacat.fnal.gov:9443/hypot_dd/data',
+                    'https://metacat.fnal.gov:8143/auth/hypot_dev')
         }
 
     def expand_parents(self, stages):
@@ -291,8 +296,8 @@ class launcher(object):
         return experiment
 
     def get_mc_dd_urls(self, experiment):
-      return (self.mc_servers['dune'], self.dd_servers['dune'][0],
-              self.dd_servers['dune'][1])
+        return (self.mc_servers[experiment], self.dd_servers[experiment][0],
+              self.dd_servers[experiment][1])
 
 
     def pre_launch(self, dry_run=False):
@@ -328,59 +333,99 @@ class launcher(object):
                     ih = ifdh.ifdh()
                     ih.mkdir_p(dest)
 
-        self.use_sam = self.cfg.has_section('sam_consumer')
-        self.use_dd = self.cfg.has_section('data_dispatcher')
+        self.use_dd = self.cfg.has_section('data_dispatcher') or os.environ.get("POMS_DATA_DISPATCHER_TASK_ID", None)
+        if self.use_dd and os.environ.get("POMS_DATA_DISPATCHER_TASK_ID", None):
+            self.use_sam = False
+        else:
+            self.use_sam = self.cfg.has_section('sam_consumer')
+
         if self.use_sam and not self.use_dd:
-          dataset = self.cfg_get("submit", "dataset_definition", vars=self.cfg_globals)
-          if dataset:
-              if dry_run:
-                  print("I would: samweb count_definition_files %s" % dataset)
-                  print("and make sure its non-zero...")
-                  self.nfiles_in_dataset = 5
-              else:
-                  samweb = SAMWebClient(experiment=self.get_experiment())
-                  self.nfiles_in_dataset = samweb.countFiles(defname=dataset)
-                  if self.nfiles_in_dataset == 0:
-                      print("Ignoring launch request on empty dataset")
-                      sys.exit(1)
+            dataset = self.cfg_get("submit", "dataset_definition", vars=self.cfg_globals)
+            if dataset:
+                if dry_run:
+                    print("I would: samweb count_definition_files %s" % dataset)
+                    print("and make sure its non-zero...")
+                    self.nfiles_in_dataset = 5
+                else:
+                    samweb = SAMWebClient(experiment=self.get_experiment())
+                    self.nfiles_in_dataset = samweb.countFiles(defname=dataset)
+                    if self.nfiles_in_dataset == 0:
+                        print("Ignoring launch request on empty dataset")
+                        sys.exit(1)
         elif self.use_dd and not self.use_sam:
-          dataset = self.cfg_get("data_dispatcher", "dataset", vars=self.cfg_globals)
-          self.dd_namespace = self.cfg_get("data_dispatcher", "namespace", vars=self.cfg_globals)
-          self.dd_load_limit = self.cfg_get("data_dispatcher", "load_limit", vars=self.cfg_globals)
-          limit = self.cfg_get("data_dispatcher", "query_limit", vars=self.cfg_globals)
+            dataset = self.cfg_get("data_dispatcher", "dataset", vars=self.cfg_globals)
+            self.dd_proj_id = self.cfg_get("data_dispatcher", "project_id", vars=self.cfg_globals)
+            self.dd_dataset_query = self.cfg_get("data_dispatcher", "dataset_query", vars=self.cfg_globals)
+            self.dd_task_id = self.cfg_get("data_dispatcher", "task_id", vars=self.cfg_globals)
+            self.dd_param = self.cfg_get("data_dispatcher", "parameter", vars=self.cfg_globals)
+            self.dd_namespace = self.cfg_get("data_dispatcher", "namespace", vars=self.cfg_globals)
+            self.dd_load_limit = self.cfg_get("data_dispatcher", "load_limit", vars=self.cfg_globals)
+            limit = self.cfg_get("data_dispatcher", "query_limit", vars=self.cfg_globals)
 
-          # dataset and namespace are required, limit is optional
-          if not (dataset and self.dd_namespace):
-            sys.stderr.write("ERROR: USING DATA DISPATCHER -- NEED TO PROVIDE BOTH dataset AND namespace WITHIN SUBMIT SECTION")
-            sys.exit(1)
+            # project_id OR (dataset and namespace) are required, limit is optional
+            # POMS Related fields
+            self.dd_proj_id = os.environ.get('POMS_DATA_DISPATCHER_PROJECT_ID', self.dd_proj_id)
+            self.dd_task_id = os.environ.get('POMS_DATA_DISPATCHER_TASK_ID', self.dd_task_id)
+            self.dd_dataset_query = os.environ.get('POMS_DATA_DISPATCHER_DATASET_QUERY', self.dd_dataset_query)
+            self.dd_param = os.environ.get('POMS_DATA_DISPATCHER_PARAMETER', self.dd_param)
+            # Param may be used later for non-project launches such as with the 'multiparam' split type
+                    
+            if not (self.dd_proj_id or (dataset and self.dd_namespace) or self.dd_dataset_query):
+                sys.stderr.write("ERROR: USING DATA DISPATCHER -- NEED TO PROVIDE project_id, dataset_query, or BOTH dataset AND namespace WITHIN SUBMIT SECTION")
+                sys.exit(1)
 
-          ##TODO -- Replace with internat MC/DD functionality eventually -- Talk to Igor
-          (mc_server, dd_server, dd_auth) = self.get_mc_dd_urls(self.get_experiment())
-          self.mc_client = MetaCatClient(mc_server)
-          self.dd_client = DataDispatcherClient(
-              server_url=dd_server, auth_server_url=dd_auth)
-              #server_url='https://metacat.fnal.gov:9443/dune/dd/data',
-              #auth_server_url='https://metacat.fnal.gov:8143/auth/dune')
-          self.dd_client.login_x509(os.environ['USER'],
-                                    os.environ['X509_USER_PROXY'])
+            ##TODO -- Replace with internat MC/DD functionality eventually -- Talk to Igor
+            (mc_server, dd_server, dd_auth) = self.get_mc_dd_urls(self.get_experiment())
+            self.mc_client = MetaCatClient(mc_server)
+            self.dd_client = DataDispatcherClient(
+                server_url=dd_server, auth_server_url=dd_auth)
+                #server_url='https://metacat.fnal.gov:9443/dune/dd/data',
+                #auth_server_url='https://metacat.fnal.gov:8143/auth/dune')
+            self.dd_client.login_x509(os.environ['USER'],
+                                        os.environ['X509_USER_PROXY'])
 
-          ##build up query
-          query = 'files from %s where namespace="%s"'%(dataset, self.dd_namespace)
-          if limit: query += ' limit %s'%limit
-          #query metacat
-          query_files = self.mc_client.query(query)
+            if self.dd_task_id and self.dd_param:
+                #TODO  Do something here for multiparam?
+                pass
+            
+            if not self.dd_proj_id:
+                ## build up or use query
+                if self.dd_dataset_query:
+                    # POMS provides a full query, rather than just a dataset
+                    query = self.dd_dataset_query
+                    query_files = list(self.mc_client.query(self.dd_dataset_query))
+                else: 
+                    query = 'files from %s where namespace="%s"'%(dataset, self.dd_namespace)
+                    if limit:
+                        query += ' limit %s'%limit
+                    #query metacat - query produces a generator, but we want the list
+                    query_files = list(self.mc_client.query(query))
 
-          #check size
-          self.nfiles_in_dataset = len(query_files)
-          if self.nfiles_in_dataset == 0:
-              sys.stderr.write("Ignoring launch request on empty metacat query")
-              sys.stderr.write("Query: %s"%query)
-              sys.exit(1)
+                #check size
+                self.nfiles_in_dataset = len(query_files)
+                if self.nfiles_in_dataset == 0:
+                    sys.stderr.write("Ignoring launch request on empty metacat query")
+                    sys.stderr.write("Query: %s"%query)
+                    sys.exit(1)
+                
+                # make project in data dispatcher
+                proj_dict = self.dd_client.create_project(query_files, query=query)
+                self.dd_proj_id = proj_dict['project_id']
+                ## TODO -- add check for project state?
+            else:
+                project = self.dd_client.get_project(self.dd_proj_id, True, True)
+                self.nfiles_in_dataset = len(project.get("file_handles", []))
+                if self.nfiles_in_dataset == 0:
+                    sys.stderr.write("Ignoring launch request on empty project")
+                    sys.stderr.write("project_id: %s" % self.dd_proj_id)
+                    sys.exit(1)
+            
+            if os.environ.get('POMS_DATA_DISPATCHER_TASK_ID', None):
+                self.poms_flags["POMS_DATA_DISPATCHER_TASK_ID"] = self.dd_task_id
+                self.poms_flags["POMS_DATA_DISPATCHER_PROJECT_ID"] = self.dd_proj_id
+                self.poms_flags["POMS_DATA_DISPATCHER_DATASET_QUERY"] = self.dd_dataset_query
+                self.poms_flags["POMS_DATA_DISPATCHER_PARAMETER"] = self.dd_param
 
-          #make project in data dispatcher
-          proj_dict = self.dd_client.create_project(query_files, query=query)
-          self.dd_proj_id = proj_dict['project_id']
-          ## TODO -- add check for project state?
         elif self.use_sam and self.use_dd :
           sys.stderr.write("ERROR: USING DATA DISPATCHER -- CANNOT HAVE A " +
                            "sam_consumer SECTION DEFINED WITHIN THE " +
@@ -423,7 +468,7 @@ class launcher(object):
 
     def build_launch(self):
         res = []
-
+        
         res.append("set -x")
 
         #
@@ -442,7 +487,6 @@ class launcher(object):
         # for k,v in self.cfg_items("env_pass", raw = 1):
         #    v = self.cfg_get("env_pass",k,vars = self.cfg_globals)
         #    res.append("%s='%s'; export %s" % (k, v, k))
-
         if self.cfg.has_section("submit"):
 
             nfpj = self.cfg_get("submit", "n_files_per_job", vars=self.cfg_globals)
@@ -464,8 +508,28 @@ class launcher(object):
             for k, v1 in self.cfg_items("env_pass", raw=1):
                 v = self.cfg_get("env_pass", k, vars=self.cfg_globals)
                 check_exp_err(k, v1, v)
-                res.append("export %s='%s'" % (k, v))
-
+                if "POMS" in k and v:
+                    self.poms_flags[k] = v
+                else:
+                    res.append("export %s='%s'" % (k, v))
+                    
+                    
+            uses_poms = len(self.poms_flags) > 0
+            for key, val in os.environ.items():
+                if key in ['POMS_ENV', "POMS_CAMPAIGN_ID", "POMS_TASK_ID"] or key.startswith("POMS_DATA_") and val:
+                    uses_poms = True
+                    if key not in self.poms_flags:
+                        self.poms_flags[key] = os.environ[key]
+                        
+            if uses_poms:            
+                for k, v in self.poms_flags.items():
+                    if "export %s='%s'" % (k, v) not in res:
+                        res.append("export %s=%s " % (k, v) 
+                                   if k not in ["POMS_DATA_DISPATCHER_DATASET_QUERY", "POMS_DATA_DISPATCHER_PARAMETER"] 
+                                   else
+                                   "export %s='%s' " % (k, v) 
+                                   )
+                    
             if self.fake:
                 res.append("fake_jobsub \\")
             else:
@@ -474,6 +538,11 @@ class launcher(object):
             # env_pass part two: pass -e VAR for each var
             for k, v1 in self.cfg_items("env_pass", raw=1):
                 res.append("  -e %s \\" % k)
+            
+            if uses_poms:            
+                for k, v in self.poms_flags.items():
+                    if "  -e %s \\" % k  not in res:
+                        res.append("  -e %s \\" % k)
 
             if self.cfg.has_section("poms_campaign_layer"):
                 #
@@ -545,7 +614,7 @@ class launcher(object):
                     and k[-2] in "0123456789"
                 ):
                     k = k[:-3]
-                if self.is_boolean_flag[k]:
+                if self.is_boolean_flag.get(k, False):
                     if v == "True" or v == True:
                         res.append("    --%s \\" % k)
                 else:
@@ -572,7 +641,7 @@ class launcher(object):
 
             if self.use_dd:
               res.append('    --data_dispatcher \\')
-              res.append('    --data_dispatcher_project %i \\'%self.dd_proj_id)
+              res.append('    --data_dispatcher_project %i \\'% int(self.dd_proj_id))
               res.append('    --data_dispatcher_namespace %s \\'%self.dd_namespace)
               res.append('    --data_dispatcher_load_limit %s \\'%self.dd_load_limit)
               res.append('    --data_dispatcher_user %s \\'%os.environ['USER'])
@@ -618,7 +687,7 @@ class launcher(object):
                     if k in ('launch_dest_check',):
                         continue
 
-                    if self.is_boolean_flag[k]:
+                    if self.is_boolean_flag.get(k, False):
                         if v == "True" or v == True:
                             res.append("    --%s%s \\" % (k, osuffix))
                     else:

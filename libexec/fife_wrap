@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 from __future__ import print_function
 import datetime
 import fnmatch
@@ -17,38 +16,31 @@ import traceback
 import uuid
 import hashlib
 import threading
+import subprocess
 
-#from data_dispatcher.api import DataDispatcherClient
 
 try:
     from queue import Queue
 except:
     from Queue import Queue
-
 try:
     import urllib.parse, urllib.error
 
     def urllib_unquote(x):
         return urllib.parse.unquote(x)
-
-
 except:
     import urllib
 
     def urllib_unquote(x):
         return urllib.unquote(x)
-
-
 try:
     from builtins import int, str, range
 except:
     pass
-
 try:
     from future.utils import itervalues
 except:
     pass
-
 try:
     from importlib import reload
 except:
@@ -65,14 +57,25 @@ def match_list(f, globlist):
     return False
 
 class DDInterface:
-  def __init__(self, namespace, lar_limit, timeout=120, wait_time=60, wait_limit=5):
+  def __init__(self, poms_dd_task_id, project_id, dataset_query, namespace, lar_limit, timeout=120, wait_time=60, wait_limit=5, parameter=None, user = None):
     self.dataset = "" #dataset
     self.limit = 1#limit
     self.namespace = namespace
-    query_args = (self.dataset, self.namespace, self.limit)
-    self.query = '''files from %s where namespace="%s" limit %i'''%query_args
     self.lar_limit = lar_limit
-    self.proj_id = -1
+    self.proj_id = int(project_id) if project_id else -1
+    self.parameter = parameter
+    self.poms_env = os.environ.get("POMS_ENV", None)
+    self.poms_launch = self.poms_env != None or poms_dd_task_id
+    if self.poms_launch:
+        self.user = os.environ.get("USER", user)
+        self.proj_id = int(os.environ.get("POMS_DATA_DISPATCHER_PROJECT_ID", self.proj_id))
+        self.parameter = os.environ.get("POMS_DATA_DISPATCHER_PARAMETER", parameter)
+        self.query = os.environ.get("POMS_DATA_DISPATCHER_DATASET_QUERY", dataset_query)
+    else:
+        query_args = (self.dataset, self.namespace, self.limit)
+        self.query = dataset_query if dataset_query else'''files from %s where namespace="%s" limit %i''' % query_args
+        self.user = user
+    
     self.proj_exists = False
     self.proj_state = None
     self.loaded_files = []
@@ -91,15 +94,16 @@ class DDInterface:
       from data_dispatcher.api import DataDispatcherClient
       print('Loaded DataDispatcher')
     except:
-      print('Failed DataDispatcher')
-      pass
+        print('Failed DataDispatcher')
+        pass
     self.dd_client = DataDispatcherClient()
-
+    
   def Login(self, username):
     self.dd_client.login_x509(username, os.environ['X509_USER_PROXY'])
+    
   def SetLarLimit(self, limit):
     self.lar_limit = limit
-
+    
   def CreateProject(self):
     query_files = mc_client.query(self.query)
     proj_dict = self.dd_client.create_project(query_files, query=self.query)
@@ -107,12 +111,12 @@ class DDInterface:
     self.proj_id = proj_dict['project_id']
     self.proj_exists = True
     print(proj_dict)
-
+    
   def PrintFiles(self):
     print('Printing files')
     for j in self.loaded_files:
       print(j['name'])
-
+      
   def LoadFiles(self):
     count = 0
     ##Should we take out the proj_state clause?
@@ -125,7 +129,6 @@ class DDInterface:
         break 
       elif self.next_output == True:
         ##this means the fetch timed out.
-
         ##First --> check that there are files reserved by other jobs.
         ##          If there aren't, just exit the loop and try processing
         ##          any files (if any) we have
@@ -171,21 +174,18 @@ class DDInterface:
           self.dd_client.file_failed(self.proj_id, '%s:%s'%(self.next_output['namespace'], self.next_output['name']), retry=False)
     self.loaded = True
     print("Loaded %i files. Moving on."%len(self.loaded_files))
-
+    
   def Next(self):
     if self.proj_id < 0:
       raise ValueError('DDLArInterface::Next -- Project ID is %i. Has a project been created?'%self.proj_id)
     ## exists, state, etc. -- TODO
     self.next_output = self.dd_client.next_file(self.proj_id, timeout=self.dd_timeout) #['handle']
-
     if self.next_output == None:
       self.next_failed = True
       return
-
     if type(self.next_output) == dict:
       self.next_replicas = list(self.next_output['replicas'].values())
-
-
+      
   def MarkFiles(self, failed=False):
     state = 'failed' if failed else 'done'
     for j in self.loaded_files:
@@ -193,7 +193,7 @@ class DDInterface:
         self.dd_client.file_failed(self.proj_id, '%s:%s'%(j['namespace'], j['name']))
       else:
         self.dd_client.file_done(self.proj_id, '%s:%s'%(j['namespace'], j['name']))
-
+        
   def AttachProject(self, proj_id):
     self.proj_id = proj_id
     proj = self.dd_client.get_project(proj_id)
@@ -202,7 +202,7 @@ class DDInterface:
     else:
       self.proj_exists = True
       self.proj_state = proj['state']
-
+      
   def BuildFileListString(self):
     for j in self.loaded_files:
       replicas = list(j['replicas'].values())
@@ -218,10 +218,10 @@ class DDInterface:
         
         ##TODO -- pop entry
         self.dd_client.file_failed(self.proj_id, '%s:%s'%(j['namespace'], j['name']))
-
-
-
+    
+    
 class Wrapper:
+
     def __init__(self):
         self.experiment = os.environ.get(
             "EXPERIMENT",
@@ -289,9 +289,7 @@ class Wrapper:
 
     def parse_arguments(self):
         import optparse
-
         parser = optparse.OptionParser()
-
         parser.add_option("-q", "--quals", help="Set qualifiers for ifdh_art setup")
         parser.add_option("-v", "--vers", help="Set version for ifdh_art setup")
         parser.add_option(
@@ -301,7 +299,8 @@ class Wrapper:
             "-X",
             "--exe",
             help="Specify executable name for art executable -- default $EXPERIMENT",
-            default=[],
+        
+    default=[],
             action="append",
         )
         parser.add_option(
@@ -314,13 +313,15 @@ class Wrapper:
             "--dynamic_lifetime",
             action="store_true",
             help="for multifile and getconfig loops quit if less time than this left",
-            default=None,
+        
+    default=None,
         )
         parser.add_option(
             "--mix",
             action="append",
             help="mixing script to run after fetching each input",
-            default=[],
+        
+    default=[],
         )
         parser.add_option(
             "-M",
@@ -339,7 +340,8 @@ class Wrapper:
             "--limit",
             type="int",
             help="Set SAM project file delivery limit",
-            default=0,
+        
+    default=0,
         )
         parser.add_option(
             "-S", "--schema", help="Set SAM file delivery schema", default=""
@@ -349,45 +351,51 @@ class Wrapper:
             dest="checksum",
             action="store_false",
             help="don't do checksums when adding metadata",
-            default=True,
+        
+    default=True,
         )
         parser.add_option(
             "-I",
             "--inputfile",
             action="append",
             help="Input file to copy to job area before running the executable",
-            default=[],
+        
+    default=[],
         )
         parser.add_option(
             "-T",
             "--inputtar",
             action="append",
             help="Input tar file to copy to job area and unpack running the executable",
-            default=[],
+        
+    default=[],
         )
         parser.add_option(
             "--inputlist",
             action="append",
             help="ifdh cp -f file to run to fetch inputs",
-            default=[],
+        
+    default=[],
         )
-
         parser.add_option(
             "--cvmfs-revision",
             help="check for this cvmfs revision on /cvmfs/$GROUP.opensciencegrid.org/",
-            default=None,
+        
+    default=None,
         )
         parser.add_option(
             "--export",
             action="append",
             help="export environment variable before running",
-            default=[],
+        
+    default=[],
         )
         parser.add_option(
             "--export-unquote",
             action="append",
             help="export environment variable before running",
-            default=[],
+        
+    default=[],
         )
         parser.add_option(
             "--setup", action="append", help="setup product before running", default=[]
@@ -396,7 +404,8 @@ class Wrapper:
             "--setup-unquote",
             action="append",
             help="setup product before running",
-            default=[],
+        
+    default=[],
         )
         parser.add_option(
             "--spack-load", action="append", help="setup product before running", default=[]
@@ -405,45 +414,52 @@ class Wrapper:
             "--spack-load-unquote",
             action="append",
             help="setup product before running",
-            default=[],
+        
+    default=[],
         )
         parser.add_option(
             "--spack-env-activate",
             action="append",
             help="setup product before running",
-            default=[],
+        
+    default=[],
         )
         parser.add_option(
             "--spack-env-activate-unquote",
             action="append",
             help="setup product before running",
-            default=[],
+        
+    default=[],
         )
         parser.add_option(
             "--setup-local",
             dest="setup_local",
             action="store_true",
             help="setup all ups products in $INPUT_TAR_FILE directory",
-            default=False,
+        
+    default=False,
         )
         parser.add_option(
             "--setup_local",
             dest="setup_local",
             action="store_true",
             help="setup all ups products in $INPUT_TAR_FILE directory",
-            default=False,
+        
+    default=False,
         )
         parser.add_option(
             "--source",
             action="append",
             help="source setup file before running",
-            default=[],
+        
+    default=[],
         )
         parser.add_option(
             "--source-unquote",
             action="append",
             help="source setup file before running",
-            default=[],
+        
+    default=[],
         )
         parser.add_option(
             "--self_destruct_timer",
@@ -460,37 +476,43 @@ class Wrapper:
             "--prescript",
             action="append",
             help="script to run before Art executable",
-            default=[],
+        
+    default=[],
         )
         parser.add_option(
             "--prescript-unquote",
             action="append",
             help="script to run before Art executable",
-            default=[],
+        
+    default=[],
         )
         parser.add_option(
             "--finally",
             action="append",
             help="script to run before Art executable",
-            default=[],
+        
+    default=[],
         )
         parser.add_option(
             "--finally-unquote",
             action="append",
             help="script to run before Art executable",
-            default=[],
+        
+    default=[],
         )
         parser.add_option(
             "--postscript",
             action="append",
             help="script to run after Art executable",
-            default=[],
+        
+    default=[],
         )
         parser.add_option(
             "--postscript-unquote",
             action="append",
             help="script to run after Art executable",
-            default=[],
+        
+    default=[],
         )
         parser.add_option("--debug", action="count", default=0, help="Turn on debugging")
         parser.add_option(
@@ -502,7 +524,11 @@ class Wrapper:
             "--data_dispatcher",
             action="store_true",
             help="Use Data Dispatcher and interface class to create files overwhich the executable will run",
-
+        )
+        parser.add_option(
+            "--data_dispatcher_task_id",
+            type="int",
+            help="Data Dispatcher Task ID (POMS)",
         )
         parser.add_option(
             "--data_dispatcher_project",
@@ -510,9 +536,21 @@ class Wrapper:
             help="Data Dispatcher Project ID",
         )
         parser.add_option(
+            "--data_dispatcher_dataset_query",
+            type="str",
+            help="Data Dispatcher Dataset Query",
+            default=None,
+        )
+        parser.add_option(
             "--data_dispatcher_namespace",
             type="str",
             help="Data Dispatcher Project namespace",
+        )
+        parser.add_option(
+            "--data_dispatcher_parameter",
+            type="str",
+            help="Data Dispatcher Custom Parameter",
+            default=None,
         )
         parser.add_option(
             "--data_dispatcher_load_limit",
@@ -564,7 +602,8 @@ class Wrapper:
         )
         parser.add_option(
             "--start_project_on",
-            default=None,
+        
+    default=None,
             help="start a sam project on this dataset ",
         )
         parser.add_option(
@@ -584,29 +623,29 @@ class Wrapper:
             "--no_delete_after_copy",
             action="store_true",
             help="set to not delete files after copying them out",
-            default=False,
+        
+    default=False,
         )
-
         for i in range(30):
             suffix = str(i)
             parser.add_option(
                 "--exe_stdout%s" % suffix, 
-                default=None,
+            
+    default=None,
                 help="Specify output redirect for executable",
             )
             parser.add_option(
                 "--exe_stderr%s" % suffix,
-                default=None,
+            
+    default=None,
                 help="Specify error output redirect for executable",
             )
-
         # output options
         for i in range(30):
             if i == 0:
                 suffix = ""
             else:
                 suffix = str(i)
-
             parser.add_option(
                 "--dest%s" % suffix, help="Specify destination for copyBackOutput"
             )
@@ -614,92 +653,105 @@ class Wrapper:
                 "--dest_uniq_rename%s" % suffix,
                 help="Copy to unique-ified dest dir, rename to dest directory afterwards",
                 action="store_true",
-                default=None,
+            
+    default=None,
             )
             parser.add_option(
                 "--rename%s" % suffix,
                 action="append",
                 help="Specify output file rename after Art runs",
-                default=[],
+            
+    default=[],
             )
             parser.add_option(
                 "--addoutput%s" % suffix,
                 action="append",
                 help="glob pattern to match and call addOutputFile on",
-                default=[],
+            
+    default=[],
             )
             parser.add_option(
                 "--declare_metadata%s" % suffix,
                 help="use given program to extract and declare metadata",
                 action="store_true",
-                default=None,
+            
+    default=None,
             )
             parser.add_option(
                 "--add_metadata%s" % suffix,
                 action="append",
                 help="single metadata field key=value to add when declaring output files",
-                default=[],
+            
+    default=[],
             )
             parser.add_option(
                 "--metadata_extractor%s" % suffix,
                 help="use given program to extract and declare metadata",
-                default=None,
+            
+    default=None,
             )
             parser.add_option(
                 "--metadata_extractor_unquote%s" % suffix,
                 help="use given program to extract and declare metadata",
-                default=None,
+            
+    default=None,
             )
             parser.add_option(
                 "--add_to_dataset%s" % suffix,
                 help="Add files to named dataset using Dataset.Tag",
-                default=None,
+            
+    default=None,
             )
             parser.add_option(
                 "--filter_metadata%s" % suffix,
                 help="fields to filter out from metadata extractor, comma separated",
                 action="append",
-                default=[],
+            
+    default=[],
             )
             parser.add_option(
                 "--dataset_exclude%s" % suffix,
                 action="append",
                 help="glob pattern of output files to exclude from the --add_to_dataset=dataset",
-                default=[],
+            
+    default=[],
             )
             parser.add_option(
                 "--add_location%s" % suffix,
                 action="store_true",
-                default=None,
+            
+    default=None,
                 help="Add locations of output files to SAM",
             )
             parser.add_option(
                 "--outputlist%s" % suffix,
                 action="append",
                 help="ifdh cp -f file to run to copy out outputs",
-                default=[],
+            
+    default=[],
             )
             parser.add_option(
                 "--hash%s" % suffix,
                 help="hash depth argument to copyBackOutput",
                 type="int",
-                default=0,
+            
+    default=0,
             )
             parser.add_option(
                 "--hash_alg%s" % suffix,
                 help="hash algorithm value for IFDH_DIR_HASH_ALG for copyBackOutput",
                 type="string",
-                default="md5",
+            
+    default="md5",
             )
             parser.add_option(
                 "--parallel%s" % suffix,
                 help="hash algorithm value for IFDH_DIR_HASH_ALG for copyBackOutput",
                 type="string",
-                default=None,
+            
+    default=None,
             )
-
         (self.options, self.args) = parser.parse_args()
-
         # split args on --
         newargs = []
         start = 0
@@ -708,16 +760,12 @@ class Wrapper:
                 newargs.append(self.args[start:i])
                 start = i + 1
         newargs.append(self.args[start : len(self.args)])
-
         self.args = newargs
-
         if self.options.dry_run:
             self.options.debug = False
-
         if self.options.debug:
             sys.stderr.write("Options: %s\n" % self.options)
             sys.stderr.write("Args: %s\n" % self.args)
-
         if len(self.options.exe) != len(self.args):
             sys.stderr.write("warning: mismatched --exe vs '-- args' lists\n")
             sys.stderr.write("exe: %s\n" % repr(self.options.exe))
@@ -728,7 +776,6 @@ class Wrapper:
         # run export and source stuff in a shell
         # and slurp the resulting environment back in.
         #
-
         if self.options.nosetup:
             if self.options.debug:
                 sys.stderr.write("running with nosetup\n")
@@ -736,58 +783,44 @@ class Wrapper:
                 sys.stderr.write("path is: %s\n" % os.environ["PATH"])
             self.find_ifdhc()
             return
-
         scriptlist = []
-
         if self.options.debug > 2:
             scriptlist.append("set -x\n")
-
         if self.options.find_setups:
             scriptlist.append(
                 "for p in %s ; do if [ -r $p ]; then . $p; break; fi; done"
                 % " ".join(self.setupslist)
             )
-
         if self.options.export:
             for e in self.options.export:
                 scriptlist.append("export %s" % e)
-
         if self.options.export_unquote:
             for e in self.options.export_unquote:
                 scriptlist.append("export %s" % urllib_unquote(e))
-
         if self.options.source:
             for s in self.options.source:
                 scriptlist.append("source %s" % s)
-
         if self.options.source_unquote:
             for s in self.options.source_unquote:
                 scriptlist.append("source %s" % urllib_unquote(s))
-
         if self.options.setup:
             for s in self.options.setup:
                 scriptlist.append("setup %s" % s)
-
         if self.options.setup_unquote:
             for s in self.options.setup_unquote:
                 scriptlist.append("setup %s" % urllib_unquote(s))
-
         if self.options.spack_load:
             for s in self.options.spack_load:
                 scriptlist.append("spack load %s" % urllib_unquote(s))
-
         if self.options.spack_load_unquote:
             for s in self.options.spack_load_unquote:
                 scriptlist.append("spack load %s"  % urllib_unquote(s))
-
         if self.options.spack_env_activate:
             for s in self.options.spack_load_unquote:
                 scriptlist.append("spack env activate %s" % urllib_unquote(s))
-
         if self.options.spack_env_activate_unquote:
             for s in self.options.spack_load_unquote:
                 scriptlist.append("spack env activate %s" % urllib_unquote(s))
-
         if self.options.setup_local:
             d = os.environ.get("INPUT_TAR_DIR_LOCAL",os.path.dirname(os.environ.get("INPUT_TAR_FILE", "/tmp/x")))
             scriptlist.append(
@@ -795,7 +828,6 @@ class Wrapper:
                 % (d, d)
             )
             scriptlist.append("echo; ups active; echo; echo")
-
         scriptlist.append(
             '[ -z "$PRODUCTS" -a -r /cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups.sh ] && source /cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups.sh'
         )
@@ -803,16 +835,12 @@ class Wrapper:
             '[ -z "$PRODUCTS" -a -r /grid/fermiapp/products/common/etc/setups.sh ] && source /grid/fermiapp/products/common/etc/setups.sh'
         )
         scriptlist.append('[ -z "$IFDHC_DIR" ] && source `ups setup ifdhc`')
-
         if self.options.dry_run:
             print("# setup commands:")
-
         self.run_extracting_environment(scriptlist)
-
         if self.options.dry_run:
             print("# end setup commands")
             print("# note: later commands are paraphrased from python")
-
         if self.options.dry_run:
             print("# I would exec python again... with --nosetup")
         else:
@@ -824,7 +852,6 @@ class Wrapper:
             raise (Exception("Could not restart under new python"))
 
     def run_extracting_environment(self, scriptlist):
-
         if self.options.dry_run:
             print("# I would run:")
             print("\n".join(scriptlist))
@@ -840,7 +867,6 @@ cat <<'EOF' | python
 import os
 import re
 for v in os.environ.keys():
-
     if v.find('()') > 0 or v.find('%%') > 0:
         continue
     if os.environ[v].find('\\n') > 0:
@@ -875,7 +901,6 @@ exit
                         found = True
                     else:
                         print(l)
-
             p.stdout.close()
             res = p.wait()
             sys.stdout.flush()
@@ -888,11 +913,8 @@ exit
     def start_client(self):
         if self.options.debug:
             sys.stderr.write("\nentering start_client\n")
-
         import socket
-
         hostname = socket.getfqdn()
-
         if "JOBSUBJOBID" in os.environ:
             description = os.environ["JOBSUBJOBID"]
         elif "CLUSTER" in os.environ:
@@ -902,12 +924,9 @@ exit
             )
         else:
             description = "process %d on %s" % (os.getpid(), hostname)
-
         if self.ih == None:
             self.find_ifdhc()
-
         # assume SAM_PROJECT and SAM_STATION are set...
-
         if self.options.dry_run:
             self.cpurl = "$cpurl"
             print(
@@ -932,54 +951,60 @@ exit
                 )
             )
             return
-
-        if self.cpurl == None:
-            self.cpurl = self.ih.findProject(
-                os.environ["SAM_PROJECT"],
-                os.environ.get("SAM_STATION", os.environ.get("EXPERIMENT", "")),
-            )
-        self.consumerid = None
-
-        try:
-            if self.options.debug:
-                sys.stderr.write("\ntrying to establish consumer process\n")
-            self.consumerid = self.ih.establishProcess(
-                self.cpurl,
-                self.options.appname,
-                self.options.appvers,
-                hostname,
-                os.environ.get("GRID_USER", os.environ.get("USER")),
-                self.options.appfamily,
-                description,
-                int(self.options.limit),
-                self.options.schema,
-            )
-            self.consumerid = self.consumerid.strip()
-            if self.options.debug:
-                sys.stderr.write("\nGot consumerid of: %s\n" % self.consumerid)
-            os.environ["SAM_CONSUMER_ID"] = self.consumerid
-
-        except Exception as e:
-            sys.stderr.write(
-                "fife_wrap: Got exception: %s while trying to establish consumer\n" % e
-            )
-            if self.options.debug:
-                sys.stderr.write(traceback.format_exc())
-            raise
-
+        if not self.dd_interface:
+            if self.cpurl == None:
+                self.cpurl = self.ih.findProject(
+                    os.environ["SAM_PROJECT"],
+                    os.environ.get("SAM_STATION", os.environ.get("EXPERIMENT", "")),
+                )
+            self.consumerid = None
+            try:
+                if self.options.debug:
+                    sys.stderr.write("\ntrying to establish consumer process\n")
+                self.consumerid = self.ih.establishProcess(
+                    self.cpurl,
+                    self.options.appname,
+                    self.options.appvers,
+                    hostname,
+                    os.environ.get("GRID_USER", os.environ.get("USER")),
+                    self.options.appfamily,
+                    description,
+                    int(self.options.limit),
+                    self.options.schema,
+                )
+                self.consumerid = self.consumerid.strip()
+                if self.options.debug:
+                    sys.stderr.write("\nGot consumerid of: %s\n" % self.consumerid)
+                os.environ["SAM_CONSUMER_ID"] = self.consumerid
+            except Exception as e:
+                sys.stderr.write(
+                    "fife_wrap: Got exception: %s while trying to establish consumer\n" % e
+                )
+                if self.options.debug:
+                    sys.stderr.write(traceback.format_exc())
+                raise
 
     def dd_pre_loop(self):
-      self.dd_interface = DDInterface(self.options.data_dispatcher_namespace,
-                                      self.options.data_dispatcher_load_limit,
-                                      timeout=self.options.data_dispatcher_timeout,
-                                      wait_time=self.options.data_dispatcher_wait_time,
-                                      wait_limit=self.options.data_dispatcher_wait_limit)
-      if self.options.dry_run: return
-      self.dd_interface.Login(self.options.data_dispatcher_user)
-      #self.dd_interface.login_x509('calcuttj', os.environ['X509_USER_PROXY'])
-      self.dd_interface.AttachProject(self.options.data_dispatcher_project)
-      self.dd_interface.LoadFiles()
-      self.dd_interface.BuildFileListString()
+        self.dd_interface = DDInterface(self.options.data_dispatcher_task_id, 
+                                        self.options.data_dispatcher_project,
+                                        self.options.data_dispatcher_dataset_query,
+                                        self.options.data_dispatcher_namespace,
+                                        self.options.data_dispatcher_load_limit,
+                                        timeout=self.options.data_dispatcher_timeout,
+                                        wait_time=self.options.data_dispatcher_wait_time,
+                                        wait_limit=self.options.data_dispatcher_wait_limit,
+                                        parameter=self.options.data_dispatcher_parameter,
+                                        user=self.options.data_dispatcher_user)
+        if self.options.dry_run: return
+        if self.dd_interface.poms_launch:
+            self.dd_interface.Login(self.dd_interface.user)
+            self.dd_interface.AttachProject(self.dd_interface.proj_id)
+        else:
+            #self.dd_interface.login_x509('calcuttj', os.environ['X509_USER_PROXY'])
+            self.dd_interface.Login(self.options.data_dispatcher_user)
+            self.dd_interface.AttachProject(self.options.data_dispatcher_project)
+        self.dd_interface.LoadFiles()
+        self.dd_interface.BuildFileListString()
       ### TODO -- need check at this point if this fails
 
     def checktimeleft(self):
@@ -991,13 +1016,10 @@ exit
         return 1
 
     def file_loop(self):
-
         if self.options.debug:
             sys.stderr.write("\nEntering file loop:\n")
-
         self.rres = 0
         self.furi = None
-
         if self.options.multifile or self.options.getconfig:
             if self.options.dry_run:
                 print("# getNextFile loop")
@@ -1006,7 +1028,6 @@ exit
                 self.furi = "fake"
             else:
                 self.furi = self.ih.getNextFile(self.cpurl, self.consumerid)
-
             nthfile = 0
             lastfuri = ""
             while self.furi and self.furi != lastfuri:
@@ -1030,7 +1051,6 @@ exit
                         os.path.basename(self.furi),
                         "transferred",
                     )
-
                 if self.options.dry_run:
                     for m in self.options.mix:
                         print("     %s" % m)
@@ -1053,7 +1073,6 @@ exit
                         lastfuri = self.furi
                         self.furi = self.ih.getNextFile(self.cpurl, self.consumerid)
                         continue
-
                 res = 0
                 if self.options.dry_run:
                     print("     if ")
@@ -1073,13 +1092,11 @@ exit
                         cmdlist.extend(self.args[i])
                         if i == 0:
                             cmdlist.append(fname)
-
                     if self.options.with_gdb:
                         f = open(".gdbcmds")
                         f.write("run\nwhere\nquit\n")
                         f.close()
                         cmdlist = ["gdb", "-x", ".gdbcmds", "--args"] + cmdlist
-
                     if getattr(self.options, "exe_stderr" + str(i)):
                         cmdlist.append(
                             "2>%s" % getattr(self.options, "exe_stderr" + str(i))
@@ -1089,27 +1106,20 @@ exit
                             ">%s" % getattr(self.options, "exe_stdout" + str(i))
                         )
                     cmd = " ".join(cmdlist)
-
                     if self.options.debug:
                         sys.stderr.write("\nRunning: %s\n" % cmd)
-
                     if self.options.dry_run:
                         print("     " + cmd)
                     else:
                         res = os.system(cmd)
-
                     if res != 0:
                         self.rres = res
                         break
-
                     if not self.checktimeleft():
                         break
-
                 self.userscripts()
-
                 if 0 == self.rres:
                     self.copy_back()
-
                 if self.options.dry_run:
                     print("     then")
                     print("          rres=$?")
@@ -1124,7 +1134,6 @@ exit
                     print("     fi")
                     self.furi = None  # leave loop gracefully(?)
                     break
-
                 if 0 == self.rres:
                     if self.options.debug:
                         sys.stderr.write("\nSuccess, marking consumed\n")
@@ -1143,20 +1152,15 @@ exit
                         os.path.basename(self.furi),
                         "skipped",
                     )
-
                 if not self.checktimeleft():
                     break
-
                 lastfuri = self.furi
                 self.furi = self.ih.getNextFile(self.cpurl, self.consumerid)
                 nthfile = nthfile + 1
-
         elif self.options.ifdh_art:
-
             # file loop is actually in the art executable
             # so we have to pass options in to it to
             # invoke the loop
-
             for i in range(len(self.options.exe)):
                 cmdlist = [self.options.exe[i]]
                 if i == 0:
@@ -1166,13 +1170,11 @@ exit
                     cmdlist.append("--sam-web-uri=%s" % self.cpurl)
                     cmdlist.append("--sam-process-id=%s" % self.consumerid)
                 cmdlist.extend(self.args[i])
-
                 if self.options.with_gdb:
                     f = open(".gdbcmds")
                     f.write("run\nwhere\nquit\n")
                     f.close()
                     cmdlist = ["gdb", "-x", ".gdbcmds", "--args"] + cmdlist
-
                 if getattr(self.options, "exe_stderr" + str(i)):
                     cmdlist.append(
                         "2>%s" % getattr(self.options, "exe_stderr" + str(i))
@@ -1181,7 +1183,6 @@ exit
                     cmdlist.append(
                         ">%s" % getattr(self.options, "exe_stdout" + str(i))
                     )
-
                 if self.options.dry_run:
                     print(" ".join(cmdlist))
                     print("rres=$?")
@@ -1192,7 +1193,6 @@ exit
                     self.rres = res
                     if res != 0:
                         break
-
         elif self.options.data_dispatcher:
             print('Running with data dispatcher')
             if len(self.dd_interface.loaded_files) == 0:
@@ -1211,13 +1211,11 @@ exit
                       cmdlist.append(inputfile)
                 cmdlist.extend(self.args[i])
                 print('cmd:', cmdlist)
-
                 if self.options.with_gdb:
                     f = open(".gdbcmds")
                     f.write("run\nwhere\nquit\n")
                     f.close()
                     cmdlist = ["gdb", "-x", ".gdbcmds", "--args"] + cmdlist
-
                 if getattr(self.options, "exe_stderr" + str(i)):
                     cmdlist.append(
                         "2>%s" % getattr(self.options, "exe_stderr" + str(i))
@@ -1226,7 +1224,6 @@ exit
                     cmdlist.append(
                         ">%s" % getattr(self.options, "exe_stdout" + str(i))
                     )
-
                 if self.options.dry_run:
                     print(" ".join(cmdlist))
                     print("rres=$?")
@@ -1272,11 +1269,9 @@ exit
                     self.rres = res
                     if res != 0:
                         break
-
         if self.options.multifile or self.options.getconfig:
             if self.options.dry_run:
                 print("done")
-
         if self.options.debug:
             sys.stderr.write("\nleaving file loop:\n")
 
@@ -1285,13 +1280,10 @@ exit
            We need ifdhc, and general setups haven't been done yet,
            so get the python path addition for the current version 
            in the common products area and shove it in sys.path
-
         """
-
         if self.ih != None and not force:
             # already did this..
             return
-
         pf = os.popen(
             "for f in /cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups /grid/fermiapp/products/common/etc/setups; do if [ -r $f ] ; then source $f; fi; done; source `ups setup ifdhc $IFDH_VERSION`; source `ups setup ifdhc_config $IFDH_VERSION`||true; echo $IFDHC_DIR/lib/python; echo $IFDHC_CONFIG_DIR"
         )
@@ -1302,31 +1294,35 @@ exit
             if self.options.debug:
                 sys.stderr.write("\nadding ifdh dir %s to sys.path\n" % p)
             p = l[1][:-1]
-
             if not "IFDHC_CONFIG_DIR" in os.environ:
                 os.environ["IFDHC_CONFIG_DIR"] = p
                 if self.options.debug:
                     sys.stderr.write("\nsetting IFDHC_CONFIG_DIR=%s\n" % p)
-
         pf.close()
-        import ifdh
 
         if self.options.debug:
             sys.stderr.write("\nreloading ifdh module\n")
-        reload(ifdh)
-
-        self.ih = ifdh.ifdh()
-
+        try:
+            reload(ifdh)
+            self.ih = ifdh.ifdh()
+        except:
+            try:
+                import ifdh
+                self.ih = ifdh.ifdh()
+            except:
+                sys.stderr.write("\ifdh load failed\n")
+        
+        
+   
+            
     def check_cvmfs(self):
         if not self.options.cvmfs_revision:
             return
-
         f = os.popen(
             "attr -qg revision /cvmfs/%s.opensciencegrid.org/" % self.experiment, "r"
         )
         vers = f.readline()
         f.close()
-
         if vers and int(vers) < int(self.options.cvmfs_revision):
             print(
                 "/cvmfs/%s.opensciencegrid.org is at version %s; we need %s"
@@ -1365,10 +1361,8 @@ exit
                 print("ifdh cp %s" % " ".join(cplist))
             else:
                 self.ih.cp(cplist)
-
         # then do the copies in any of the input lists
         cplist = []
-
         for it in self.options.inputlist:
             cplist.append("-f")
             cplist.append(it)
@@ -1377,7 +1371,6 @@ exit
                 print("ifdh cp %s" % " ".join(cplist))
             else:
                 self.ih.cp(cplist)
-
         # and unpack any tarfiles
         for it in self.options.inputtar:
             if it.find("gz") > 0:
@@ -1392,12 +1385,10 @@ exit
                     os.system("tar xvf %s" % it)
 
     def userscripts(self):
-
         if self.options.userscript:
             if self.options.debug:
                 sys.stderr.write("\nuserscript:\n")
             self.run_extracting_environment(self.options.userscript)
-
         if self.options.postscript:
             cmdlist = []
             if self.options.debug:
@@ -1412,7 +1403,6 @@ exit
                     sys.stderr.write("\npostscript: %s\n" % s)
                 cmdlist.append(urllib_unquote(s))
             self.run_extracting_environment(cmdlist)
-
         if self.options.postscript_unquote:
             cmdlist = []
             if self.options.debug:
@@ -1431,7 +1421,6 @@ exit
 
     def sam_prefix(self, path):
         """figure out a SAM prefix for a path..."""
-
         if self.options.debug or self.options.dry_run:
             sys.stderr.write("\nentering sam_prefix(%s)" % path)
         res = self.sam_prefix_impl(path)
@@ -1442,11 +1431,9 @@ exit
     def sam_prefix_impl(self, path):
         if path.find("s3:") == 0:
             return ""
-
         if path.find("://") > 0:
             # it is a URL, so leave it alone!
             return ""
-
         #
         # try to find a match in sam data disks...
         #
@@ -1479,9 +1466,7 @@ exit
             sys.stderr.write(repr(sys.exc_info()[1]))
             sys.stderr.write(traceback.format_exc())
             pass
-
         # if we didn't find it the right way, make a good guess..
-
         if re.match("/pnfs/[^/]*/(scratch|volatile|persistent)", path):
             if self.experiment == "uboone":
                 return "fnal-dcache:"
@@ -1504,9 +1489,7 @@ exit
         cdate = datetime.utcfromtimestamp(sd.st_ctime).strftime(
             "%Y-%m-%dT%H:%M:%S:+00:00"
         )
-
         checksum = None
-
         if self.options.checksum:
             if sys.version_info.major >= 3:
                 extra = {"encoding": "utf-8", "errors": "replace"}
@@ -1521,10 +1504,8 @@ exit
             checksum = p.stdout.read()
             p.stdout.close()
             rc = p.wait()
-
             if self.options.debug:
                 sys.stderr.write("\nDEBUG: ifdh checksum returns: %s" % checksum)
-
         if checksum:
             if checksum.find("crc_value") >= 0:
                 checksum = '["enstore:%s"]' % json.loads(checksum)["crc_value"]
@@ -1532,13 +1513,11 @@ exit
                 pass
         else:
             checksum = "[]"
-
         return (f, cdate, self.user, sd.st_size, checksum)
 
     def merge_metadata(self, m1, m2):
         if self.options.debug:
             sys.stderr.write("\nDEBUG: merge_metadata(%s,%s)" % (m1, m2))
-
         dm1 = json.loads(m1)
         dm2 = json.loads(m2)
         if dm1["file_name"] in dm2:
@@ -1552,7 +1531,6 @@ exit
                 "metadata_extractor data doesn't have filename, trying anyway...\n"
             )
             dm1.update(dm2)
-
         # sam_metadata_dumper puts
         #     "first_event": [ 1, 0, 1 ],
         #     "last_event": [1, 0, 10],
@@ -1592,13 +1570,11 @@ exit
                 "application.family",
             ]:
                 del dm1[k]
-
         return json.dumps(dm1)
 
     def ih_addFileLocation(self, of, loc):
         if self.options.dry_run:
             print('ifdh addFileLocation "%s" "%s"' % (of, loc))
-
         else:
             try: 
                 self.ih.addFileLocation(of, loc)
@@ -1610,9 +1586,7 @@ exit
                 )
 
     def pre_file_loop(self):
-
         self.find_ifdhc()
-
         if self.options.dest_uniq_rename:
             self.options.dest = self.options.dest + str(uuid.uuid1())
             if self.options.dry_run:
@@ -1622,7 +1596,6 @@ exit
                 )
             else:
                 os.system("ifdh mkdir_p %s" % self.options.dest)
-
         cmdlist = []
         if self.options.prescript:
             if self.options.debug:
@@ -1639,7 +1612,6 @@ exit
             if self.options.dry_run:
                 print("# pre-scripts")
             self.run_extracting_environment(cmdlist)
-
         cmdlist = []
         if self.options.prescript_unquote:
             if self.options.debug:
@@ -1659,7 +1631,6 @@ exit
             self.run_extracting_environment(cmdlist)
 
     def post_file_loop(self):
-
         if self.options.finally_unquote:
             cmdlist = []
             if self.options.debug:
@@ -1677,7 +1648,6 @@ exit
             self.run_extracting_environment(cmdlist)
             # run one more copy_back in case the finally stuff wrote anything
             self.copy_back()
-
         if self.options.dest_uniq_rename:
             src = self.options.origdest
             dst = re.sub(self.uuid_re, "", self.options.origdest)
@@ -1686,7 +1656,6 @@ exit
                 print("I would rename %s to %s" % (src, dst))
             else:
                 self.ih.rename(src, dst)
-
             for of in self.alloutputs:
                 hdir = self.hashdir(of, self.options.hash, self.options.hash_alg)
                 dst = re.sub(self.uuid_re, "", dst)
@@ -1696,7 +1665,6 @@ exit
     def get_output_files(self):
         if self.options.dry_run:
             return self.options.addoutput
-
         oflist = []
         # have to get output filenames from the ifdh scratch file
         # because they could have been renamed "unique"...
@@ -1713,12 +1681,9 @@ exit
         return oflist
 
     def do_metadata(self, f):
-
         metadata_d = None
-
         if self.options.debug:
             sys.stderr.write("output file: %s\n" % f)
-
         if self.options.declare_metadata or self.options.metadata_extractor:
             rt = self.file_stats(f)
             metadata = (
@@ -1736,12 +1701,10 @@ exit
                 % rt
             )
             metadata_d = json.loads(metadata)
-
             # if we are consuming a project, include consumer
             # process id
             if self.consumerid:
                 metadata_d["process_id"] = int(self.consumerid)
-
             if self.options.appfamily and self.options.appvers:
                 metadata_d["application"] = {
                     "family": self.options.appfamily,
@@ -1749,26 +1712,19 @@ exit
                     "version": self.options.appvers,
                 }
                 metadata = json.dumps(metadata_d)
-
             if self.furi:
                 metadata_d["parents"] = [{"file_name": os.path.basename(self.furi)}]
                 metadata = json.dumps(metadata_d)
-
             if self.options.metadata_extractor_unquote:
                 self.options.metadata_extractor = urllib_unquote(
                     self.options.metadata_extractor_unquote
                 )
-
             if self.options.metadata_extractor:
-
                 if self.options.metadata_extractor == "json":
-
                     jfname = "%s.json" % f
-
                     # if not there try un-uuid-ing the name
                     if not os.path.exists(jfname):
                         jfname = re.sub(self.uuid_re, "", jfname)
-
                     if os.path.exists(jfname):
                         md_cmd = "cat %s" % jfname
                     else:
@@ -1776,7 +1732,6 @@ exit
                             "WARNING: metadata file: %s not found\n" % jfname
                         )
                         md_cmd = "echo '{}'"
-
                 else:
                     if self.options.metadata_extractor.find("%s") > 0:
                         md_cmd = self.options.metadata_extractor % f
@@ -1800,20 +1755,16 @@ exit
                 if rc == 0:
                     metadata = self.merge_metadata(metadata, added_metadata)
                     metadata_d = json.loads(metadata)
-
             for ffl in self.options.filter_metadata:
                 for ff in ffl.split(","):
                     if ff in metadata_d:
                         del metadata_d[ff]
             # metadata = json.dumps(metadata_d)
-
             # add extra metadata fields from commandline
             for siv in self.options.add_metadata:
                 si, v = siv.split("=", 1)
                 metadata_d[si] = os.path.expandvars(v)
-
             metadata = json.dumps(metadata_d)
-
             if self.options.add_to_dataset:
                 do_extra_defs = False
                 # skip if it is in our exclude pattern
@@ -1837,19 +1788,15 @@ exit
                         do_extra_defs = True
                     else:
                         datasetname = self.options.add_to_dataset
-
                     # support metadata templated dataset names(!)
                     if datasetname.find("$") >= 0:
                         datasetname = format_path(
                             datasetname, CaseInsensitiveDict(metadata_d), time.time()
                         )
-
                     metadata_d["dataset.tag"] = datasetname
                     metadata = json.dumps(metadata_d)
-
                     # we don't know which job will actually initially
                     # create the definition, so we all try
-
                     if self.options.debug:
                         sys.stderr.write("creating definition %s\n" % datasetname)
                     try:
@@ -1872,14 +1819,12 @@ exit
                                     self.user,
                                     self.experiment,
                                 )
-
                     except:
                         sys.stderr.write(
                             "NOTICE: error creating definitions: %s\n %s"
                             % (repr(sys.exc_info()[1]), traceback.format_exc())
                         )
                         pass
-
             if self.options.debug:
                 sys.stderr.write("DEBUG: metadata: %s\n" % str(metadata))
             try:
@@ -1891,13 +1836,11 @@ exit
                 )
                 res = -1
                 pass
-
             # some ifdh versions return 1 on success from HTTP 201 result...
             if res != 0 and res != 1:
                 sys.stderr.write(
                     "error declaring metadata:" + self.ih.getErrorText() + "\n"
                 )
-
         return metadata_d
 
     def hashdir(self, name, hashdirs, hash_alg):
@@ -1924,20 +1867,16 @@ exit
         # used with Threads to emulate copyBackOutput, but in parallel
         if self.options.debug:
             sys.stderr.write("copy_worker: starting\n")
-
         while not self.workq.empty():
             of = self.workq.get()
             try:
-
                 if of in self.metadata_dest:
                     basedest = self.metadata_dest[of]
                 else:
                     basedest = self.options.dest
-
                 if self.options.debug:
                     sys.stderr.write("copy_worker: writing %s to %s \n" % 
                         (repr(of), repr(basedest)))
-
                 if self.options.hash:
                     hdir = self.hashdir(of, self.options.hash, self.options.hash_alg)
                     #
@@ -1957,10 +1896,8 @@ exit
             self.copyres.put(res)
 
     def copy_back_n(self, i):
-
         res = 0
         metadata_d = None
-
         if i > 0:
             # this moves the dest3 -> dest , etc. when i is 3...
             for k in (
@@ -1980,7 +1917,6 @@ exit
                 "parallel",
             ):
                 self.options.__dict__[k] = self.options.__dict__.get(k + str(i), None)
-
             # clean out output files from previous pass
             if self.ih:
                 outfiles_name = self.ih.localPath("/output_files")
@@ -1988,13 +1924,10 @@ exit
                     os.unlink(outfiles_name)
                 except:
                     pass
-
         if self.options.debug:
             sys.stderr.write("\nEntering copy_back:\n")
-
         if self.ih == None:
             self.find_ifdhc()
-
         if self.options.dest and self.options.addoutput:
             for g in self.options.addoutput:
                 if self.options.dry_run:
@@ -2004,7 +1937,6 @@ exit
                         if self.options.debug:
                             sys.stderr.write("addoutput: %s\n" % f)
                         self.ih.addOutputFile(f)
-
             if self.options.rename:
                 if self.options.debug:
                     sys.stderr.write("rename: %s\n" % self.options.rename)
@@ -2013,10 +1945,8 @@ exit
                         print("        ifdh renameOutput %s" % r)
                     else:
                         self.ih.renameOutput(r)
-
             if self.options.debug:
                 sys.stderr.write("copybackoutput: %s\n" % self.options.dest)
-
             oflist = []
             if self.options.add_location or self.options.declare_metadata:
                 oflist = self.get_output_files()
@@ -2026,17 +1956,12 @@ exit
                         metadata_d = {}
                     else:
                         metadata_d = self.do_metadata(f)
-
                     actualdest = self.options.dest
-
                     # if we are doing metadata, allow FTS-format path templating
-
                     if metadata_d and actualdest.find("$") >= 0:
                         actualdest = format_path(
                             actualdest, CaseInsensitiveDict(metadata_d), time.time()
                         )
-
-
                     #
                     # if  format_path did anything, make sure we use the
                     # parallel copy code instead of copyBackOutput so
@@ -2052,12 +1977,9 @@ exit
                             self.options.parallel = 1
                     else:
                         do_mkdir_p = False
-
                     if actualdest.find("$") >= 0:
                         actualdest = os.path.expandvars(actualdest)
-
                     self.find_ifdhc()
-
                     if do_mkdir_p:
                         if self.options.dry_run:
                             print("        ifdh mkdir_p %s" % actualdest)
@@ -2065,9 +1987,7 @@ exit
                             sys.stderr.write("actualdest: %s\n" %
                                   repr(actualdest))
                             os.system("ifdh mkdir_p %s" % actualdest)
-
                     self.metadata_dest[f] = actualdest
-
             if self.options.dry_run:
                 print(
                     "        # IFDH_DIR_HASH_ALG=%s ifdh copyBackOutput  %s %s"
@@ -2101,14 +2021,12 @@ exit
                         if t != None:
                             t.start()
                             tl.append(t)
-
                     # and wait for them all to finish
                     self.workq.join()
                     # try to clean up the threads, they should all be done
                     # so don't wait long for them
                     for t in tl:
                         t.join(timeout=1)
-
                     # and set res=-1 if any of the copies failed
                     res = 0
                     while not self.copyres.empty():
@@ -2125,12 +2043,9 @@ exit
             if res != 0:
                 # don't continue and declare etc if the copies failed...
                 return res
-
             # if we're doing the dest_uniq_rename thing, we're going to
             # rename the directory when we're done, and if that works
             # add all the locations (to avoid file duplication)
-
-
             if self.options.add_location and not self.options.dest_uniq_rename:
                 for of in oflist:
                     hdir = self.hashdir(of, self.options.hash, self.options.hash_alg)
@@ -2141,7 +2056,6 @@ exit
                     )
             if self.options.add_location and self.options.dest_uniq_rename:
                 self.alloutputs = self.alloutputs + oflist
-
             if self.options.dry_run:
                 print("I would clean up output files")
             else:
@@ -2152,17 +2066,14 @@ exit
                             os.unlink(f)
                         except Exception as e:
                             sys.stderr.write("Error unlinking %s: %s" % (f, e))
-
         # handle any touput file lists
         cplist = []
         if self.options.outputlist:
             for it in self.options.outputlist:
                 cplist.append("-f")
                 cplist.append(it)
-
         if len(cplist) > 1:
             res = self.ih.cp(cplist)
-
         return res
 
     def cleanup(self):
@@ -2179,15 +2090,12 @@ exit
             print("    fi")
             print("fi")
             print("exit $rres")
-
         if self.ih and self.cpurl and self.consumerid:
             self.ih.setStatus(
                 self.cpurl, self.consumerid, "completed" if 0 == self.rres else "bad"
             )
-
         if self.ih:
             self.ih.cleanup()
-
         if self.timeoutproc:
             os.kill(self.timeoutproc, 9)
 
@@ -2200,14 +2108,12 @@ exit
         self.dd_interface.MarkFiles(False if 0 == self.rres else True)
         if self.ih:
             self.ih.cleanup()
-
         if self.timeoutproc:
             os.kill(self.timeoutproc, 9)
 
     def start_project(self):
         if self.ih == None:
             self.ih = ifdh.ifdh()
-
         self.cpurl = self.ih.startProject(
             os.environ["SAM_PROJECT"],
             os.environ.get("SAM_STATION", os.environ.get("EXPERIMENT", "")),
@@ -2223,49 +2129,34 @@ exit
                 os.environ.get("SAM_STATION", os.environ.get("EXPERIMENT", "")),
             )
         self.ih.endProject(self.cpurl)
-
-
 # end Wrapper
-
 # ============================================
 # bodily including format_path stuff from Fermi-FTS, later we can just
 # call the sam webservice to expand this stuff...
-
 """
-
 Path template format
-
-
 The template contains palce holders specified by ${...}
-
 The content can be a simple field from the metadata, a category.param name from the metadata
 or the special values run_number, run_type, app_name, app_family, app_version, year, month, day
-
 Numeric values may be further qualified by the operators % (modulus) or / (division)
 Finally there can be a length field in square brackets at the end. If the value is prefixed by '='
 then it is treated as an exact length , otherwise it is a minimum. If the length is followed by '/' and a value
 then the value is split into chunks of that size, separated by / characters
-
 Examples:
 If the run number is 123456
-
 ${run_number} gives 123456
 ${run_number[8]} gives 00123456
 ${run_number/100[6]} gives 001234
 ${run_number[2]} gives 123456
 ${run_number[=2]} gives 56
 ${run_number[8/2]} gives 00/12/34/56
-
 """
 
 import string, re, os.path
 from datetime import datetime
 import collections
-
-
 class CaseInsensitiveDict(collections.MutableMapping):
     """ A case insensitve dictionary (for metadata, etc) """
-
     __slots__ = ["_data"]
 
     def __init__(self, data=None, **kwargs):
@@ -2314,14 +2205,10 @@ class CaseInsensitiveDict(collections.MutableMapping):
             return NotImplemented
         # compare lower cased keys
         return dict((lk, v) for (lk, (k, v)) in self._data.iteritems()) == other_data
-
-
 class _MDTemplate(string.Template):
     idpattern = (
         r"[_a-z][_a-z0-9]*(?:\.[_a-z0-9]+)?(?:[%/][0-9]+)?(?:\[=?[0-9]+(?:/[0-9]+)?\])?"
     )
-
-
 def _convert_timeval(v):
     # convert from string iso format
     if isinstance(v, str):
@@ -2329,9 +2216,8 @@ def _convert_timeval(v):
     else:
         # assume int/float and just return it
         return datetime.utcfromtimestamp(v)
-
-
 class _MDMapping(object):
+
     def __init__(self, metadata, mtime, srcdir, basedir):
         self.md = metadata.copy()
         self.srcdir = srcdir
@@ -2355,7 +2241,6 @@ class _MDMapping(object):
         length = None
         fixedlength = False
         sublength = None
-
         # check for [...] at end
         if pos > 0:
             pos2 = key.find("]", pos)
@@ -2371,7 +2256,6 @@ class _MDMapping(object):
                 sublength = int(lengthpart[pos + 1 :])
                 lengthpart = lengthpart[:pos]
             length = int(lengthpart)
-
         m = re.match(r"([^/%]+)([%/])(.*)", key)
         try:
             if m:
@@ -2388,7 +2272,6 @@ class _MDMapping(object):
                         val = val // denom  # ensure integer division
             else:
                 val = self._getValue(key)
-
             if length:
                 # formats are only supported for integer values
                 try:
@@ -2401,7 +2284,6 @@ class _MDMapping(object):
                         val = val[-length:]
                     if sublength:
                         from future.moves.itertools import zip_longest
-
                         # Split the results into chunks of size sublength. The use of reversed is so any padding is applied at the beginning, not the end
                         val = "/".join(
                             reversed(
@@ -2414,7 +2296,6 @@ class _MDMapping(object):
                                 ]
                             )
                         )
-
             return val
         except KeyError:
             return "None"
@@ -2461,12 +2342,9 @@ class _MDMapping(object):
             return "%02d" % self.date.day
         else:
             return str(self.md[key])
-
-
 def format_path_needs_metadata(path_template):
     """ Returns True if the template needs the file metadata,
     False if it only contains keys that don't depend on the metadata """
-
     template = _MDTemplate(path_template)
     try:
         template.substitute({"srcpath": "", "basepath": "", "relpath": ""})
@@ -2475,21 +2353,15 @@ def format_path_needs_metadata(path_template):
         return True
     except ValueError as ex:
         raise SyntaxError("Invalid path template: %s: %s" % (path_template, ex))
-
-
 def format_path(path_template, metadata, mtime, srcdir=None, basedir=None):
-
     template = _MDTemplate(path_template)
     try:
         mapping = _MDMapping(metadata, mtime, srcdir, basedir)
         return os.path.normpath(template.substitute(mapping))
     except (KeyError, ValueError) as ex:
         raise SyntaxError("Invalid path template: %s: %s" % (path_template, ex))
-
-
 # end of bodily inclusion
 # ============================================
-
 if __name__ == "__main__":
     w = Wrapper()
     w.parse_arguments()
@@ -2500,14 +2372,15 @@ if __name__ == "__main__":
         w.start_self_destruct()
         if w.options.start_project_on:
             w.start_project()
+        if w.options.data_dispatcher:
+            w.dd_pre_loop()
         if w.options.ifdh_art or w.options.multifile or w.options.getconfig:
             w.start_client()
         #elif w.options.data_dispatcher:
         #    w.dd_pre_loop()
         w.pre_file_loop()
         #from data_dispatcher.api import DataDispatcherClient
-        if w.options.data_dispatcher:
-          w.dd_pre_loop()
+        
         w.file_loop()
         if w.rres == 0 and not w.options.multifile and not w.options.getconfig:
             # multifile now does userscripts and copies out after each input 
@@ -2525,7 +2398,6 @@ if __name__ == "__main__":
         else:
           w.cleanup()
         #w.cleanup()
-
     try:
         if w.options.end_project:
             w.end_project()
@@ -2533,10 +2405,8 @@ if __name__ == "__main__":
         if self.options.debug:
             sys.stderr.write(traceback.format_exc())
         pass
-
     if os.WIFSIGNALED(w.rres):
         print("executable was killed: exiting 1")
         exit(1)
-
     print("trying to exit %d" % os.WEXITSTATUS(w.rres))
     sys.exit(os.WEXITSTATUS(w.rres))
