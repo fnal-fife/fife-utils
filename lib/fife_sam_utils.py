@@ -197,6 +197,11 @@ class fake_project_dataset:
     def endProject(self, purl):
         return 1
 
+    def wrap_ls(self, path, n, force):
+        res = self.ifdh_handle.ls(path,n,force)
+        return res
+
+
 class fake_file_dataset:
 
     def __init__( self, filename ):
@@ -266,6 +271,10 @@ class fake_file_dataset:
       
     def endProject(self, purl):
         return 1
+
+    def wrap_ls(self, path, n, force):
+        res = self.ifdh_handle.ls(path,n,force)
+        return res
 
 class dataset:
     def __init__( self, name = None, dims = None ):
