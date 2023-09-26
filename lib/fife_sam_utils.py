@@ -325,12 +325,14 @@ class dataset:
         isurl = fullpath.find('://') > 0
         if isurl:
            nslashes = nslashes - 2
-        # if it is a really deep location, start 2 subdirs in
-        # otherwise 1 subdir in
-        if nslashes > 4:
-           trim = 2
-        else:
-           trim = 1
+        # always just look 1 direcory deep, too slow otherwise.
+        # formerly:
+        # #if it is a really deep location, start 2 subdirs in
+        # #otherwise 1 subdir in
+        #if nslashes > 4:
+        #   trim = 2
+        #else:
+        trim = 1
         base = fullpath
         for i in range(trim):
             base = base[:base.rfind('/')]

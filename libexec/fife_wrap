@@ -2000,7 +2000,7 @@ exit
                 if self.options.dry_run:
                     print("        ifdh addOutputFile %s" % g)
                 else:
-                    for f in glob.glob(g):
+                    for f in sorted(glob.glob(g)):
                         if self.options.debug:
                             sys.stderr.write("addoutput: %s\n" % f)
                         self.ih.addOutputFile(f)
