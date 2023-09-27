@@ -99,7 +99,16 @@ class DDInterface:
     self.dd_client = DataDispatcherClient()
     
   def Login(self, username):
-    self.dd_client.login_x509(username, os.environ['X509_USER_PROXY'])
+    bt = ""
+    btf = os.environ.get("BEARER_TOKEN", 
+         os.environ.get("XDG_RUNTIME_DIR","/tmp") + "bt_u" + str(os.geteuid()))
+    if os.path.isfile(btf):
+        with open(btf,"r") as f:
+            bt = f.read().strip()
+    if bt:
+        self.dd_client.login_token(username, bt)
+    else:
+        self.dd_client.login_x509(username, os.environ['X509_USER_PROXY'])
     
   def SetLarLimit(self, limit):
     self.lar_limit = limit
