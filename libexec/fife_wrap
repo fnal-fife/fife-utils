@@ -100,7 +100,7 @@ class DDInterface:
     
   def Login(self, username):
     bt = ""
-    btf = os.environ.get("BEARER_TOKEN", 
+    btf = os.environ.get("BEARER_TOKEN_FILE", 
          os.environ.get("XDG_RUNTIME_DIR","/tmp") + "bt_u" + str(os.geteuid()))
     if os.path.isfile(btf):
         with open(btf,"r") as f:
