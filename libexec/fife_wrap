@@ -994,6 +994,7 @@ exit
                 raise
 
     def dd_pre_loop(self):
+        # little lies so ifdh_art getNextFile  works...
         self.dd_interface = DDInterface(self.options.data_dispatcher_task_id, 
                                         self.options.data_dispatcher_project,
                                         self.options.data_dispatcher_dataset_query,
@@ -1012,6 +1013,10 @@ exit
             #self.dd_interface.login_x509('calcuttj', os.environ['X509_USER_PROXY'])
             self.dd_interface.Login(self.options.data_dispatcher_user)
             self.dd_interface.AttachProject(self.options.data_dispatcher_project)
+        # stash dd info so ifdh getNextFile works for ifdh_art
+        self.cpurl = self.options.data_dispatcher_project
+        self.consumerid = self.dd_interface.dd_client.WorkerID
+
         self.dd_interface.LoadFiles()
         self.dd_interface.BuildFileListString()
       ### TODO -- need check at this point if this fails
