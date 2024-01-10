@@ -238,7 +238,7 @@ def renameFile(file, do_replace_uuids=False, gridftp_location=False):
     dirName = os.path.dirname(file)
 
     if do_replace_uuids:
-        filename = replace_uuids(fileName)
+        fileName = replace_uuids(fileName)
 
     if not has_uuid_prefix(fileName):
 
