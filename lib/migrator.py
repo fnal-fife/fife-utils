@@ -187,6 +187,7 @@ if __name__ == '__main__':
     mlist = m.samgetmultiplemetadata(flist)
     print("mlist:" , repr(mlist))
     m.sam2metacat(flist, "mengel:gen_cfg")
+    m.sam2rucio(flist, "mengel:gen_cfg")
     
 # XXX
 # possible mainlines:  
