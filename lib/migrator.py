@@ -1,24 +1,35 @@
-mport functools
+import functools
+from metacat.webapi.webapi import MetaCatClient
 import time
 import metadata_converter
-import rucio
+from rucio.client.replicaclient import ReplicaClient
+from rucio.client.replicaclient import ReplicaClient
+from  rucio.client.rseclient import RSEClient
+import samweb_client
+from typing import List, Dict, Any
 
-class Migrator
+class Migrator:
+    """ class to do bulk migrations from SAM to Metacat """
 
     def __init__(self, exp):
+        """ init: note our experiment, get SAM, metacat, and two rucio
+            client objects, attach a MetadataConverter, etc."""
         self.experiment = exp
-        self.samweb = SamWebClient()
+        self.samweb = samweb_client.SAMWebClient()
         self.metacat = MetaCatClient()
-        self.rucio_replica = Rucio.replicaClient()
-        self.rucio_rse = Rucio.RSEClient()
+        self.rucio_replica = ReplicaClient()
+        self.rucio_rse = RSEClient()
         self.last_reauth = 0
-        self.mconv = metadata_converter.MetadataConverter(exp)
+        self.mdconv = metadata_converter.MetadataConverter(exp)
         self.scratch_rse = None
         self.persist_rse = None
         self.default_rse = None
+        self.last_flist_repr = "[]"
+        self.last_metadata = {}
 
     def reauth(self):
-        if time.time() - self.last_reauth < self.reauth_window
+        """ if it's been awhile, refresh auth tokens for metacat, SAM """
+        if time.time() - self.last_reauth < self.reauth_window:
             return
         tfn = self.ih.getToken()
         with open(tfn,"r") as tf:
@@ -28,29 +39,46 @@ class Migrator
         self.last_reauth = time.time()
         
 
-    @functiools.lru_cache(maxsize=16)
-    def samgetmultiplemetadata(flist: List[str]) -> List[Dict[str,Any]]
-        """ fetch SAM metadata for list of files, with loations
-            we cache the last 16 calls to cut down on repeats when
-            migrating to both MetaCat and Rucio. """
-        return self.samweb.getMultipleMetadata(flist, locations=True)
+    def samgetmultiplemetadata(self, flist: List[str]) -> List[Dict[str,Any]]:
+        """ fetch SAM metadata for list of files, with locations
+            mostly just calls samweb.
+            Keep the last one in case we get asked again (i.e. 
+            for SAM->metacat followed by sam->rucio)"""
+        if self.last_flist_repr == repr(flist):
+            return self.last_metadata
 
-    def mdsam2meta(self, mdlist):
+        # convert for SAM, who doesn't put scopes on filenames
+        flist = [x.split(":")[-1] for x in flist]
+        print("filtered list:" , repr(flist))
+        self.last_metadata = self.samweb.getMultipleMetadata(flist, locations=True)
+        self.last_flist_repr = repr(flist)
+        return self.last_metadata
+
+    def mdsam2meta(self, mdlist, namespace):
+        """ convert a whole list of metadata """
         res = []
         for m in mdlist:
-            res.append(self.mdconv.convert_all_sam_mc(m))
+            res.append(self.mdconv.convert_all_sam_mc(m, namespace))
         return res
 
     def mdmeta2sam(self, mdlist):
+        """ convert a whole list of metadata """
         res = []
         for m in mdlist:
             res.append(self.mdconv.convert_all_mc_sam(m))
         return res
 
+    @functools.cache
+    def sam_data_disks(self):
+        """ fetch SAM data disk list, to figure out sam prefixes """
+        self.samweb.listDataDisks()
 
     def samprefix(self,dir):
+        """ stolen from other fife_utils, mostly.
+            Pick the sam prefix for a directory path by looking through
+            the known data-disks for a match; give local hostname if no match """
 
-        for pp in sam_data_disks():
+        for pp in self.sam_data_disks():
             prefix, rest = pp.split(":",1)
             if dir.startswith(rest):
                 return "%s:" % prefix
@@ -78,7 +106,9 @@ class Migrator
 
     @functools.cache
     def getrselist(self):
-        rses = self.rucio_rse.list_rses()
+        """ get rse list, note ones that look like scratch or persistent """
+        rsedicts = self.rucio_rse.list_rses()
+        rses = [ x["rse"] for x in rsedicts ]
         for r in rses:
             if r.find("SCRATCH") >= 0:
                 self.scratch_rse = r
@@ -89,12 +119,14 @@ class Migrator
         return rses
 
     def sam2rucio(self, flist: List[str], dsdid: str):
-        dsscope, dsname = ":".split(dsdid)
+        """ migrate file location info from SAM to rucio for list of files 
+            put them in datset dsid on Rucio"""
+        dsscope, dsname = dsdid.split(":")
         rses = self.getrselist()
         mdlocs =  self.samgetmultiplemetadata(flist)
         rse_files = {}
         for md in mdlist:
-            pfn = md['locations']['whatever']
+            pfn = md['locations'][0]['full_path']
             rse = self.loc2rse(pfn)
             if not rse in rse_files:
                 rse_files[rse] = []
@@ -115,9 +147,10 @@ class Migrator
         })
         
     def rucio2sam(self, flist: List[str]):
+        """ migrate file locations from rucio to SAM """
         didlist = []
         for f in flist:
-            fscope, fname = ":".split(f)
+            fscope, fname = f.split(":")
             didlist.append( {'scope': fscope, 'name': fname })
         loclist = self.rucio_replica.list_replicas(didlist)
         # get rucio locations
@@ -129,12 +162,16 @@ class Migrator
             self.samweb.addFileLocation(fn, "%s:%s" % (pf, fn))
 
     def sam2metacat(self, flist: List[str], dsdid):
-        dsscope, dsname = ":".split(dsdid)
+        """ migrate metadata from sam to metacat for list of files """
+        dsscope, dsname = dsdid.split(":")
         mdlist =  self.samgetmultiplemetadata(flist)
-        mdlist2 = self.mdsam2meta(mdlist)
+        print("sam metadata: ", repr(mdlist))
+        mdlist2 = self.mdsam2meta(mdlist, dsscope)
+        print("converted: ", repr(mdlist2))
         self.metacat.declare_files(dsdid, mdlist2, dsscope)
 
     def metacat2sam(self, flist: List[str]):
+        """ migrate metadata from metacat to sam for list of files """
         mdlist = self.metacat.get_files( [ {'did': f } for f in flist], with_metadata=True, with_provenance=True)
         mdlist2 = self.mdmeta2sam(mdlist)
         # find bulk-declare call in Fermi-FTS and use here?
@@ -142,6 +179,15 @@ class Migrator
             self.samweb.declareFile(md=m)
 
 
+if __name__ == '__main__':
+    m = Migrator("hypot")
+    flist=["mengel:a.fcl", "mengel:b.fcl", "mengel:c.fcl"]
+    print("rse list", repr(list(m.getrselist())))
+    print("flist", repr(flist))
+    mlist = m.samgetmultiplemetadata(flist)
+    print("mlist:" , repr(mlist))
+    m.sam2metacat(flist, "mengel:gen_cfg")
+    
 # XXX
 # possible mainlines:  
 #
