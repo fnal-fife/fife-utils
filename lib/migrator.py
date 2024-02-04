@@ -189,14 +189,28 @@ class Migrator:
 
     def migrate_datasets_sam_mc(self, dslist):
         for ds in dslist:
+            self.reauth()
             namespace = self.get_sam_owner(ds)
             flist = self.samweb.list_definition_files(ds)
             self.sam2metacat(flist, "%s:%s" %(namespace, ds))
             
     def migrate_datasets_mc_sam(self, dslist):
         for ds in dslist:
+            self.reauth()
             flist = self.rucio_blah.list_files(ds)
             self.metacat2sam(flist)
+
+    def migrate_mc_sam_since(self, date):
+        self.reauth()
+        flist = self.metacat.query(f"files where created_timestamp > '{date}'")
+        self.metacat2sam(flist)
+        self.rucio2sam(flist)
+
+    def migrate_sam_mc_since(self, date):
+        dsdid = f"{self.experiment}:new_files_since_{date}"
+        flist = self.samweb.ListFiles("create_date > 'date'")
+        self.sam2metacat(flist, dsdid)
+        self.sam2rucio(flist, dsdid)
 
 if __name__ == '__main__':
     m = Migrator("hypot")
@@ -207,6 +221,7 @@ if __name__ == '__main__':
     print("mlist:" , repr(mlist))
     m.sam2metacat(flist, "mengel:gen_cfg")
     m.sam2rucio(flist, "mengel:gen_cfg")
+   
 
 
     
