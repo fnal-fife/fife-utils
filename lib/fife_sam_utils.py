@@ -304,8 +304,8 @@ class fake_metacat_ifdh_handle:
         for ldict in loclist:
             res.append(os.path.dirname(ldict["pfn"]))
 
-   def ls(self, path, n, force):
-       return self.actual_ifdh.ls(path, n, force)
+    def ls(self, path, n, force):
+        return self.actual_ifdh.ls(path, n, force)
 
 class dataset_metacat_dd:
     def __init__( self, did = None, verbose = 0):
@@ -322,7 +322,7 @@ class dataset_metacat_dd:
 
     def get_token(self):
         os.environ["IFDH_TOKEN_ENABLE"] = "1"
-        tokenf = ih.getToken()
+        tokenf = self.ih.getToken()
         if self.verbose > 0:
             sys.stderr.write("got token: %s\n" % tokenf)
         with open(tokenf, "rb") as tf:
@@ -332,7 +332,7 @@ class dataset_metacat_dd:
         if time.time() - self.last_reauth < 3600:
             return
         last_reauth = time.time
-        self.tokenbits = get_token(verbose)
+        self.tokenbits = self.get_token()
         self.ddisp.login_token(os.environ.get("USER"), self.tokenbits)
         self.mcc.login_token(os.environ.get("USER"), self.tokenbits)
         self.last_reauth = time.time()
@@ -341,17 +341,17 @@ class dataset_metacat_dd:
 
         self.reauth()
         l = threading.local()
-        l.wid = ddisp.new_worker_id()
+        l.wid = self.ddisp.new_worker_id()
         if self.verbose > 0:
             sys.stderr.write("starting thread: worker id {}\n".format(l.wid))
             sys.stderr.write("calling next_file({0}, {1})\n".format(projid, l.wid))
        
         try:
-            l.info = ddisp.next_file(projid, l.wid)
+            l.info = self.ddisp.next_file(projid, l.wid)
             
             while( isinstance( l.info, dict) ):
-                reauth()
-                if verbose > 0:
+                self.reauth()
+                if self.verbose > 0:
                     sys.stderr.write(repr(l.info) + "\n")
 
                 l.fid = "%s:%s"%(l.info["namespace"],l.info["name"])
@@ -371,20 +371,21 @@ class dataset_metacat_dd:
                         if verbose > 1:
                              sys.stderr.write(f"Touched {replicas[rse]['url']}\n")
 
-                ddisp.file_done(projid, l.fid)
-                l.info = ddisp.next_file(projid, l.wid)
+                self.ddisp.file_done(projid, l.fid)
+                l.info = self.ddisp.next_file(projid, l.wid)
         except metacat.common.exceptions.WebAPIError:
             pass
 
     def ddisp_prestage_files(self, nparallel: int=1, touch=False)->None:
+        self.reauth()
         if self.verbose > 0:
-            sys.stderr.write("starting prestage of {0}:\n".format(did))
-        flist = mcc.get_dataset_files(self.did)
-        proj = ddisp.create_project(files=flist)
+            sys.stderr.write("starting prestage of {0}:\n".format(self.did))
+        flist = self.mcc.get_dataset_files(self.did)
+        proj = self.ddisp.create_project(files=flist)
         projid = proj['project_id']
         threads = []
         for i in range(nparallel):
-            th = threading.Thread(target=next_file_loop_thread, args=[projid, touch])
+            th = threading.Thread(target=self.next_file_loop_thread, args=[projid, touch])
             th.start()
             threads.append(th)
         time.sleep(5)
@@ -431,11 +432,23 @@ class dataset_metacat_dd:
         flist = self.mcc.get_dataset_files(self.did)
 
     def normalize_list(self, full_list):
-    def get_paths_for(self, f)
+        return full_list
+
+    def get_paths_for(self, f):
+        didlist = []
+        fscope, fname = f.split(":")
+        didlist.append( {'scope': fscope, 'name': fname })
+        loclists = self.replica_client.list_replicas(didlist)
+        # get rucio locations
+        res = []
+        for ldict in loclist[0]:
+            pfn = ldict["pfn"]
+            res.append(pfn)
+        return pfn
+
     def file_iterator(self):
         flist = self.get_flist()
         return flist.__iter__()
-
 
 
 class dataset:

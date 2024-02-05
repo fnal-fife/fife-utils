@@ -15,8 +15,8 @@ def main():
     args = parser.parse_args()
 
     os.environ["EXPERIMENT"] = args.experiment
-    ds = datset_metacat_dd(args.did, verbose=args.verbose)
-    ds.prestage_files(args.parallel, args.touch)
+    ds = dataset_metacat_dd(args.did, verbose=args.verbose)
+    ds.ddisp_prestage_files(args.parallel, args.touch)
     
 
 if __name__ == "__main__":
