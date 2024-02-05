@@ -48,15 +48,9 @@ except:
    pass
 
 def check_dcache_queued():
-    try:
-        r = requests.get("https://landscape.fnal.gov/api/datasources/proxy/1/render?target=dh.dcache.queues.PoolGroups.readWritePools.queues.FTP.queued&from=-15min&until=now&format=json")
-        if r.status_code == 200:
-            data = r.json()
-            return (data[0]["datapoints"][0][0] + data[0]["datapoints"][1][0])/2
-        else:
-            return None
-    except:
-        return None
+    # this is turned off for now; need a token-authenticated way into
+    # landscape data to check how busy dcache is...
+    return None
 
 DCACHE_QUEUE_THRESHOLD = 200
 
@@ -310,6 +304,7 @@ class fake_metacat_ifdh_handle:
 class dataset_metacat_dd:
     def __init__( self, did = None, verbose = 0):
 
+        self.replica_client = ReplicaClient()
         self.ddisp = DataDispatcherClient()
         self.mcc = MetaCatClient()
         self.ih = ifdh.ifdh()
@@ -392,32 +387,40 @@ class dataset_metacat_dd:
         for th in threads:
             th.join()
 
-    class _fp_iter:
-
-        def __init__(self, loclist, tapeset = None):
-            self.outer = loclist.__iter__()
-            self.inner = self.outer.__next__()["locations"].__iter__()
-
-        def __next__():
-            try:
-                loc = self.inner.__next__()
-            except StopIteration:
-                self.inner = self.outer.__next__()["locations"].__iter__()
-                loc = self.inner.__next__()
-            # XXX  do not know if tapename is righ...
-            if loc["tapename"] and tapeset != None:
-                tapeset.add(res["tapename"])
-            return loc["pfn"]
 
     def fullpath_iterator(self, fulllocflag = True, tapeset = None):
         """ mimic the old SAM-based one, fullocflag is for now always on"""
 
+        class _fp_iter:
+
+            def __init__(self, loclist, tapeset = None):
+                self.outer = loclist.__iter__()
+                self.inner = self.outer.__next__()["pfns"].__iter__()
+
+            def __iter__(self):
+                return self
+
+            def next(self):
+                return self.__next__()
+           
+            def __next__(self):
+                try:
+                    loc = self.inner.__next__()
+                except StopIteration:
+                    self.inner = self.outer.__next__()["pfns"].__iter__()
+                    loc = self.inner.__next__()
+                if loc:
+                    return loc.replace("davs:", "https:")
+                else:
+                    raise StopIteration
+
         flist = self.mcc.get_dataset_files(self.did)
         didlist = []
         for f in flist:
-            fscope, fname = f.split(":")
-            didlist.append( {'scope': fscope, 'name': fname })
-        loclist = self.rucio_replica.list_replicas(didlist)
+            print("f is : %s" % repr(f))
+            didlist.append( {'scope': f["namespace"], 'name': f["name"] })
+        loclist = self.replica_client.list_replicas(didlist)
+        print("loclist is: %s" % repr(loclist))
         return _fp_iter(loclist, tapeset)
         
 
@@ -430,6 +433,8 @@ class dataset_metacat_dd:
 
     def get_flist(self):
         flist = self.mcc.get_dataset_files(self.did)
+        print("got flist: %s" % repr(list(flist)))
+        return [x["did"] for f in flist]
 
     def normalize_list(self, full_list):
         return full_list
@@ -448,7 +453,10 @@ class dataset_metacat_dd:
 
     def file_iterator(self):
         flist = self.get_flist()
-        return flist.__iter__()
+        if flist:
+            return flist.__iter__()
+        else:
+            return None
 
 
 class dataset:

@@ -165,14 +165,13 @@ if __name__ == "__main__":
         exit(1)
 
     # pick right dataset class to work through.
-    dclass = dataset 
-    if sys.argv[0].find("sam_"):
-        dclass = dataset 
     if sys.argv[0].find("metacat_"):
-        dclass = metacat_dd_dataset 
+        ds = metacat_dd_dataset(o.name)
+    else:
+        ds = dataset(o.name)
 
     res = audit(
-        dclass(o.name),
+        ds,
         dest=o.dest,
         verbose=o.verbose,
         experiment=o.experiment,
