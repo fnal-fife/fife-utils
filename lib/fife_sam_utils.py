@@ -15,9 +15,16 @@ import subprocess
 import sys
 import time
 import traceback
+import threading 
 import logging
 import ast
 import requests
+
+from data_dispatcher.api import DataDispatcherClient
+from metacat.webapi import MetaCatClient
+import metacat.common.exceptions
+from rucio.client.replicaclient import ReplicaClient
+
 
 import ifdh
 from samweb_client import *
@@ -275,6 +282,161 @@ class fake_file_dataset:
     def wrap_ls(self, path, n, force):
         res = self.ifdh_handle.ls(path,n,force)
         return res
+
+class fake_metacat_ifdh_handle:
+    """ existing code calls ds.ifdh_handle.locateFile to get file
+        locations, so we need a class that emulates locateFile using
+        our rucio_client ... """
+    def __init__(self):
+        self.replica_client = ReplicaClient()
+        self.actual_ifdh = ifdh.ifdh()
+
+    def locateFile(self, f):
+        """ ifdh locateFile just returns a list of directories where
+            the file is, so get the replica list from rucio, and 
+            convert to a list of directories """
+        didlist = []
+        fscope, fname = f.split(":")
+        didlist.append( {'scope': fscope, 'name': fname })
+        loclist = self.replica_client.list_replicas(didlist)
+        # get rucio locations
+        res = []
+        for ldict in loclist:
+            res.append(os.path.dirname(ldict["pfn"]))
+
+   def ls(self, path, n, force):
+       return self.actual_ifdh.ls(path, n, force)
+
+class dataset_metacat_dd:
+    def __init__( self, did = None, verbose = 0):
+
+        self.ddisp = DataDispatcherClient()
+        self.mcc = MetaCatClient()
+        self.ih = ifdh.ifdh()
+        self.last_reauth = 0
+        self.verbose = verbose
+        self.did = did
+        self.ifdh_handle = fake_metacat_ifdh_handle()
+        self.have_pnfs = os.access("/pnfs/", os.R_OK)
+        self.dims = "metacat datset %s" % did
+
+    def get_token(self):
+        os.environ["IFDH_TOKEN_ENABLE"] = "1"
+        tokenf = ih.getToken()
+        if self.verbose > 0:
+            sys.stderr.write("got token: %s\n" % tokenf)
+        with open(tokenf, "rb") as tf:
+             return tf.read().strip()
+
+    def reauth(self):
+        if time.time() - self.last_reauth < 3600:
+            return
+        last_reauth = time.time
+        self.tokenbits = get_token(verbose)
+        self.ddisp.login_token(os.environ.get("USER"), self.tokenbits)
+        self.mcc.login_token(os.environ.get("USER"), self.tokenbits)
+        self.last_reauth = time.time()
+
+    def next_file_loop_thread(self, projid,  touch):
+
+        self.reauth()
+        l = threading.local()
+        l.wid = ddisp.new_worker_id()
+        if self.verbose > 0:
+            sys.stderr.write("starting thread: worker id {}\n".format(l.wid))
+            sys.stderr.write("calling next_file({0}, {1})\n".format(projid, l.wid))
+       
+        try:
+            l.info = ddisp.next_file(projid, l.wid)
+            
+            while( isinstance( l.info, dict) ):
+                reauth()
+                if verbose > 0:
+                    sys.stderr.write(repr(l.info) + "\n")
+
+                l.fid = "%s:%s"%(l.info["namespace"],l.info["name"])
+
+                replicas = l.info.get("replicas",{})
+                if touch and replicas:
+                    for rse in replicas:
+                        requests.get(
+                            replicas[rse]["url"].replace("davs:","https:"), 
+                            headers={
+                               'Range': 'bytes=1-4',
+                               'Accept': '*/*',
+                               'Authorization': 'Bearer %s' % self.tokenbits
+                             },
+                             verify="/etc/grid-security/certificates",
+                        )
+                        if verbose > 1:
+                             sys.stderr.write(f"Touched {replicas[rse]['url']}\n")
+
+                ddisp.file_done(projid, l.fid)
+                l.info = ddisp.next_file(projid, l.wid)
+        except metacat.common.exceptions.WebAPIError:
+            pass
+
+    def ddisp_prestage_files(self, nparallel: int=1, touch=False)->None:
+        if self.verbose > 0:
+            sys.stderr.write("starting prestage of {0}:\n".format(did))
+        flist = mcc.get_dataset_files(self.did)
+        proj = ddisp.create_project(files=flist)
+        projid = proj['project_id']
+        threads = []
+        for i in range(nparallel):
+            th = threading.Thread(target=next_file_loop_thread, args=[projid, touch])
+            th.start()
+            threads.append(th)
+        time.sleep(5)
+        for th in threads:
+            th.join()
+
+    class _fp_iter:
+
+        def __init__(self, loclist, tapeset = None):
+            self.outer = loclist.__iter__()
+            self.inner = self.outer.__next__()["locations"].__iter__()
+
+        def __next__():
+            try:
+                loc = self.inner.__next__()
+            except StopIteration:
+                self.inner = self.outer.__next__()["locations"].__iter__()
+                loc = self.inner.__next__()
+            # XXX  do not know if tapename is righ...
+            if loc["tapename"] and tapeset != None:
+                tapeset.add(res["tapename"])
+            return loc["pfn"]
+
+    def fullpath_iterator(self, fulllocflag = True, tapeset = None):
+        """ mimic the old SAM-based one, fullocflag is for now always on"""
+
+        flist = self.mcc.get_dataset_files(self.did)
+        didlist = []
+        for f in flist:
+            fscope, fname = f.split(":")
+            didlist.append( {'scope': fscope, 'name': fname })
+        loclist = self.rucio_replica.list_replicas(didlist)
+        return _fp_iter(loclist, tapeset)
+        
+
+    def location_has_file(self,fullpath):
+        # optimize location checks for pnfs if mounted
+        if fullpath[:6] == '/pnfs/' and self.have_pnfs and os.access(fullpath, os.R_OK):
+            return 1
+        res = self.ifdh_handle.ls(fullpath,1,'')
+        return len(res) != 0
+
+    def get_flist(self):
+        flist = self.mcc.get_dataset_files(self.did)
+
+    def normalize_list(self, full_list):
+    def get_paths_for(self, f)
+    def file_iterator(self):
+        flist = self.get_flist()
+        return flist.__iter__()
+
+
 
 class dataset:
     def __init__( self, name = None, dims = None ):

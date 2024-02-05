@@ -15,7 +15,7 @@ from fife_sam_utils import *
 
 
 class de_duper:
-    def __init__(self):
+    def __init__(self, is_metacat = False):
         self.metadata_list = [
             "file_format",
             "file_type",
@@ -24,6 +24,20 @@ class de_duper:
             "application",
             "parents",
         ]
+        self.metacat = is_metacat
+        if self.metacat:
+            self.id_field = "fid"
+            self.name_field = "did"
+            self.fakesam = fake_sam_ifdh_client()
+        else:
+            self.id_field = "file_id"
+            self.name_field = "file_name"
+
+    def locate(self, f):
+        if metacat:
+            return fakesam.locateFile(f)
+        else:
+            return samweb.locateFile(f)
 
     def is_dup(self, md1, md2):
 
@@ -36,9 +50,7 @@ class de_duper:
         self.metadata_list.extend(metadata_list)
 
     def extract_key(self, metadata):
-
-        # parent file id is primary sort key
-        res = [str(metadata.get("parents", [{"file_id": -1}])[0]["file_id"])]
+        res = [str(metadata.get("parents", [{self.id_field: -1}])[0][self.id_field])]
         # tack on metadata fields we compare on, so they'll be sorted that way
         for k in self.metadata_list:
             res.append(repr(metadata.get(k, "")))
@@ -53,11 +65,19 @@ class de_duper:
         for f in ds.file_iterator():
             fl.append(f)
 
-        mdl = []
-        while fl:
-            md_json = self.samweb.getMultipleMetadata(fl[:500], asJSON=True)
-            mdl.extend(json.loads(md_json))
-            fl = fl[500:]
+        if self.metacat:
+            mdl = self.mcc.get_files( 
+               [ {'did': f } for f in flist], 
+               with_metadata=True, 
+               with_provenance=True
+            )
+
+        else:
+            mdl = []
+            while fl:
+                md_json = self.samweb.getMultipleMetadata(fl[:500], asJSON=True)
+                mdl.extend(json.loads(md_json))
+                fl = fl[500:]
 
         # order metadata list by (first) parent file id
 
@@ -70,7 +90,7 @@ class de_duper:
         n = len(mdl)
         while i < n and j < n:
             dl = []
-            p = mdl[i]["parents"][0]["file_name"]
+            p = mdl[i]["parents"][0][self.name_field]
             if p != oldp:
                 dupl[p] = {}
             oldp = p
@@ -189,7 +209,7 @@ if __name__ == "__main__":
             for f in res[p][k]:
                 acts = ""
                 if o.delete:
-                    ll = dd.samweb.locateFile(f)
+                    ll = dd.locate(f)
                     for l in ll:
                         try:
                             path = sampath(l["full_path"] + "/" + f)
