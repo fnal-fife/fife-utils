@@ -54,13 +54,11 @@ class de_duper:
         self.metadata_list.extend(metadata_list)
 
     def extract_key(self, metadata):
-        print("metadata is: %s:" % repr(metadata))
         pl = metadata.get("parents", [{self.id_field: -1}])
         if pl:
             res = [str(pl[0][self.id_field])]
         else:
             res = [str(uuid.uuid4())]
-            print("picking faux parents: %s for metadata %s" % (repr(res), repr(metadata)))
 
         # tack on metadata fields we compare on, so they'll be sorted that way
         for k in self.metadata_list:
@@ -109,7 +107,6 @@ class de_duper:
                 p = ppl[0][self.name_field]
             else:
                 p = str(uuid.uuid4())
-                print("picking faux parents: %s" % repr(p))
             if p != oldp:
                 dupl[p] = {}
             oldp = p
