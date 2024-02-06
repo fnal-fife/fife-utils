@@ -159,7 +159,7 @@ class Migrator:
             loc = os.path.dirname(pfn)
             fn = os.path.basename(pfn)
             pf = self.samprefix(pfn)
-            self.samweb.addFileLocation(fn, "%s:%s" % (pf, fn))
+            self.samweb.addFileLocation(fn, "%s:%s" % (pf, loc))
 
     def sam2metacat(self, flist: List[str], dsdid):
         """ migrate metadata from sam to metacat for list of files """
