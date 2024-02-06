@@ -165,7 +165,7 @@ if __name__ == "__main__":
         exit(1)
 
     # pick right dataset class to work through.
-    if sys.argv[0].find("metacat_"):
+    if sys.argv[0].find("metacat_") >= 0:
         ds = metacat_dd_dataset(o.name)
     else:
         ds = dataset(o.name)

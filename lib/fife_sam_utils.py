@@ -292,11 +292,13 @@ class fake_metacat_ifdh_handle:
         didlist = []
         fscope, fname = f.split(":")
         didlist.append( {'scope': fscope, 'name': fname })
-        loclist = self.replica_client.list_replicas(didlist)
+        loclist = list(self.replica_client.list_replicas(didlist))
+        locdict = loclist[0]
         # get rucio locations
         res = []
-        for ldict in loclist:
-            res.append(os.path.dirname(ldict["pfn"]))
+        for loc in locdict["pfns"]:
+            res.append(os.path.dirname(loc.replace("davs:","https:")))
+        return res
 
     def ls(self, path, n, force):
         return self.actual_ifdh.ls(path, n, force)
@@ -375,8 +377,8 @@ class dataset_metacat_dd:
         self.reauth()
         if self.verbose > 0:
             sys.stderr.write("starting prestage of {0}:\n".format(self.did))
-        flist = self.mcc.get_dataset_files(self.did)
-        proj = self.ddisp.create_project(files=flist)
+        self.flist = self.mcc.get_dataset_files(self.did)
+        proj = self.ddisp.create_project(files=self.flist)
         projid = proj['project_id']
         threads = []
         for i in range(nparallel):
@@ -414,13 +416,11 @@ class dataset_metacat_dd:
                 else:
                     raise StopIteration
 
-        flist = self.mcc.get_dataset_files(self.did)
+        self.flist = self.mcc.get_dataset_files(self.did)
         didlist = []
-        for f in flist:
-            print("f is : %s" % repr(f))
+        for f in self.flist:
             didlist.append( {'scope': f["namespace"], 'name': f["name"] })
         loclist = self.replica_client.list_replicas(didlist)
-        print("loclist is: %s" % repr(loclist))
         return _fp_iter(loclist, tapeset)
         
 
@@ -433,8 +433,8 @@ class dataset_metacat_dd:
 
     def get_flist(self):
         flist = self.mcc.get_dataset_files(self.did)
-        print("got flist: %s" % repr(list(flist)))
-        return [x["did"] for f in flist]
+        self.flist = ["%s:%s" %(f["namespace"], f["name"]) for f in flist]
+        return self.flist
 
     def normalize_list(self, full_list):
         return full_list
@@ -452,9 +452,9 @@ class dataset_metacat_dd:
         return pfn
 
     def file_iterator(self):
-        flist = self.get_flist()
-        if flist:
-            return flist.__iter__()
+        self.flist = self.get_flist()
+        if self.flist:
+            return self.flist.__iter__()
         else:
             return None
 
@@ -638,10 +638,8 @@ class dataset:
     def remove_path_for(self, filename, path):
         locs = [x for x in self.locmap.get(filename)]
         if len(locs) >  0:
-            #print("got locs: ", locs)
             for i in range(len(locs)):
                 if locs[i][locs[i].find(':')+1:] == path:
-                    #print("found match ", i)
                     del locs[i:i+1]
                     break
             self.locmap[filename] = locs
@@ -1038,6 +1036,7 @@ def validate( ds, just_say = False, prune = False, verbose = False, experiment =
 
     for f in ds.file_iterator():
         l = ds.ifdh_handle.locateFile(f)
+        print("file %s has %d locations" % (f, len(l)))
         if len(l) == 0:
            print("file %s has 0 locations" % f)
            res = 1

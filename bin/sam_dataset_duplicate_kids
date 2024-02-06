@@ -10,9 +10,11 @@ import grp
 import optparse
 import logging
 import ifdh
+import uuid
 from samweb_client import *
 from fife_sam_utils import *
-
+from metacat.webapi import MetaCatClient
+import metacat.common.exceptions
 
 class de_duper:
     def __init__(self, is_metacat = False):
@@ -27,11 +29,13 @@ class de_duper:
         self.metacat = is_metacat
         if self.metacat:
             self.id_field = "fid"
-            self.name_field = "did"
-            self.fakesam = fake_sam_ifdh_client()
+            self.name_field = "name"
+            self.fakesam = fake_metacat_ifdh_handle()
+            self.file_size_field = "size"
         else:
             self.id_field = "file_id"
             self.name_field = "file_name"
+            self.file_size_field = "file_size"
 
     def locate(self, f):
         if metacat:
@@ -50,7 +54,14 @@ class de_duper:
         self.metadata_list.extend(metadata_list)
 
     def extract_key(self, metadata):
-        res = [str(metadata.get("parents", [{self.id_field: -1}])[0][self.id_field])]
+        print("metadata is: %s:" % repr(metadata))
+        pl = metadata.get("parents", [{self.id_field: -1}])
+        if pl:
+            res = [str(pl[0][self.id_field])]
+        else:
+            res = [str(uuid.uuid4())]
+            print("picking faux parents: %s for metadata %s" % (repr(res), repr(metadata)))
+
         # tack on metadata fields we compare on, so they'll be sorted that way
         for k in self.metadata_list:
             res.append(repr(metadata.get(k, "")))
@@ -58,7 +69,10 @@ class de_duper:
         return ":".join(res)
 
     def duplicate_kids(self, ds, verbose=False, experiment=None, keeplists=None):
-        self.samweb = SAMWebClient(experiment=experiment)
+        if self.metacat:
+            self.mcc = MetaCatClient()
+        else:
+            self.samweb = SAMWebClient(experiment=experiment)
         dupl = {}
         fl = []
 
@@ -67,7 +81,7 @@ class de_duper:
 
         if self.metacat:
             mdl = self.mcc.get_files( 
-               [ {'did': f } for f in flist], 
+               [ {'did': f } for f in fl], 
                with_metadata=True, 
                with_provenance=True
             )
@@ -90,7 +104,12 @@ class de_duper:
         n = len(mdl)
         while i < n and j < n:
             dl = []
-            p = mdl[i]["parents"][0][self.name_field]
+            ppl = mdl[i]["parents"]
+            if ppl:
+                p = ppl[0][self.name_field]
+            else:
+                p = str(uuid.uuid4())
+                print("picking faux parents: %s" % repr(p))
             if p != oldp:
                 dupl[p] = {}
             oldp = p
@@ -99,15 +118,15 @@ class de_duper:
                 # list the smaller file as the duplicate
                 # if a file is zero size, or truncated, the longer one
                 # is the keeper...
-                if mdl[i]["file_size"] < mdl[j]["file_size"]:
-                    dl.append(mdl[i]["file_name"])
+                if mdl[i][self.file_size_field] < mdl[j][self.file_size_field]:
+                    dl.append(mdl[i][self.name_field])
                     i = j
                 else:
-                    dl.append(mdl[j]["file_name"])
+                    dl.append(mdl[j][self.name_field])
                 j = j + 1
 
             # print("parent %s file %s dups %s" % (p, mdl[i]['file_name'], repr(dl)))
-            dupl[p][mdl[i]["file_name"]] = dl
+            dupl[p][mdl[i][self.name_field]] = dl
 
             i = j
             j = i + 1
@@ -133,7 +152,7 @@ if __name__ == "__main__":
         default=experiment,
         help="use this experiment server defaults to $SAM_EXPERIMENT if not set",
     )
-    parser.add_option("--dims", help="dimension query for files to check")
+    parser.add_option("--dims", "--did",  help="dimension query for files to check")
     parser.add_option(
         "--include_metadata",
         help="metadata field to include in comparisons",
@@ -184,12 +203,19 @@ if __name__ == "__main__":
         parser.error("expected --dims dimensions")
         exit(1)
 
-    dd = de_duper()
+    is_metacat = sys.argv[0].find("metacat_") >= 0
+
+    dd = de_duper( is_metacat )
 
     dd.include_metadata(o.include_metadata)
 
+    if is_metacat:
+        ds = dataset_metacat_dd(o.dims)
+    else:
+        ds = dataset(dims=o.dims)
+
     res = dd.duplicate_kids(
-        dataset(dims=o.dims), verbose=o.verbose, experiment=o.experiment
+        ds, verbose=o.verbose, experiment=o.experiment
     )
 
     ih = ifdh.ifdh()

@@ -134,7 +134,7 @@ if __name__ == "__main__":
 
     print("here:")
     # pick right dataset class to work through.
-    if o.name and sys.argv[0].find("metacat_"):
+    if o.name and sys.argv[0].find("metacat_") >= 0:
         print("metacat case:")
         ds = dataset_metacat_dd(o.name)
 
