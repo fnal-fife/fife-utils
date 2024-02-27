@@ -1,3 +1,8 @@
+#!/usr/bin/env python3
+
+import os
+import sys
+import grp
 import functools
 from metacat.webapi.webapi import MetaCatClient
 import time
@@ -213,29 +218,75 @@ class Migrator:
         self.sam2rucio(flist, dsdid)
 
 if __name__ == '__main__':
-    m = Migrator("hypot")
-    flist=["mengel:a.fcl", "mengel:b.fcl", "mengel:c.fcl"]
-    print("rse list", repr(list(m.getrselist())))
-    print("flist", repr(flist))
-    mlist = m.samgetmultiplemetadata(flist)
-    print("mlist:" , repr(mlist))
-    m.sam2metacat(flist, "mengel:gen_cfg")
-    m.sam2rucio(flist, "mengel:gen_cfg")
-   
+    import argparse
+
+    # default experiment
+    experiment = os.environ.get(
+        "EXPERIMENT", os.environ.get("SAM_EXPERIMENT", grp.getgrgid(os.getgid())
+[0])
+    )
+
+    ap = argparse.ArgumentParser("migrator", description="metadata migration utility")
+    ap.add_argument(
+        "-e", "--experiment",
+        default=experiment,
+        help="use this SAM instance defaults to $SAM_EXPERIMENT if not set",
+    )
+    ap.add_argument( "--sam-to-metacat", action="store_true", default=False)
+    ap.add_argument( "--sam-to-rucio",   action="store_true", default=False)
+    ap.add_argument( "--metacat-to-sam", action="store_true", default=False)
+    ap.add_argument( "--rucio-to-sam",   action="store_true", default=False)
+    ap.add_argument( "--query", help="metadata query to find files to migrate", default = None)
+    ap.add_argument( "--file_list", help="list of files/dids to migrate", default = None)
+    ap.add_argument( "--file_list_file", help="file with list of files/dids to migrate", default = None)
+    ap.add_argument( "--dest-dataset", help="dataset to add files to in Rucio or Metacat; scope/namespace of dataset will be used for files", default=None)
+ 
+    avs = ap.parse_args()
+
+    m = Migrator(avs.experiment)
+
+    if not (avs.sam_to_metacat or avs.sam_to_rucio or avs.metacat_to_sam or avs.rucio_to_sam ):
+        print("Notice: no actions requested, all done!")
+        ap.print_help()
+        sys.exit(0)
+
+    if avs.query and avs.file_list or avs.query and avs.file_list_file:
+        print("Error: need either a query or a file list, but not both")
+        sys.exit(1)
+
+    if not (avs.query or avs.file_list or avs.file_list_file):
+        print("Error: need (--query or --file-list or --file-list-file")
+        sys.exit(1)
+
+    if (avs.sam_to_metacat or avs.sam_to_rucio) and not avs.dest_dataset:
+        print("Error: need a --dest-dataset." )
+        sys.exit(1)
+
+    if avs.sam_to_metacat or avs.sam_to_rucio and avs.query:
+        flist = m.samweb.listFiles(avs.query)
+
+    if avs.metacat_to_sam or avs.rucio_to_sam and avs.query:
+        flist = m.metacat.query(avs.query)
+       
+    if avs.file_list:
+        flist = re.split(r"\s+", avs.file_list)
+
+    if avs.file_list_file:
+        with open(avs.file_list_file, "r") as f:
+            data = f.read()
+        flist = re.split(r"\s+", data)
 
 
-    
-# XXX
-# possible mainlines:  
-#
-# metacat_sam to rucio:
-#   get list of all metacat datasets
-#   for ds in datasets
-#      get files in  ds
-#      sam2rucio(files, dataset) 
-#
-# sam2meta_since(date)
-#    samweb.list_files( "create_date > date") 
-#    dataset = "exp:new_files_since_{date}"
-#    sam2metacat(filelist)
-#    sam2rucio(filelist)
+    if avs.sam_to_metacat:
+        m.sam2metacat( flist, avs.dest_dataset)
+
+    if avs.sam_to_rucio:
+        m.sam2rucio( flist, avs.dest_dataset)
+
+    if avs.metacat_to_sam:
+        m.metacat2sam( flist )
+
+    if avs.rucio_to_sam:
+        m.rucio2sam( flist )
+
+    print("Done.")
