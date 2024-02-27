@@ -341,10 +341,11 @@ class MetadataConverter:
         return res
 
     def convert_all_mc_sam(self, md):
-        for k, v in md.items:
-            if not k in conversion_mc_sam[self.experiment]:
+        res = {}
+        for k, v in md.items():
+            if not k in self.conversion_mc_sam[self.experiment]:
                 continue
-            ck = conversion_mc_sam[self.experiment][k]
+            ck = self.conversion_mc_sam[self.experiment][k]
             # most keys don't require conversion, except...
             converter = convert_noop
             if k == "fid":
@@ -363,8 +364,9 @@ class MetadataConverter:
         # they are listed as metadata:x in the table
         for k, v in md["metadata"].items():
             converter = convert_noop
-            if not ("metadata:"+k) in conversion_mc_sam[self.experiment]:
+            if not ("metadata:"+k) in self.conversion_mc_sam[self.experiment]:
                 continue
             ck = conversion_mc_sam[self.experiment]["metadata:"+k]
             res[ck] = converter(v)
+        return res
 

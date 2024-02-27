@@ -3,7 +3,9 @@
 import os
 import sys
 import grp
+import logging
 import functools
+import re
 from metacat.webapi.webapi import MetaCatClient
 import time
 import metadata_converter
@@ -123,27 +125,51 @@ class Migrator:
                 self.default_rse = r
         return rses
 
+    def loc2rse(self, pfn, rses):
+        # this needs to be smarter, later, but for now...
+        print(f"loc2rse: pfn {pfn} rses {repr(rses)}")
+        if len(rses) == 1:
+            return rses[0]
+        return rses[0]
+         
+
     def sam2rucio(self, flist: List[str], dsdid: str):
         """ migrate file location info from SAM to rucio for list of files 
             put them in datset dsid on Rucio"""
+        flist = flist.copy()  # we're going to prune it, don't change parents
         dsscope, dsname = dsdid.split(":")
         rses = self.getrselist()
         mdlocs =  self.samgetmultiplemetadata(flist)
         rse_files = {}
-        for md in mdlist:
+        for md in mdlocs:
             pfn = md['locations'][0]['full_path']
-            rse = self.loc2rse(pfn)
+            pfn = pfn + "/" + md['file_name']
+            rse = self.loc2rse(pfn, rses)
+            if pfn.find("dcache:/pnfs/") == 0:
+                # rucio gives davs: locations...
+                pfn = pfn.replace("dcache:/pnfs/", "davs://fndcadoor.fnal.gov:2880/pnfs/fnal.gov/usr/")
+
             if not rse in rse_files:
                 rse_files[rse] = []
-            rse_files[rse].append( {
-              'scope': dsscope, 
-              'name': md['file_name'], 
-              'bytes': md['file_size'], 
-              'adler32': md['cheksum']['adler32'],  
-              'pfn': loc, 
-            })
+            csa = ''
+            for csi in md['checksum']:
+                if 0 == csi.find('adler32:'):
+                    print("found adler checksum: ", csi)
+                    csa = csi.split(":")[1].strip()
+
+            if not csa:
+                print(f"No adler32 checksum for {md['file_name']} in SAM, cannot define to rucio")
+            else:
+                rse_files[rse].append( {
+                  'scope': dsscope, 
+                  'name': md['file_name'], 
+                  'bytes': md['file_size'], 
+                  'adler32': csa,
+                  'pfn': pfn, 
+                })
         for rse in rse_files:
-            self.rucio_replica.add_replicas( rse, files[rse] )
+            print(f"rse_files[{rse}] == {repr(rse_files[rse])}")
+            self.rucio_replica.add_replicas( rse, rse_files[rse] )
 
         contents = ( {'name': fname, 'scope': dsscope} for fname in flist )
 
@@ -168,7 +194,21 @@ class Migrator:
 
     def sam2metacat(self, flist: List[str], dsdid):
         """ migrate metadata from sam to metacat for list of files """
+        flist = flist.copy()  # we're going to prune it, don't change parents
+
         dsscope, dsname = dsdid.split(":")
+
+        # get files aready in metacat, remove them from flist
+        alrdlist = self.metacat.get_files( [ {'did': f"{dsscope}:{f}" } for f in flist])
+        for dct in alrdlist:
+            print(f"dropping file {dct['name']}, already in metacat")
+            pos = flist.index(dct["name"])
+            flist.pop(pos)
+
+        if not flist:
+            print("all files already in metacat...")
+            return
+
         mdlist =  self.samgetmultiplemetadata(flist)
         print("sam metadata: ", repr(mdlist))
         mdlist2 = self.mdsam2meta(mdlist, dsscope)
@@ -178,10 +218,15 @@ class Migrator:
     def metacat2sam(self, flist: List[str]):
         """ migrate metadata from metacat to sam for list of files """
         mdlist = self.metacat.get_files( [ {'did': f } for f in flist], with_metadata=True, with_provenance=True)
+        print("metacat metadata: ", repr(mdlist))
         mdlist2 = self.mdmeta2sam(mdlist)
+        print("converted: ", repr(mdlist2))
         # find bulk-declare call in Fermi-FTS and use here?
         for m in mdlist2:
-            self.samweb.declareFile(md=m)
+            try:
+                self.samweb.declareFile(md=m)
+            except samweb_client.exceptions.FileAlreadyExists:
+                pass
 
     def get_sam_owner(self, ds):
         text = self.samweb.describe_definition(ds)
@@ -232,16 +277,20 @@ if __name__ == '__main__':
         default=experiment,
         help="use this SAM instance defaults to $SAM_EXPERIMENT if not set",
     )
+    ap.add_argument( "--verbose", action="store_true", default=False)
     ap.add_argument( "--sam-to-metacat", action="store_true", default=False)
     ap.add_argument( "--sam-to-rucio",   action="store_true", default=False)
     ap.add_argument( "--metacat-to-sam", action="store_true", default=False)
     ap.add_argument( "--rucio-to-sam",   action="store_true", default=False)
     ap.add_argument( "--query", help="metadata query to find files to migrate", default = None)
-    ap.add_argument( "--file_list", help="list of files/dids to migrate", default = None)
-    ap.add_argument( "--file_list_file", help="file with list of files/dids to migrate", default = None)
+    ap.add_argument( "--file-list", help="list of files/dids to migrate", default = None)
+    ap.add_argument( "--file-list-file", help="file with list of files/dids to migrate", default = None)
     ap.add_argument( "--dest-dataset", help="dataset to add files to in Rucio or Metacat; scope/namespace of dataset will be used for files", default=None)
  
     avs = ap.parse_args()
+
+    if avs.verbose:
+        logging.getLogger("urllib3").setLevel(logging.WARNING)
 
     m = Migrator(avs.experiment)
 
@@ -262,10 +311,10 @@ if __name__ == '__main__':
         print("Error: need a --dest-dataset." )
         sys.exit(1)
 
-    if avs.sam_to_metacat or avs.sam_to_rucio and avs.query:
+    if (avs.sam_to_metacat or avs.sam_to_rucio) and avs.query:
         flist = m.samweb.listFiles(avs.query)
 
-    if avs.metacat_to_sam or avs.rucio_to_sam and avs.query:
+    if (avs.metacat_to_sam or avs.rucio_to_sam) and avs.query:
         flist = m.metacat.query(avs.query)
        
     if avs.file_list:
@@ -273,20 +322,25 @@ if __name__ == '__main__':
 
     if avs.file_list_file:
         with open(avs.file_list_file, "r") as f:
-            data = f.read()
+            data = f.read().strip()
         flist = re.split(r"\s+", data)
 
+    try:
 
-    if avs.sam_to_metacat:
-        m.sam2metacat( flist, avs.dest_dataset)
+        if avs.sam_to_metacat:
+            m.sam2metacat( flist, avs.dest_dataset)
 
-    if avs.sam_to_rucio:
-        m.sam2rucio( flist, avs.dest_dataset)
+        if avs.sam_to_rucio:
+            m.sam2rucio( flist, avs.dest_dataset)
 
-    if avs.metacat_to_sam:
-        m.metacat2sam( flist )
+        if avs.metacat_to_sam:
+            m.metacat2sam( flist )
 
-    if avs.rucio_to_sam:
-        m.rucio2sam( flist )
+        if avs.rucio_to_sam:
+            m.rucio2sam( flist )
+
+    except Exception as e:
+       print("Exception: ", e.__class__, repr(e.args))
+       raise
 
     print("Done.")
