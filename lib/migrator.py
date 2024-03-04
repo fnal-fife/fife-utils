@@ -7,6 +7,8 @@ import logging
 import functools
 import re
 from metacat.webapi.webapi import MetaCatClient
+from metacat.webapi.webapi import AlreadyExistsError
+
 import time
 import metadata_converter
 from rucio.client.replicaclient import ReplicaClient
@@ -217,6 +219,21 @@ class Migrator:
             print("all files already in metacat...")
             return
 
+        if dsscope == "mu2e":
+            owner = "mu2epro"
+        else:
+            owner = dsscope
+       
+        try:
+            self.metacat.create_namespace(dsscope, owner_role=owner)
+        except AlreadyExistsError:
+            pass
+
+        try:
+            self.metacat.create_dataset(dsdid, metadata={"owner":owner})
+        except AlreadyExistsError:
+            pass
+
         mdlist = self.samgetmultiplemetadata(flist)
         print("sam metadata: ", repr(mdlist))
         mdlist2 = self.mdsam2meta(mdlist, dsscope)
@@ -272,6 +289,32 @@ class Migrator:
         self.sam2metacat(flist, dsdid)
         self.sam2rucio(flist, dsdid)
 
+    def mu2e_migrate_sam_mc(self, query):
+        """
+            Convert only files which have 6-component-dot names, like
+            tier.owner.desc.config.seq.format
+            there are many 8-dot files, and few others, which should be ignored.
+            Every file has a 5-component-dot default dataset, found w/o seq as
+            owner:tier.owner.desc.config.format
+        """
+        flist1 = m.samweb.listFiles(query)
+
+        # group new files by dataset
+        dslists = {}
+        for fn in flist1:
+            dl = fn.split(".")
+            if len(dl) != 6:
+                # only want 6-component names
+                continue
+            ds = f"{dl[1]}:{dl[0]}.{dl[1]}.{dl[2]}.{dl[3]}.{dl[5]}"
+            if not ds in dslists:
+                dslists[ds] = []
+            dslists[ds].append(fn)
+
+        # use sam2metacat to do each dataset
+        for ds in dslists:
+            m.sam2metacat(dslists[ds], ds)
+
 
 if __name__ == "__main__":
     import argparse
@@ -293,6 +336,7 @@ if __name__ == "__main__":
     ap.add_argument("--sam-to-rucio", action="store_true", default=False)
     ap.add_argument("--metacat-to-sam", action="store_true", default=False)
     ap.add_argument("--rucio-to-sam", action="store_true", default=False)
+    ap.add_argument("--mu2e-sam-to-metacat",  default=False, action="store_true", help = "migrate with mu2e-style name-based-datasets")
     ap.add_argument(
         "--query", help="metadata query to find files to migrate", default=None
     )
@@ -309,7 +353,16 @@ if __name__ == "__main__":
     avs = ap.parse_args()
 
     if avs.verbose:
-        logging.getLogger("urllib3").setLevel(logging.WARNING)
+        logging.getLogger("urllib3").setLevel(logging.DEBUG)
+
+    # make sure we have the environment variables set to talk to everything
+    bail_ev = False
+    for ev in ['METACAT_SERVER_URL', 'RUCIO_HOME', 'SAM_EXPERIMENT' ]:
+        if not os.environ.get(ev,False):
+            print(f"ERROR: {ev} not set in envrionment.")
+            bail_ev = True
+    if bail_ev:
+        exit(1)
 
     m = Migrator(avs.experiment)
 
@@ -347,6 +400,9 @@ if __name__ == "__main__":
         flist = re.split(r"\s+", data)
 
     try:
+
+        if avs.mu2e_sam_to_metacat_sam_mc:
+            m.mu2e_migrate_sam_mc(avs.query)
 
         if avs.sam_to_metacat:
             m.sam2metacat(flist, avs.dest_dataset)
