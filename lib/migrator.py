@@ -219,8 +219,8 @@ class Migrator:
             print("all files already in metacat...")
             return
 
-        if dsscope == "mu2e":
-            owner = "mu2epro"
+        if dsscope in ("mu2e","dune","icarus"):
+            owner = "%spro" % dsscope
         else:
             owner = dsscope
        
@@ -230,7 +230,7 @@ class Migrator:
             pass
 
         try:
-            self.metacat.create_dataset(dsdid, metadata={"owner":owner})
+            self.metacat.create_dataset(dsdid)
         except AlreadyExistsError:
             pass
 
