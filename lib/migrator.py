@@ -211,7 +211,7 @@ class Migrator:
     def sam2metacat(self, flist: List[str], dsdid):
         """migrate metadata from sam to metacat for list of files"""
         flist = flist.copy()  # we're going to prune it, don't change parents
-        logging.info(f"Migrating {len(flist)} files from SAM to metacat dataset {dsid}")
+        logging.info(f"Migrating {len(flist)} files from SAM to metacat dataset {dsdid}")
         dsscope, dsname = dsdid.split(":")
 
         # get files aready in metacat, remove them from flist

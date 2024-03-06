@@ -42,7 +42,7 @@ run_scale_factors = {
 def convert_runs_sam_mc(runs):
     """ special case: run/subrun  number conversion"""
     res = []
-    m = run_scale_factor[g_experiment]
+    m = run_scale_factors[g_experiment]
     for r, sr, typ in runs:
         res.append(m * r + sr)
     return res
@@ -51,7 +51,7 @@ def convert_runs_sam_mc(runs):
 def convert_runs_mc_sam( runs):
     """ special case: run/subrun  number conversion"""
     res = []
-    m = run_scale_factor[g_experiment]
+    m = run_scale_factors[g_experiment]
     for r in runs:
         rn = r / m
         sr = r % m
