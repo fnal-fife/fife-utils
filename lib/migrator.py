@@ -228,7 +228,7 @@ class Migrator:
             return
 
         if dsscope in ("mu2e","dune","icarus"):
-            owner = "%spro" % dsscope
+            owner = "pro"
         else:
             owner = dsscope
        
