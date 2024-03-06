@@ -5,9 +5,11 @@ import sys
 import grp
 import logging
 import functools
+import ifdh
 import re
 from metacat.webapi.webapi import MetaCatClient
-from metacat.webapi.webapi import AlreadyExistsError
+from metacat.webapi.webapi import AlreadyExistsError, BadRequestError
+
 
 import time
 import metadata_converter
@@ -29,15 +31,18 @@ class Migrator:
         self.rucio_replica = ReplicaClient()
         self.rucio_rse = RSEClient()
         self.last_reauth = 0
+        self.reauth_window = 3600
         self.mdconv = metadata_converter.MetadataConverter(exp)
         self.scratch_rse = None
         self.persist_rse = None
         self.default_rse = None
         self.last_flist_repr = "[]"
         self.last_metadata = {}
+        self.ih = ifdh.ifdh()
 
     def reauth(self):
         """if it's been awhile, refresh auth tokens for metacat, SAM"""
+        logging.info("Reauthenticating.")
         if time.time() - self.last_reauth < self.reauth_window:
             return
         tfn = self.ih.getToken()
@@ -57,13 +62,14 @@ class Migrator:
 
         # convert for SAM, who doesn't put scopes on filenames
         flist = [x.split(":")[-1] for x in flist]
-        print("filtered list:", repr(flist))
+        logging.debug("filtered list:" + repr(flist))
         self.last_metadata = self.samweb.getMultipleMetadata(flist, locations=True)
         self.last_flist_repr = repr(flist)
         return self.last_metadata
 
     def mdsam2meta(self, mdlist, namespace):
         """convert a whole list of metadata"""
+        logging.info(f"Migrating {len(mdlist)} files from sam to metacat namespace {namespace}")
         res = []
         for m in mdlist:
             res.append(self.mdconv.convert_all_sam_mc(m, namespace))
@@ -71,6 +77,7 @@ class Migrator:
 
     def mdmeta2sam(self, mdlist):
         """convert a whole list of metadata"""
+        logging.info(f"Migrating {len(mdlist)} files from metacat to SAM")
         res = []
         for m in mdlist:
             res.append(self.mdconv.convert_all_mc_sam(m))
@@ -132,7 +139,7 @@ class Migrator:
 
     def loc2rse(self, pfn, rses):
         # this needs to be smarter, later, but for now...
-        print(f"loc2rse: pfn {pfn} rses {repr(rses)}")
+        logging.debug(f"loc2rse: pfn {pfn} rses {repr(rses)}")
         if len(rses) == 1:
             return rses[0]
         return rses[0]
@@ -140,6 +147,7 @@ class Migrator:
     def sam2rucio(self, flist: List[str], dsdid: str):
         """migrate file location info from SAM to rucio for list of files
         put them in datset dsid on Rucio"""
+        logging.info(f"Migrating {len(flist)} files from sam to Ruio dataset {namespace}")
         flist = flist.copy()  # we're going to prune it, don't change parents
         dsscope, dsname = dsdid.split(":")
         rses = self.getrselist()
@@ -160,11 +168,11 @@ class Migrator:
             csa = ""
             for csi in md["checksum"]:
                 if 0 == csi.find("adler32:"):
-                    print("found adler checksum: ", csi)
+                    logging.debug("found adler checksum: ", csi)
                     csa = csi.split(":")[1].strip()
 
             if not csa:
-                print(
+                logging.error(
                     f"No adler32 checksum for {md['file_name']} in SAM, cannot define to rucio"
                 )
             else:
@@ -178,7 +186,7 @@ class Migrator:
                     }
                 )
         for rse in rse_files:
-            print(f"rse_files[{rse}] == {repr(rse_files[rse])}")
+            logging.debug(f"rse_files[{rse}] == {repr(rse_files[rse])}")
             self.rucio_replica.add_replicas(rse, rse_files[rse])
 
         contents = ({"name": fname, "scope": dsscope} for fname in flist)
@@ -211,12 +219,12 @@ class Migrator:
         # get files aready in metacat, remove them from flist
         alrdlist = self.metacat.get_files([{"did": f"{dsscope}:{f}"} for f in flist])
         for dct in alrdlist:
-            print(f"dropping file {dct['name']}, already in metacat")
+            logging.info(f"dropping file {dct['name']}, already in metacat")
             pos = flist.index(dct["name"])
             flist.pop(pos)
 
         if not flist:
-            print("all files already in metacat...")
+            logging.info("all files already in metacat...")
             return
 
         if dsscope in ("mu2e","dune","icarus"):
@@ -228,6 +236,8 @@ class Migrator:
             self.metacat.create_namespace(dsscope, owner_role=owner)
         except AlreadyExistsError:
             pass
+        except BadRequestError:  # create_namespace returns this for exists
+            pass
 
         try:
             self.metacat.create_dataset(dsdid)
@@ -235,9 +245,9 @@ class Migrator:
             pass
 
         mdlist = self.samgetmultiplemetadata(flist)
-        print("sam metadata: ", repr(mdlist))
+        logging.debug("sam metadata: ", repr(mdlist))
         mdlist2 = self.mdsam2meta(mdlist, dsscope)
-        print("converted: ", repr(mdlist2))
+        logging.debug("converted: ", repr(mdlist2))
         self.metacat.declare_files(dsdid, mdlist2, dsscope)
 
     def metacat2sam(self, flist: List[str]):
@@ -245,9 +255,9 @@ class Migrator:
         mdlist = self.metacat.get_files(
             [{"did": f} for f in flist], with_metadata=True, with_provenance=True
         )
-        print("metacat metadata: ", repr(mdlist))
+        logging.debug("metacat metadata: ", repr(mdlist))
         mdlist2 = self.mdmeta2sam(mdlist)
-        print("converted: ", repr(mdlist2))
+        logging.debug("converted: ", repr(mdlist2))
         # find bulk-declare call in Fermi-FTS and use here?
         for m in mdlist2:
             try:
@@ -332,6 +342,7 @@ if __name__ == "__main__":
         help="use this SAM instance defaults to $SAM_EXPERIMENT if not set",
     )
     ap.add_argument("--verbose", action="store_true", default=False)
+    ap.add_argument("--debug", action="store_true", default=False)
     ap.add_argument("--sam-to-metacat", action="store_true", default=False)
     ap.add_argument("--sam-to-rucio", action="store_true", default=False)
     ap.add_argument("--metacat-to-sam", action="store_true", default=False)
@@ -352,37 +363,41 @@ if __name__ == "__main__":
 
     avs = ap.parse_args()
 
-    if avs.verbose:
+    if avs.debug:
+        logging.basicConfig(level=logging.DEBUG, stream=sys.stderr, encoding='utf-8')
         logging.getLogger("urllib3").setLevel(logging.DEBUG)
+    elif avs.verbose:
+        logging.basicConfig(level=logging.INFO, stream=sys.stderr, encoding='utf-8')
 
     # make sure we have the environment variables set to talk to everything
     bail_ev = False
     for ev in ['METACAT_SERVER_URL', 'RUCIO_HOME', 'SAM_EXPERIMENT' ]:
         if not os.environ.get(ev,False):
-            print(f"ERROR: {ev} not set in envrionment.")
+            logging.error(f"ERROR: {ev} not set in envrionment.")
             bail_ev = True
     if bail_ev:
         exit(1)
 
     m = Migrator(avs.experiment)
+    m.reauth()
 
     if not (
-        avs.sam_to_metacat or avs.sam_to_rucio or avs.metacat_to_sam or avs.rucio_to_sam
+        avs.sam_to_metacat or avs.sam_to_rucio or avs.metacat_to_sam or avs.rucio_to_sam or avs.mu2e_sam_to_metacat
     ):
-        print("Notice: no actions requested, all done!")
+        logging.error("Notice: no actions requested, all done!")
         ap.print_help()
         sys.exit(0)
 
     if avs.query and avs.file_list or avs.query and avs.file_list_file:
-        print("Error: need either a query or a file list, but not both")
+        logging.error("Error: need either a query or a file list, but not both")
         sys.exit(1)
 
     if not (avs.query or avs.file_list or avs.file_list_file):
-        print("Error: need (--query or --file-list or --file-list-file")
+        logging.error("Error: need (--query or --file-list or --file-list-file")
         sys.exit(1)
 
     if (avs.sam_to_metacat or avs.sam_to_rucio) and not avs.dest_dataset:
-        print("Error: need a --dest-dataset.")
+        logging.error("Error: need a --dest-dataset.")
         sys.exit(1)
 
     if (avs.sam_to_metacat or avs.sam_to_rucio) and avs.query:
@@ -401,7 +416,7 @@ if __name__ == "__main__":
 
     try:
 
-        if avs.mu2e_sam_to_metacat_sam_mc:
+        if avs.mu2e_sam_to_metacat:
             m.mu2e_migrate_sam_mc(avs.query)
 
         if avs.sam_to_metacat:
@@ -417,7 +432,7 @@ if __name__ == "__main__":
             m.rucio2sam(flist)
 
     except Exception as e:
-        print("Exception: ", e.__class__, repr(e.args))
+        logging.exception("Exception during migration")
         raise
 
-    print("Done.")
+    logging.info("Done.")
