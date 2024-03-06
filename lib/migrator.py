@@ -69,7 +69,6 @@ class Migrator:
 
     def mdsam2meta(self, mdlist, namespace):
         """convert a whole list of metadata"""
-        logging.info(f"Migrating {len(mdlist)} files from sam to metacat namespace {namespace}")
         res = []
         for m in mdlist:
             res.append(self.mdconv.convert_all_sam_mc(m, namespace))
@@ -77,7 +76,6 @@ class Migrator:
 
     def mdmeta2sam(self, mdlist):
         """convert a whole list of metadata"""
-        logging.info(f"Migrating {len(mdlist)} files from metacat to SAM")
         res = []
         for m in mdlist:
             res.append(self.mdconv.convert_all_mc_sam(m))
@@ -213,7 +211,7 @@ class Migrator:
     def sam2metacat(self, flist: List[str], dsdid):
         """migrate metadata from sam to metacat for list of files"""
         flist = flist.copy()  # we're going to prune it, don't change parents
-
+        logging.info(f"Migrating {len(flist)} files from SAM to metacat dataset {dsid}")
         dsscope, dsname = dsdid.split(":")
 
         # get files aready in metacat, remove them from flist
@@ -252,6 +250,7 @@ class Migrator:
 
     def metacat2sam(self, flist: List[str]):
         """migrate metadata from metacat to sam for list of files"""
+        logging.info(f"Migrating {len(flist)} files from metacat to SAM")
         mdlist = self.metacat.get_files(
             [{"did": f} for f in flist], with_metadata=True, with_provenance=True
         )
