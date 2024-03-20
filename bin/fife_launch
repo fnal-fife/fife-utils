@@ -709,13 +709,13 @@ class launcher(object):
                     "  --exe  %s \\"
                     % self.cfg_get(sname, "name", vars=self.cfg_globals)
                 )
-                if self.cfg_get(sname, "exe_stdout", vars=self.cfg_globals)):
+                if self.cfg_get(sname, "exe_stdout", vars=self.cfg_globals):
                     res.append(
                         "  --exe_stdout%d %s \\"
                         % (i, self.cfg_get(sname, "exe_stdout", vars=self.cfg_globals))
                     )
 
-                if self.cfg_get(sname, "exe_stderr", vars=self.cfg_globals)):
+                if self.cfg_get(sname, "exe_stderr", vars=self.cfg_globals):
                     res.append(
                         "  --exe_stderr%d %s \\"
                         % (i, self.cfg_get(sname, "exe_stderr", vars=self.cfg_globals))
