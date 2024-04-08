@@ -7,6 +7,7 @@ import logging
 import functools
 import ifdh
 import re
+import json
 from metacat.webapi.webapi import MetaCatClient
 from metacat.webapi.webapi import AlreadyExistsError, BadRequestError
 
@@ -63,7 +64,12 @@ class Migrator:
         # convert for SAM, who doesn't put scopes on filenames
         flist = [x.split(":")[-1] for x in flist]
         logging.debug("filtered list:" + repr(flist))
-        self.last_metadata = self.samweb.getMultipleMetadata(flist, locations=True)
+        rlist = []
+        while len(flist) > 0:
+            first_k = flist[:500]
+            flist = flist[500:]
+            rlist.extend( self.samweb.getMultipleMetadata(first_k, locations=True))
+        self.last_metadata = rlist
         self.last_flist_repr = repr(flist)
         return self.last_metadata
 
@@ -146,6 +152,7 @@ class Migrator:
         """migrate file location info from SAM to rucio for list of files
         put them in datset dsid on Rucio"""
         logging.info(f"Migrating {len(flist)} files from sam to Ruio dataset {namespace}")
+        logging.info(f"{repr(flist)}")
         flist = flist.copy()  # we're going to prune it, don't change parents
         dsscope, dsname = dsdid.split(":")
         rses = self.getrselist()
@@ -199,7 +206,11 @@ class Migrator:
         for f in flist:
             fscope, fname = f.split(":")
             didlist.append({"scope": fscope, "name": fname})
-        loclist = self.rucio_replica.list_replicas(didlist)
+        loclist = []
+        while len(didlist) > 0:
+            first_k = didlist[:500]
+            didlist = didlist[500:]
+            loclist.extend( self.rucio_replica.list_replicas(fist_k))
         # get rucio locations
         for ldict in loclist:
             pfn = ldict["pfn"]
@@ -212,10 +223,16 @@ class Migrator:
         """migrate metadata from sam to metacat for list of files"""
         flist = flist.copy()  # we're going to prune it, don't change parents
         logging.info(f"Migrating {len(flist)} files from SAM to metacat dataset {dsdid}")
+        logging.debug(f"{repr(flist)}")
+        flistck = flist.copy()  # we're going to prune it, don't change parents
         dsscope, dsname = dsdid.split(":")
 
-        # get files aready in metacat, remove them from flist
-        alrdlist = self.metacat.get_files([{"did": f"{dsscope}:{f}"} for f in flist])
+        alrdlist = []
+        while len(flistck) > 0:
+            first_k = flistck[:500]
+            flistck = flistck[500:]
+            alrdlist.extend(self.metacat.get_files([{"did": f"{dsscope}:{f}"} for f in first_k]))
+
         for dct in alrdlist:
             logging.info(f"dropping file {dct['name']}, already in metacat")
             pos = flist.index(dct["name"])
@@ -242,27 +259,40 @@ class Migrator:
         except AlreadyExistsError:
             pass
 
-        mdlist = self.samgetmultiplemetadata(flist)
-        logging.debug("sam metadata: ", repr(mdlist))
+        mdlist = []
+        while len(flist) > 0:
+            first_k = flist[:500]
+            flist = flist[500:]
+            mdlist.extend( self.samgetmultiplemetadata(first_k))
+        logging.debug("sam metadata: " + json.dumps(mdlist, indent=2))
         mdlist2 = self.mdsam2meta(mdlist, dsscope)
-        logging.debug("converted: ", repr(mdlist2))
-        self.metacat.declare_files(dsdid, mdlist2, dsscope)
+        logging.debug("converted: " + json.dumps(mdlist2, indent=2))
+        while len(mdlist2) > 0:
+            first_k = mdlist2[:500]
+            mdlist2 = mdlist2[500:]
+            self.metacat.declare_files(dsdid, first_k, dsscope)
 
     def metacat2sam(self, flist: List[str]):
         """migrate metadata from metacat to sam for list of files"""
+        flist = list(flist)
         logging.info(f"Migrating {len(flist)} files from metacat to SAM")
-        mdlist = self.metacat.get_files(
-            [{"did": f} for f in flist], with_metadata=True, with_provenance=True
-        )
-        logging.debug("metacat metadata: ", repr(mdlist))
-        mdlist2 = self.mdmeta2sam(mdlist)
-        logging.debug("converted: ", repr(mdlist2))
-        # find bulk-declare call in Fermi-FTS and use here?
-        for m in mdlist2:
-            try:
-                self.samweb.declareFile(md=m)
-            except samweb_client.exceptions.FileAlreadyExists:
-                pass
+        logging.info(f"{repr(flist)}")
+        while len(flist) > 0:
+            first_k = flist[:500]
+            flist = flist[500:]
+
+            mdlist = self.metacat.get_files(
+                [{"did": f"{f['namespace']}:{f['name']}"} for f in first_k], with_metadata=True, with_provenance=True
+            )
+            logging.debug("metacat metadata: ", repr(mdlist))
+            mdlist2 = self.mdmeta2sam(mdlist)
+            logging.debug("converted: ", repr(mdlist2))
+            # find bulk-declare call in Fermi-FTS and use here?
+            for m in mdlist2:
+                try:
+                    self.samweb.declareFile(md=m)
+                except samweb_client.exceptions.FileAlreadyExists:
+                    pass
 
     def get_sam_owner(self, ds):
         text = self.samweb.describe_definition(ds)

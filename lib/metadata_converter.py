@@ -314,6 +314,8 @@ class MetadataConverter:
                 "metadata:POMS.SUBMISSION_ID": "POMS.SUBMISSION_ID",
             }
         }
+        
+        self.conversion_mc_sam['samdev'] = self.conversion_mc_sam['hypot'].copy() 
         self.build_inverse()
 
 
