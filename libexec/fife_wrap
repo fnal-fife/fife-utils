@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 from __future__ import print_function
 import datetime
 import fnmatch
@@ -57,11 +57,11 @@ def match_list(f, globlist):
     return False
 
 class DDInterface:
-  def __init__(self, poms_dd_task_id, project_id, dataset_query, namespace, lar_limit, timeout=120, wait_time=60, wait_limit=5, parameter=None, user = None):
+  def __init__(self, poms_dd_task_id, project_id, dataset_query, namespace, load_limit=None, timeout=120, wait_time=60, wait_limit=5, parameter=None, user = None):
     self.dataset = "" #dataset
     self.limit = 1#limit
     self.namespace = namespace
-    self.lar_limit = lar_limit
+    self.load_limit = load_limit if load_limit else self.limit
     self.proj_id = int(project_id) if project_id else -1
     self.parameter = parameter
     self.poms_env = os.environ.get("POMS_ENV", None)
@@ -99,22 +99,32 @@ class DDInterface:
     self.dd_client = DataDispatcherClient()
     
   def Login(self, username):
+    # poms goes first
+    if os.environ.get("POMS_DATA_DISPATCHER_TASK_ID"):
+        self.dd_client.login_x509(username, os.environ['X509_USER_PROXY'])
+        self.mc_client.login_x509(username, os.environ['X509_USER_PROXY'])
+        return
+    
     bt = ""
     btf = os.environ.get("BEARER_TOKEN_FILE", 
          os.environ.get("XDG_RUNTIME_DIR","/tmp") + "bt_u" + str(os.geteuid()))
+    
     if os.path.isfile(btf):
         with open(btf,"r") as f:
             bt = f.read().strip()
+    
     if bt:
         self.dd_client.login_token(username, bt)
+        self.mc_client.login_token(username, bt)
     else:
         self.dd_client.login_x509(username, os.environ['X509_USER_PROXY'])
+        self.mc_client.login_x509(username, os.environ['X509_USER_PROXY'])
     
-  def SetLarLimit(self, limit):
-    self.lar_limit = limit
+  def SetLoadLimit(self, limit):
+    self.load_limit = limit
     
   def CreateProject(self):
-    query_files = mc_client.query(self.query)
+    query_files = self.mc_client.query(self.query)
     proj_dict = self.dd_client.create_project(query_files, query=self.query)
     self.proj_state = proj_dict['state']
     self.proj_id = proj_dict['project_id']
@@ -129,9 +139,8 @@ class DDInterface:
   def LoadFiles(self):
     count = 0
     ##Should we take out the proj_state clause?
-    while (count < self.lar_limit and not self.next_failed and
-           self.proj_state == 'active'):
-      print('Attempting fetch %i/%i'%(count, self.lar_limit), self.next_failed)
+    while ((count < self.load_limit if self.load_limit else True ) and not self.next_failed and self.proj_state == 'active'):
+      print('Attempting fetch %i/%i'%(count, self.load_limit), self.next_failed)
       self.Next()
       if self.next_output == None:
         ## this shouldn't happen, but if it does just exit the loop
@@ -159,7 +168,7 @@ class DDInterface:
           ##for a maximum number of attempts
           ##-- if at max, go on to loop
           if self.n_waited < self.max_wait_attempts:
-            print("data dispatcher next_file timed out. Waiting %i seconds before attempting again"%self.wait_time)
+            print("data dispatcher next_file timed out. Waiting %i seconds before attempting again" % self.wait_time)
             print("Wait attempts: %i/%i"%(self.n_waited, self.max_wait_attempts))
             time.sleep(self.wait_time)
             self.n_waited += 1
@@ -960,7 +969,7 @@ exit
                 )
             )
             return
-        if not self.dd_interface:
+        if not hasattr(self, "dd_interface") or not self.dd_interface:
             if self.cpurl == None:
                 self.cpurl = self.ih.findProject(
                     os.environ["SAM_PROJECT"],
