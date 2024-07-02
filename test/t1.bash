@@ -2,26 +2,12 @@
 
 . ./unittest.bash
 
-case "x$1" in
-x--python3) export p3=true; shift;;
-*)          export p3=false;;
-esac
+p3=true
 
+. /cvmfs/fermilab.opensciencegrid.org/packages/common/setup-env.sh
+spack load --first sam-web-client os=fe 
+spack load ifdhc@2.7 os=fe
 
-. /grid/fermiapp/products/common/etc/setups
-
-. `ups setup sam_web_client`
-if $p3
-then
-    test -d /tmp/py3 || mkdir /tmp/py3
-    ln -s /bin/python3 /tmp/py3/python
-    PATH=/tmp/py3:$PATH
-    . `ups unsetup python_future_six_request`
-    . `ups setup -j ifdhc v2_6_8 -q python36`
-else
-    . `ups setup -j ifdhc v2_6_8`
-fi
-. `ups setup -j ifdhc_config v2_6_9`
 
 count_report_files() {
     echo

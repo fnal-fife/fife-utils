@@ -522,8 +522,8 @@ class launcher(object):
                         print("Ignoring launch request on empty dataset")
                         sys.exit(1)
         else:
-            print("Ignoring launch request, No data_dispatcher or sam_consumer section found in configuration")
-            sys.exit(1)
+            # if we aren't requesting a dataset in either universe, thats okay
+            pass
 
         for i in range(100):
             cmd = self.cfg_get("prelaunch", "script" if i == 0 else "script_%d" % i, vars=self.cfg_globals)
