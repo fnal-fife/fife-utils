@@ -654,9 +654,9 @@ def main():
 
         logging.info("entering for loop to process all the files to create the dataset")
         if o.no_rename:
-            fname_limit = 154
-        else:
             fname_limit = 200
+        else:
+            fname_limit = 154
 
         lengths_ok = True
         for filename in fileList:
