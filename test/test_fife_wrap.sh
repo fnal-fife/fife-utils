@@ -16,6 +16,19 @@ setup_proj() {
     cpurl=`ifdh startProject $SAM_PROJECT  samdev gen_cfg  mengel samdev `
     outdir=/tmp/out$$
     #echo "setup_proj: started $SAM_PROJECT url $cpurl" >&3
+    exp=hypot
+
+    # pick an experiment pnfs area from whats available
+    #for e in dune nova uboone minerva
+    #do
+    #    if [ -d /pnfs/$e ]
+    #    then
+    #        exp=$e
+    #        break
+    #    fi
+    #done
+ 
+    workdir=/pnfs/${exp}/scratch/users/$USER/fife_utils_test/work.$$
 }
 
 end_proj() {
@@ -30,30 +43,30 @@ test_ucondb_path() {
 
 test_client_1() {
     export POMS_TASK_ID=9999
-    ../libexec/fife_wrap --debug --find_setups --setup fife_utils --limit 1 --multifile --appname demo --appfamily demo --appvers demo  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_to_dataset _poms_task --add_location --dest /pnfs/nova/scratch/users/mengel/ -- '>bar.root' '<' 
+    ../libexec/fife_wrap --debug --find_setups --setup fife_utils --limit 1 --multifile --appname demo --appfamily demo --appvers demo  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_to_dataset _poms_task --add_location --dest $workdir -- '>bar.root' '<' 
 }
 
 test_client_2() {
     export POMS_TASK_ID=9999
-    ../libexec/fife_wrap --debug --find_setups --setup fife_utils --prescript-unquote 'for%20i%20in%201%202%203%3B%20do%20echo%20%24i%20%3B%20done' --limit 1 --multifile --appname demo --appfamily demo --appvers demo  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_to_dataset _poms_task --add_location --dest /pnfs/nova/scratch/users/mengel/ -- '>bar.root' '<' 
+    ../libexec/fife_wrap --debug --find_setups --setup fife_utils --prescript-unquote 'for%20i%20in%201%202%203%3B%20do%20echo%20%24i%20%3B%20done' --limit 1 --multifile --appname demo --appfamily demo --appvers demo  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_to_dataset _poms_task --add_location --dest $workdir -- '>bar.root' '<' 
 }
 test_client_2a() {
     export POMS_TASK_ID=9999
-    ../libexec/fife_wrap --debug --find_setups --setup fife_utils --prescript-unquote 'for%20i%20in%201%202%203%3B%20do%20echo%20%24i%20%3B%20done' --limit 1 --multifile --appname demo --appfamily demo --appvers demo  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_to_dataset _poms_analysis --add_location --dest /pnfs/nova/scratch/users/mengel/ -- '>bar.root' '<' 
+    ../libexec/fife_wrap --debug --find_setups --setup fife_utils --prescript-unquote 'for%20i%20in%201%202%203%3B%20do%20echo%20%24i%20%3B%20done' --limit 1 --multifile --appname demo --appfamily demo --appvers demo  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_to_dataset _poms_analysis --add_location --dest $workdir -- '>bar.root' '<' 
 }
 test_client_3() {
     export POMS_TASK_ID=9999
-    ../libexec/fife_wrap --debug --find_setups --setup fife_utils --prescript-unquote 'for%20i%20in%201%202%203%3B%20do%20echo%20%24i%20%3B%20done' --limit 1 --multifile --appname demo --appfamily demo --appvers demo  --exe /bin/false --exe_stdout0=bar.root --addoutput bar.root --rename unique --declare_metadata --add_to_dataset _poms_task --add_location --dest /pnfs/nova/scratch/users/mengel/ 
+    ../libexec/fife_wrap --debug --find_setups --setup fife_utils --prescript-unquote 'for%20i%20in%201%202%203%3B%20do%20echo%20%24i%20%3B%20done' --limit 1 --multifile --appname demo --appfamily demo --appvers demo  --exe /bin/false --exe_stdout0=bar.root --addoutput bar.root --rename unique --declare_metadata --add_to_dataset _poms_task --add_location --dest $workdir 
     echo exit status $?
 }
 
 test_client_tmpl() {
     export POMS_TASK_ID=9999
-    ../libexec/fife_wrap --debug --find_setups --setup fife_utils --limit 1 --multifile --appname demo --appfamily demo --appvers demo  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_to_dataset _poms_task --add_location --dest '/pnfs/nova/scratch/users/mengel/${month}/' -- '>bar.root' '<' 
+    ../libexec/fife_wrap --debug --find_setups --setup fife_utils --limit 1 --multifile --appname demo --appfamily demo --appvers demo  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_to_dataset _poms_task --add_location --dest $workdir -- '>bar.root' '<' 
 }
 test_client_4() {
     export POMS_TASK_ID=9999
-    ../libexec/fife_wrap --debug --find_setups --setup fife_utils --limit 4 --multifile --appname demo --appfamily demo --appvers demo  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_location --add_to_dataset _poms_task --dest /pnfs/nova/scratch/users/mengel -- '>bar.root' '<' 
+    ../libexec/fife_wrap --debug --find_setups --setup fife_utils --limit 4 --multifile --appname demo --appfamily demo --appvers demo  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_location --add_to_dataset _poms_task --dest $workdir -- '>bar.root' '<' 
 }
 
 test_pre_post_1() {
@@ -64,13 +77,13 @@ test_pre_post_1() {
 
 test_client_excl() {
     export POMS_TASK_ID=9999
-    ../libexec/fife_wrap --debug --find_setups --setup fife_utils --limit 1 --multifile --appname demo --appfamily demo --appvers demo  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_location --add_to_dataset _poms_task --dataset_exclude '*.xyzzy' --dest /pnfs/nova/scratch/users/mengel -- '>bar.root' '<' 
+    ../libexec/fife_wrap --debug --find_setups --setup fife_utils --limit 1 --multifile --appname demo --appfamily demo --appvers demo  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_location --add_to_dataset _poms_task --dataset_exclude '*.xyzzy' --dest $workdir -- '>bar.root' '<' 
 }
 
 test_env_meta() {
    export POMS_TASK_ID=9999
    export HYPOTCODE_FAST=1
-   ../libexec/fife_wrap --debug --find_setups --setup hypotcode --setup fife_utils --setup "ifdhc $IFDH_VERSION" --limit 4 --multifile --appname demo --appfamily demo --appvers demo --exe hypot.exe --postscript 'export INTENSITY=12.5' --addoutput foo.txt --rename unique --declare_metadata --add_metadata secondary.intensity=\$INTENSITY --add_location --add_to_dataset _poms_task --dest /pnfs/nova/scratch/users/mengel -- -o foo.txt -c
+   ../libexec/fife_wrap --debug --find_setups --setup hypotcode --setup fife_utils --setup "ifdhc $IFDH_VERSION" --limit 4 --multifile --appname demo --appfamily demo --appvers demo --exe hypot.exe --postscript 'export INTENSITY=12.5' --addoutput foo.txt --rename unique --declare_metadata --add_metadata secondary.intensity=\$INTENSITY --add_location --add_to_dataset _poms_task --dest $workdir -- -o foo.txt -c
 }
 
 test_hash_dir() {
@@ -84,7 +97,7 @@ test_hash_dir() {
 
 test_hash_dir_sha() {
     export POMS_TASK_ID=9999
-    ../libexec/fife_wrap --debug --export-unquote FOO%3d%22%27bar%27_%27baz%27%22 --find_setups --setup fife_utils --limit 1 --multifile --appname demo --appfamily demo --appvers v1_0  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_location --add_to_dataset _poms_task --dataset_exclude '*.xyzzy' --dest /pnfs/nova/scratch/users/mengel --hash 2 --hash_alg sha256 -- '>bar.root' '<' 
+    ../libexec/fife_wrap --debug --export-unquote FOO%3d%22%27bar%27_%27baz%27%22 --find_setups --setup fife_utils --limit 1 --multifile --appname demo --appfamily demo --appvers v1_0  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_location --add_to_dataset _poms_task --dataset_exclude '*.xyzzy' --dest $workdir --hash 2 --hash_alg sha256 -- '>bar.root' '<' 
 }
 
 test_parallel() {
@@ -109,7 +122,7 @@ test_multi_format_path() {
 test_parallel_hashdir_lots() {
     export POMS_TASK_ID=9999
     mkdir /tmp/out$$
-    for i in 0 1 2 3 4 5 6 7 8 9; do for j in 0 1 2 3 4 5 6 7 8 9; do for k in 0 1 2 3 4 5 6 7 8 9; do echo $i$j$k > bar$i.$j.$k.root; done; done; done
+    for i in 0 1 2 3 4 5 6 7 8 9; do for j in 0 1 2 3 4 5 6 7 8 9; do echo $i$j > bar$i.$j.root; done; done
     IFDH_CP_MAXRETRIES=0 ../libexec/fife_wrap --debug --limit 5 --multifile --appname demo --appfamily demo --appvers v1_0  --exe cat --addoutput 'bar*.root' --rename unique --declare_metadata --add_location --parallel=2 --hash 2 --hash_alg sha256 --dest=/tmp/out$$ -- '>bar${nthfile}.root' '<' 
     res=$?
     ls -Rl /tmp/out$$
@@ -120,7 +133,7 @@ test_parallel_hashdir_lots() {
 
 test_quot_env() {
     export POMS_TASK_ID=9999
-    ../libexec/fife_wrap --debug --export-unquote FOO%3d%60bar%60_%60baz%60 --find_setups --setup fife_utils --limit 4 --multifile --appname demo --appfamily demo --appvers v1_0  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_location --add_to_dataset _poms_task --dataset_exclude '*.xyzzy' --dest /pnfs/nova/scratch/users/mengel --hash 2 -- '>bar.root' '<'  | tee tqe.out
+    ../libexec/fife_wrap --debug --export-unquote FOO%3d%60bar%60_%60baz%60 --find_setups --setup fife_utils --limit 4 --multifile --appname demo --appfamily demo --appvers v1_0  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_location --add_to_dataset _poms_task --dataset_exclude '*.xyzzy' --dest $workdir --hash 2 -- '>bar.root' '<'  | tee tqe.out
 }
 
 if $p3
