@@ -1064,6 +1064,18 @@ exit
                     fname = '"$fname"'
                 else:
                     fname = self.ih.fetchInput(self.furi)
+                    if not fname:
+                        self.ih.updateFileStatus(
+                            self.cpurl,
+                            self.consumerid,
+                            os.path.basename(self.furi),
+                            "skipped",
+                        )
+                        sys.stderr.write(
+                            "\nFetching: %s FAILED\nmarking file skipped" % self.furi
+                        )
+                        continue
+                        
                     if self.options.debug:
                         sys.stderr.write(
                             "\nFetching: %s gave: %s\n" % (self.furi, fname)
@@ -2177,8 +2189,8 @@ ${run_number[8/2]} gives 00/12/34/56
 
 import string, re, os.path
 from datetime import datetime
-import collections
-class CaseInsensitiveDict(collections.MutableMapping):
+import collections.abc
+class CaseInsensitiveDict(collections.abc.MutableMapping):
     """ A case insensitve dictionary (for metadata, etc) """
     __slots__ = ["_data"]
 
@@ -2222,7 +2234,7 @@ class CaseInsensitiveDict(collections.MutableMapping):
     def __eq__(self, other):
         if isinstance(other, CaseInsensitiveDict):
             other_data = dict((lk, v) for lk, (k, v) in other._data.iteritems())
-        if isinstance(other, collections.Mapping):
+        if isinstance(other, collections.abc.Mapping):
             other_data = dict((self._get_lkey(k), v) for k, v in other.iteritems())
         else:
             return NotImplemented
