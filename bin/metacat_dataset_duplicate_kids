@@ -1,1 +1,255 @@
-sam_dataset_duplicate_kids
+#!/usr/bin/env python
+try:
+    from six import *
+except:
+    pass
+
+import sys
+import os
+import grp
+import optparse
+import logging
+import ifdh
+import uuid
+from samweb_client import *
+from fife_sam_utils import *
+from metacat.webapi import MetaCatClient
+import metacat.common.exceptions
+
+class de_duper:
+    def __init__(self, is_metacat = False):
+        self.metadata_list = [
+            "file_format",
+            "file_type",
+            "data_tier",
+            "user",
+            "application",
+            "parents",
+        ]
+        self.metacat = is_metacat
+        if self.metacat:
+            self.id_field = "fid"
+            self.name_field = "name"
+            self.fakesam = fake_metacat_ifdh_handle()
+            self.file_size_field = "size"
+        else:
+            self.id_field = "file_id"
+            self.name_field = "file_name"
+            self.file_size_field = "file_size"
+
+    def locate(self, f):
+        if metacat:
+            return fakesam.locateFile(f)
+        else:
+            return samweb.locateFile(f)
+
+    def is_dup(self, md1, md2):
+
+        for k in self.metadata_list:
+            if md1.get(k, None) != md2.get(k, None):
+                return 0
+        return 1
+
+    def include_metadata(self, metadata_list):
+        self.metadata_list.extend(metadata_list)
+
+    def extract_key(self, metadata):
+        pl = metadata.get("parents", [{self.id_field: -1}])
+        if pl:
+            res = [str(pl[0][self.id_field])]
+        else:
+            res = [str(uuid.uuid4())]
+
+        # tack on metadata fields we compare on, so they'll be sorted that way
+        for k in self.metadata_list:
+            res.append(repr(metadata.get(k, "")))
+
+        return ":".join(res)
+
+    def duplicate_kids(self, ds, verbose=False, experiment=None, keeplists=None):
+        if self.metacat:
+            self.mcc = MetaCatClient()
+        else:
+            self.samweb = SAMWebClient(experiment=experiment)
+        dupl = {}
+        fl = []
+
+        for f in ds.file_iterator():
+            fl.append(f)
+
+        if self.metacat:
+            mdl = self.mcc.get_files( 
+               [ {'did': f } for f in fl], 
+               with_metadata=True, 
+               with_provenance=True
+            )
+
+        else:
+            mdl = []
+            while fl:
+                md_json = self.samweb.getMultipleMetadata(fl[:500], asJSON=True)
+                mdl.extend(json.loads(md_json))
+                fl = fl[500:]
+
+        # order metadata list by (first) parent file id
+
+        mdl.sort(key=self.extract_key)
+
+        i = 0
+        j = 1
+        oldp = None
+        dupl[None] = {}
+        n = len(mdl)
+        while i < n and j < n:
+            dl = []
+            ppl = mdl[i]["parents"]
+            if ppl:
+                p = ppl[0][self.name_field]
+            else:
+                p = str(uuid.uuid4())
+            if p != oldp:
+                dupl[p] = {}
+            oldp = p
+
+            while j < n and self.is_dup(mdl[i], mdl[j]):
+                # list the smaller file as the duplicate
+                # if a file is zero size, or truncated, the longer one
+                # is the keeper...
+                if mdl[i][self.file_size_field] < mdl[j][self.file_size_field]:
+                    dl.append(mdl[i][self.name_field])
+                    i = j
+                else:
+                    dl.append(mdl[j][self.name_field])
+                j = j + 1
+
+            # print("parent %s file %s dups %s" % (p, mdl[i]['file_name'], repr(dl)))
+            dupl[p][mdl[i][self.name_field]] = dl
+
+            i = j
+            j = i + 1
+
+        return dupl
+
+
+if __name__ == "__main__":
+
+    log_startup()
+
+    experiment = os.environ.get(
+        "EXPERIMENT", os.environ.get("SAM_EXPERIMENT", safe_getgrgid(os.getgid())[0])
+    )
+
+    parser = optparse.OptionParser(
+        usage="usage: %prog [options] --dims dimensions \n Check files in dims for duplicate children of same parent"
+    )
+    parser.add_option("-v", "--verbose", action="count", default=0)
+    parser.add_option(
+        "-e",
+        "--experiment",
+        default=experiment,
+        help="use this experiment server defaults to $SAM_EXPERIMENT if not set",
+    )
+    parser.add_option("--dims", "--did",  help="dimension query for files to check")
+    parser.add_option(
+        "--include_metadata",
+        help="metadata field to include in comparisons",
+        default=[],
+        action="append",
+    )
+    parser.add_option(
+        "--mark_bad",
+        action="store_true",
+        default=False,
+        help="mark as 'bad' in content_status",
+    )
+    parser.add_option(
+        "--retire_file",
+        action="store_true",
+        default=False,
+        help="retire duplicate files",
+    )
+    parser.add_option(
+        "--delete", action="store_true", default=False, help="delte duplicate files"
+    )
+
+    (o, a) = parser.parse_args()
+
+    if o.verbose > 1:
+        logging.basicConfig(level=logging.DEBUG)
+    elif o.verbose > 0:
+        logging.basicConfig(level=logging.INFO)
+    else:
+        logging.disable(logging.INFO)
+
+    if o.experiment:
+        os.environ["EXPERIMENT"] = o.experiment
+        os.environ["SAM_EXPERIMENT"] = o.experiment
+        os.environ["IFDH_BASE_URI"] = (
+            "http://samweb.fnal.gov:8480/sam/%s/api" % o.experiment
+        )
+    else:
+        sys.stderr.write(
+            "Error: Need either --experiment or $EXPERIMENT $SAM_EXPERIMENT in environment"
+        )
+        sys.exit(1)
+
+    cert = get_standard_certificate_path(o)
+    os.environ["X509_USER_PROXY"] = cert
+
+    if not o.dims:
+        parser.error("expected --dims dimensions")
+        exit(1)
+
+    is_metacat = sys.argv[0].find("metacat_") >= 0
+
+    dd = de_duper( is_metacat )
+
+    dd.include_metadata(o.include_metadata)
+
+    if is_metacat:
+        ds = dataset_metacat_dd(o.dims)
+    else:
+        ds = dataset(dims=o.dims)
+
+    res = dd.duplicate_kids(
+        ds, verbose=o.verbose, experiment=o.experiment
+    )
+
+    ih = ifdh.ifdh()
+
+    for p in res:
+        has_dups = False
+        for k in res[p]:
+            if res[p][k]:
+                has_dups = True
+        if not has_dups:
+            continue
+        print("parent %s:" % p)
+        for k in res[p]:
+            if not res[p][k]:
+                continue
+            print("  duplicates of %s:" % k)
+            for f in res[p][k]:
+                acts = ""
+                if o.delete:
+                    ll = dd.locate(f)
+                    for l in ll:
+                        try:
+                            path = sampath(l["full_path"] + "/" + f)
+                            ih.rm(path, "")
+                            acts += "(deleted)"
+                        except Exception as e:
+                            acts += "(failed deleting %s)" % path
+
+                if o.mark_bad:
+                    dd.samweb.modifyFileMetadata(f, md={"content_status": "bad"})
+
+                    acts += "(marked bad)"
+                if o.retire_file:
+                    dd.samweb.retireFile(f)
+                    acts += "(retired)"
+
+                print("    %s %s" % (f, acts))
+
+    log_finish("Success")
+    sys.exit(0)

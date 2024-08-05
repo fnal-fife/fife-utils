@@ -9,7 +9,7 @@ import os
 import socket
 import grp
 
-from fife_sam_utils import log_startup, log_finish
+from fife_sam_utils import *
 
 try:
     import uuid
@@ -162,7 +162,7 @@ if __name__ == "__main__":
     log_startup()
 
     experiment = os.environ.get(
-        "EXPERIMENT", os.environ.get("SAM_EXPERIMENT", grp.getgrgid(os.getgid())[0])
+        "EXPERIMENT", os.environ.get("SAM_EXPERIMENT", safe_getgrgid(os.getgid())[0])
     )
 
     parser = optparse.OptionParser(

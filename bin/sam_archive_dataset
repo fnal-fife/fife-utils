@@ -13,22 +13,7 @@ import os
 import os.path
 import sys
 
-from fife_sam_utils import (
-    clone,
-    zerodeep,
-    onedeep,
-    twodeep,
-    threedeep,
-    fourdeep,
-    doublesha256,
-    unclone,
-    dataset,
-    fake_project_dataset,
-    fake_file_dataset,
-    get_standard_certificate_path,
-    validate,
-)
-from fife_sam_utils import log_startup, log_finish
+from fife_sam_utils import *
 
 
 def check_dest(dest, default_dest):
@@ -95,7 +80,7 @@ if __name__ == "__main__":
             % (type, " and clean out other locations " if clean_others else "")
         )
     experiment = os.environ.get(
-        "EXPERIMENT", os.environ.get("SAM_EXPERIMENT", grp.getgrgid(os.getgid())[0])
+        "EXPERIMENT", os.environ.get("SAM_EXPERIMENT", safe_getgrgid(os.getgid())[0])
     )
 
     parser.set_defaults(dirfunc=fourdeep, experiment=experiment)

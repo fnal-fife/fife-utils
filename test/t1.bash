@@ -2,12 +2,26 @@
 
 . ./unittest.bash
 
-p3=true
+# find ourselves...
+case x$0 in
+x/*) prefix=$(basename $PWD/$0) ;;
+x*)  prefix=$(basename $0) ;;
+esac
+prefix=$(basename $prefix)
 
 . /cvmfs/fermilab.opensciencegrid.org/packages/common/setup-env.sh
-spack load --first sam-web-client os=fe 
-spack load ifdhc@2.7 os=fe
-
+# setup either installed or locally
+case x$1 in
+x--installed) 
+    spack load fife-utils @3.7.2 os=fe 
+    ;;
+x*)
+    # setup our dependencies
+    spack load --first --only dependencies fife-utils @3.7.2 os=fe 
+    export PATH=$prefix/bin:$PATH
+    export PYTHONPATH=$prefix/lib:$PYTHONPATH
+    ;;
+esac
 
 count_report_files() {
     echo
@@ -29,15 +43,17 @@ setup_tests() {
    export IFDH_BASE_URI="http://samweb.fnal.gov:8480/sam/samdev/api"
    export IFDH_CP_MAXRETRIES=0
 
+   exp=hypot
+
    # pick an experiment pnfs area from whats available
-   for e in dune nova uboone minerva
-   do
-       if [ -d /pnfs/$e ]
-       then
-           exp=$e
-           break
-       fi
-   done
+   #for e in dune nova uboone minerva
+   #do
+   #    if [ -d /pnfs/$e ]
+   #    then
+   #        exp=$e
+   #        break
+   #    fi
+   #done
 
    workdir=/pnfs/${exp}/scratch/users/$USER/fife_utils_test/work.$$
    if [ ! -r $workdir ]
@@ -336,30 +352,31 @@ test_copy2scratch_dataset() {
     [ "$locs2" -gt "$locs1" ]
 }
 
-test_move2archive() {
-    count_report_files "before:" locs1
-    sam_move2archive_dataset -v --name $dataset --dest $pnfs_dir
-    count_report_files "after:" locs2
-    [ "$locs2" -eq "$locs1" ]
-}
-
-test_move2archive_double() {
-    count_report_files "before:" locs1
-
-    # make a *second* copy
-    ifdh mkdir ${pnfs_dir}_1
-    sam_clone_dataset --name $dataset --dest ${pnfs_dir}_1
-    count_report_files "after clone:" locs2
-    
-    # move to third place
-    ifdh mkdir ${pnfs_dir}_2
-    sam_move2archive_dataset -v --name $dataset --dest ${pnfs_dir}_2
-    count_report_files "after archive:" locs3
-   
-    # should be back to first count
-    echo counts $locs1 $locs2 $locs3
-    [ "$locs2" -gt "$locs1"  -a "$locs3" -eq "$locs1" ]
-}
+# dropped with move2archive
+# test_move2archive() {
+#     count_report_files "before:" locs1
+#     sam_move2archive_dataset -v --name $dataset --dest $pnfs_dir
+#     count_report_files "after:" locs2
+#     [ "$locs2" -eq "$locs1" ]
+# }
+# 
+# test_move2archive_double() {
+#     count_report_files "before:" locs1
+# 
+#     # make a *second* copy
+#     ifdh mkdir ${pnfs_dir}_1
+#     sam_clone_dataset --name $dataset --dest ${pnfs_dir}_1
+#     count_report_files "after clone:" locs2
+#     
+#     # move to third place
+#     ifdh mkdir ${pnfs_dir}_2
+#     sam_move2archive_dataset -v --name $dataset --dest ${pnfs_dir}_2
+#     count_report_files "after archive:" locs3
+#    
+#     # should be back to first count
+#     echo counts $locs1 $locs2 $locs3
+#     [ "$locs2" -gt "$locs1"  -a "$locs3" -eq "$locs1" ]
+# }
 
 test_move2persistent() {
     count_report_files "before:" locs1
@@ -502,12 +519,6 @@ testsuite test_utils \
         test_retire \
         add_dataset \
         test_move2persistent \
-        test_retire \
-        add_dataset \
-        test_move2archive \
-        test_retire \
-        add_dataset \
-        test_move2archive_double \
         test_retire \
 
          

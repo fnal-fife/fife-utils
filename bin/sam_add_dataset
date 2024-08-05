@@ -52,14 +52,7 @@ except:
         uuid4 = staticmethod(uuid4)
 
 
-# from fife_sam_utils import samprefix, is_cert_valid, has_uuid_prefix
-from fife_sam_utils import (
-    samprefix,
-    has_uuid_prefix,
-    replace_uuids,
-    get_standard_certificate_path,
-)
-from fife_sam_utils import log_startup, log_finish
+from fife_sam_utils import *
 
 
 def getJSONMetadata(jsonFile, tag):
@@ -504,7 +497,7 @@ def main():
 
     """runs program and handles command line options"""
     experiment = os.environ.get(
-        "EXPERIMENT", os.environ.get("SAM_EXPERIMENT", grp.getgrgid(os.getgid())[0])
+        "EXPERIMENT", os.environ.get("SAM_EXPERIMENT", safe_getgrgid(os.getgid())[0])
     )
 
     p = optparse.OptionParser(

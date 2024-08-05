@@ -10,8 +10,7 @@ import optparse
 import os
 import sys
 import time
-from fife_sam_utils import dataset, get_standard_certificate_path
-from fife_sam_utils import log_startup, log_finish
+from fife_sam_utils import *
 import samweb_client
 
 try:
@@ -80,7 +79,7 @@ if __name__ == "__main__":
         usage="usage: %prog [options] \n archive files sin source directory dcache archviver area and declare.\n  (Use %prog --help for full options list)"
     )
     experiment = os.environ.get(
-        "EXPERIMENT", os.environ.get("SAM_EXPERIMENT", grp.getgrgid(os.getgid())[0])
+        "EXPERIMENT", os.environ.get("SAM_EXPERIMENT", safe_getgrgid(os.getgid())[0])
     )
     dname = os.environ.get("USER", os.environ.get("GRID_USER"))
     default_dataset = dname + "_archive_images"

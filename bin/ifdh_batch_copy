@@ -455,7 +455,7 @@ if __name__ == "__main__":
 
     if not o.experiment:
         o.experiment = os.environ.get(
-            "EXPERIMENT", os.environ.get("SAM_EXPERIMENT", grp.getgrgid(os.getgid())[0])
+            "EXPERIMENT", os.environ.get("SAM_EXPERIMENT", safe_getgrgid(os.getgid())[0])
         )
 
     if o.experiment:

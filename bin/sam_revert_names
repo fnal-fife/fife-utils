@@ -12,8 +12,7 @@ import sys
 import grp
 import logging
 import re
-from fife_sam_utils import has_uuid_prefix
-from fife_sam_utils import log_startup, log_finish
+from fife_sam_utils import *
 import fnmatch
 
 

@@ -12,7 +12,7 @@ import grp
 import os
 import sys
 from samweb_client import *
-from fife_sam_utils import update_dcache_tape_location, fake_project_dataset, log_startup, log_finish
+from fife_sam_utils import *
 
 #def update_dcache_tape_location(sp, f):
 
@@ -35,7 +35,7 @@ def main():
     experiment = os.environ.get(
         "EXPERIMENT", os.environ.get(
             "SAM_EXPERIMENT", 
-            grp.getgrgid(os.getgid())[0]
+            safe_getgrgid(os.getgid())[0]
         )
     )
     parser = optparse.OptionParser( 

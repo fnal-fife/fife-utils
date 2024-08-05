@@ -52,6 +52,12 @@ def check_dcache_queued():
     # landscape data to check how busy dcache is...
     return None
 
+def safe_getgrgid(n):
+    try:
+        return grp.getgrgid(n)
+    except:
+        return "unknown"
+
 DCACHE_QUEUE_THRESHOLD = 200
 
 def wait_for_dcache():
