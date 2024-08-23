@@ -64,7 +64,7 @@ class launcher(object):
         arg_push=[],
         arg_del=[],
     ):
-        self.cfg = configparser.SafeConfigParser()
+        self.cfg = configparser.ConfigParser()
         # for 3.6..
         # self.cfg.comment_prefixes = ("#",)
         # self.cfg.inline_comment_prefixes = ("#",)
@@ -85,7 +85,7 @@ class launcher(object):
             sys.stderr.write("Error: missing required -c configfile option\n")
             sys.exit(1)
         # now pull in the config file with includes
-        self.do_cfg_includes(cfgfilename)
+        self.do_cfg_includes(cfgfilename, overrides)
 
         for s in ('global', 'submit', 'executable'):
             if not self.cfg.has_section(s):
@@ -291,7 +291,7 @@ class launcher(object):
             res = []
         return res
 
-    def do_cfg_includes(self, cffile):
+    def do_cfg_includes(self, cffile, overrides):
         # print "do_cfg_includes:" , cffile
         found = False
         for d in [".", ""] + self.searchpath:
@@ -308,11 +308,29 @@ class launcher(object):
             return
         self.included[cffile] = 1
         self.cfg.read(cffile)
+
+        # expand with globals-so-far with command-line-overrides when extracting include paths
+        globals_so_far =  dict(self.cfg.items("global"), raw=1)
+
+        print("before", repr(globals_so_far))
+        if overrides == None:
+            overrides = []
+        for o in overrides:
+            try:
+                k, v = o.split("=", 1)
+                s, n = k.split(".", 1)
+                if s == "global":
+                   self.cfg.set(s, n, v)
+            except:
+                pass
+        globals_so_far =  dict(self.cfg.items("global"), raw=1)
+        print("after", repr(globals_so_far))
+
         if self.cfg.has_option("global", "includes"):
-            cfls = self.cfg_get("global", "includes", vars=dict(self.cfg.items("global")))
+            cfls = self.cfg_get("global", "includes", vars=globals_so_far)
             for cf in cfls.split(" "):
                 if cf:
-                    self.do_cfg_includes(cf)
+                    self.do_cfg_includes(cf, overrides)
 
     def get_experiment(self):
         if self.cfg.has_option("env_pass", "SAM_EXPERIMENT"):
