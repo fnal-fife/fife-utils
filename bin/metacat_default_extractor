@@ -1,0 +1,116 @@
+#!/bin/bash
+
+#
+# Generic metacat metadata extractor
+#
+
+latest_hash() {
+    spack find --long "$1" os=fe |
+    grep "$1" | 
+    sed -e 's/ .*//' |
+    tail -1
+}
+
+sam_cleanup() {
+  
+  # sam_metadata_converter prints a json dictionary:
+  # =-=-=-=-=-=--=-
+  # {
+  #   "actualfilename": {
+  #     rest of metadata 
+  #   }
+  # }
+  # =-=-=-=-=-=--=-
+  # so we need to first turn that into:
+  # {
+  #   "file_name": "actualfilename", 
+  #   rest of metadata
+  #   }
+  #
+  # =-=-=-=-=-=--=-
+  # to get regular SAM metadata (hence the "sed" command) 
+  # then we feed that to the converter who is going to give us 
+  # (with "mdp_only"):
+  # =-=-=-=-=-=--=-
+  # metadata=' "name": val, "name": val,... '
+  # parents=' [parentage] '
+  # =-=-=-=-=-=--=-
+  # which we eval...
+  eval $(
+      sed -e 's/\(.*\): {$/"name": \1,/' -e 's/^}//' | 
+      $prefix/lib/metadata_converter.py --namespace $namespace --sam_mc --mdp_only
+  )
+  extra="$metadata"
+}
+
+set_things_up() {
+
+    case x$0 in
+    x/*) bindir=$(dirname $0 );;
+    x*)  bindir=$(dirname $PWD/$0 | sed -e 's;/.$;;'  );;
+    esac
+    prefix=$(dirname $bindir)
+
+#  if we don't ahve sam_metadata_dumper
+#    . /cvmfs/larsoft.opensciencegrid.org/spack-packages/setup-env.sh
+#
+#    spack load art-root-io/$(latest_hash art-root-io)
+}
+
+main() {
+    namespace=$GROUP
+    case x$1 in
+    x--namespace) namespace=$2 ; shift; shift;;
+    esac
+
+    set_things_up
+    for f in "$@"
+    do
+        # get size and checksum...
+        fsize=$(stat --format '%s' ${f})
+	chksum=$(xrdadler32 ${f} | sed -e 's/ .*//')
+        extra=""
+       
+        # pick by file naming convention...
+        case "$f" in 
+        *.txt|*.log)     
+            format=txt
+            extra='"data_tier": "sam-user",'
+            ;;
+        *.root)    
+            if sam_metadata_dumper $f > /tmp/md$$ 2>/dev/null
+            then
+                 format=artroot
+                 sam_cleanup < /tmp/md$$
+            else
+                 format=root
+            fi
+            ;;
+        esac
+
+        # make sure extra ends in a comma unless its empty
+        case x${extra}x in
+        xx) ;;
+        x*,x) ;;
+        x*x) extra="${extra}," ;;
+        esac
+
+        # actually write metadata
+        cat > ${f}.json << ________EOF
+            {
+                "name": "$(basename $f)",
+                "namespace": "$namespace",
+                "size": $fsize,
+                "checksums": {"adler32": "$chksum"},
+                "parents": $parents,
+                "metadata": {
+                    ${extra}
+                    "file.format": "$format"
+                }
+            }
+________EOF
+
+    done
+}
+
+main "$@"

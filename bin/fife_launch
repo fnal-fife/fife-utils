@@ -309,7 +309,7 @@ class launcher(object):
         self.included[cffile] = 1
         self.cfg.read(cffile)
         if self.cfg.has_option("global", "includes"):
-            cfls = self.cfg_get("global", "includes")
+            cfls = self.cfg_get("global", "includes", vars=dict(self.cfg.items("global")))
             for cf in cfls.split(" "):
                 if cf:
                     self.do_cfg_includes(cf)

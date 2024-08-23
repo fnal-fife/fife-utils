@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """ routines to convert file metadata between SAM and MetaCat """
 import functools
 import datetime
@@ -63,11 +64,18 @@ def convert_parents_sam_mc( parents):
     """ special case: parentage conversion"""
     res = []
     for i in parents:
-        res.append( {
-            "fid":  str(i["file_id"]),
+
+        if not isinstance(i, dict):
+            i = {"file_name": i,}
+
+        d_out = {
             "name": i["file_name"],
             "namespace": g_experiment,  # XXX possible bug, what namespace?
-        })
+        }
+        if "file_id" in i:
+            d_out["fid"] = str(i["file_id"])
+
+        res.append( d_out )
     return res
 
 def convert_parents_mc_sam( parents, md):
@@ -388,3 +396,38 @@ class MetadataConverter:
             res[ck] = converter(v, md)
         return res
 
+def main():
+    import argparse
+    import json
+    import sys
+    import os
+    parser=argparse.ArgumentParser(prog="metadata_converter", description="convet SAM metadata to MetaCat (or vice versa)")
+    parser.add_argument("--namespace", default="")
+    parser.add_argument("--mdp_only", action="store_true", default=False, help="just metadata and parents subdict without braces")
+    parser.add_argument("--mc_sam", action="store_true", default=False, help="convert from MetaCat to SAM")
+    parser.add_argument("--sam_mc", action="store_false", dest="mc_sam", help="convert from SAM to MetaCat (default)")
+    parser.add_argument("-e","--experiment", default=os.environ.get("GROUP",os.environ.get("EXPERIMENT","unknown")), help="Experiment convention to use")
+    args = parser.parse_args()
+
+    if not args.mc_sam and not args.namespace and not args.mdp_only:
+        parser.error("When migrating SAM to Metact, --namespace is required")
+
+    mc = MetadataConverter(args.experiment)
+
+    if args.namespace:
+        g_experiment = args.namespace
+
+    input = json.load(sys.stdin)   
+    if args.mc_sam:
+        res = mc.convert_all_mc_sam(input)
+    else:
+        res = mc.convert_all_sam_mc(input, args.namespace)
+    if args.mdp_only:
+        print("metadata='", json.dumps(res["metadata"]).strip("{} \n"), "'", sep='')
+        print("parents='", json.dumps(res.get("parents",[])).strip("{} \n"), "'", sep='')
+    else:
+        json.dump(res, sys.stdout)
+
+if __name__ == "__main__":
+    main()
+            
