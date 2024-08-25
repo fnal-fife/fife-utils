@@ -312,7 +312,6 @@ class launcher(object):
         # expand with globals-so-far with command-line-overrides when extracting include paths
         globals_so_far =  dict(self.cfg.items("global"), raw=1)
 
-        print("before", repr(globals_so_far))
         if overrides == None:
             overrides = []
         for o in overrides:
@@ -324,7 +323,6 @@ class launcher(object):
             except:
                 pass
         globals_so_far =  dict(self.cfg.items("global"), raw=1)
-        print("after", repr(globals_so_far))
 
         if self.cfg.has_option("global", "includes"):
             cfls = self.cfg_get("global", "includes", vars=globals_so_far)
