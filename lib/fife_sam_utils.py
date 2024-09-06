@@ -1237,7 +1237,7 @@ def unclone( d, just_say = False, delete_match = '.*', verbose = False, experime
         if just_say:
             if re.match(delete_match, full) or re.match(delete_match, spath):
                 print("I would 'ifdh rm %s'" % sampath(full))
-                print("I would remove location %s for %s" % (dirname(full), file ))
+                print("I would remove location %s for %s" % (dirname(full), filename ))
         else:
             if re.match(delete_match, full) or re.match(delete_match, spath):
                 logging.debug("matches: %s" , delete_match)
