@@ -74,8 +74,6 @@ class launcher(object):
         self.included = {}
         self.fake = fake
         self.poms_dd = os.environ.get("POMS_DATA_DISPATCHER_TASK_ID", None) != None
-        self.use_dd = self.poms_dd if self.poms_dd else self.cfg.has_section('data_dispatcher') 
-        self.use_sam = self.cfg.has_section('sam_consumer') if not self.poms_dd else False
         self.jobname = jobname
         self.searchpath = os.environ.get("FIFE_LAUNCH_PATH", "").split(":")
         self.nfiles_in_dataset = None
@@ -86,6 +84,9 @@ class launcher(object):
             sys.exit(1)
         # now pull in the config file with includes
         self.do_cfg_includes(cfgfilename, overrides)
+
+        self.use_dd = self.poms_dd if self.poms_dd else self.cfg.has_section('data_dispatcher') 
+        self.use_sam = self.cfg.has_section('sam_consumer') if not self.poms_dd else False
 
         for s in ('global', 'submit', 'executable'):
             if not self.cfg.has_section(s):
@@ -603,7 +604,7 @@ class launcher(object):
 
                 else:
                     sys.stderr.write(
-                        "Error in config [submit]: n_jobs_per_file requires dataset\n"
+                        "Error in config [submit]: n_files_per_job requires dataset\n"
                     )
                     sys.exit(1)
 
