@@ -203,9 +203,8 @@ class launcher(object):
         #
         dataset = self.cfg_get("submit", "dataset_definition", vars=self.cfg_globals)
         if not dataset:
-            dataset = self.cfg_get("submit", "dataset")
+            dataset = self.cfg_get("submit", "dataset", vars=self.cfg_globals)
             if dataset:
-                dataset = self.cfg_get("submit", "dataset", vars=self.cfg_globals)
                 self.cfg.set("submit","dataset_definition", dataset)
                 self.cfg.remove_option("submit","dataset")
     
