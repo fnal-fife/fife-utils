@@ -863,10 +863,10 @@ class Wrapper:
             print("# I would exec python again... with --nosetup")
         else:
             # just assume the setup stuff made a different python environment(?)
-            sys.argv = ["python", sys.argv[0], "--nosetup"] + sys.argv[1:]
+            sys.argv = ["python3", sys.argv[0], "--nosetup"] + sys.argv[1:]
             if self.options.debug:
                 sys.stderr.write("\nabout to exec, args: %s\n" % sys.argv)
-            os.execvp("python", sys.argv)
+            os.execvp("python3", sys.argv)
             raise (Exception("Could not restart under new python"))
 
     def run_extracting_environment(self, scriptlist):
@@ -1345,7 +1345,7 @@ exit
                 import ifdh
                 self.ih = ifdh.ifdh()
             except:
-                sys.stderr.write("\ifdh load failed\n")
+                sys.stderr.write("\nifdh load failed\n")
         
         
    
@@ -2189,8 +2189,13 @@ ${run_number[8/2]} gives 00/12/34/56
 
 import string, re, os.path
 from datetime import datetime
-import collections.abc
-class CaseInsensitiveDict(collections.abc.MutableMapping):
+
+try:
+    from collections.abc import MutableMapping, Mapping
+except:
+    from collections import MutableMapping, Mapping
+
+class CaseInsensitiveDict(MutableMapping):
     """ A case insensitve dictionary (for metadata, etc) """
     __slots__ = ["_data"]
 
@@ -2234,7 +2239,7 @@ class CaseInsensitiveDict(collections.abc.MutableMapping):
     def __eq__(self, other):
         if isinstance(other, CaseInsensitiveDict):
             other_data = dict((lk, v) for lk, (k, v) in other._data.iteritems())
-        if isinstance(other, collections.abc.Mapping):
+        if isinstance(other, Mapping):
             other_data = dict((self._get_lkey(k), v) for k, v in other.iteritems())
         else:
             return NotImplemented
