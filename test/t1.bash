@@ -4,10 +4,22 @@
 
 # find ourselves...
 case x$0 in
-x/*) prefix=$(basename $PWD/$0) ;;
-x*)  prefix=$(basename $0) ;;
+x/*) prefix=$(dirname $0) ;;
+x./*) prefix=$(dirname $PWD/$0) ; prefix=$(dirname $prefix);;
+x*)  prefix=$(dirname $PWD/$0) ;;
 esac
-prefix=$(basename $prefix)
+prefix=$(dirname $prefix)
+
+# setup dependencies
+spack load ifdhc@2.7.2  os=fe
+spack load sam-web-client@3.6 os=fe
+# add our path and pythnpath entries
+PATH=$prefix/bin:$PATH
+PYTHONPATH=$prefix/lib:$PYTHONPATH
+
+echo "Prefix: $prefix"
+echo "PATH: $PATH"
+echo "PYTHONPATH: $PYTHONPATH"
 
 #. /cvmfs/fermilab.opensciencegrid.org/packages/common/setup-env.sh
 # setup either installed or locally
@@ -40,7 +52,7 @@ setup_tests() {
    export SAM_EXPERIMENT=samdev
    #export SAM_STATION=samdev-test
    export SAM_STATION=samdev
-   export IFDH_BASE_URI="http://samweb.fnal.gov:8480/sam/samdev/api"
+   export IFDH_BASE_URI="http://samdev.fnal.gov:8480/sam/samdev/api"
    export IFDH_CP_MAXRETRIES=0
 
    exp=hypot

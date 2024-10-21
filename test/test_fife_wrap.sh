@@ -1,6 +1,22 @@
 #!/bin/sh
 
+# find ourselves...
+case x$0 in
+x/*) prefix=$(dirname $0) ;;
+x./*) prefix=$(dirname $PWD/$0) ; prefix=$(dirname $prefix);;
+x*)  prefix=$(dirname $PWD/$0) ;;
+esac
+prefix=$(dirname $prefix)
+
 . unittest.bash
+
+# setup dependencies
+spack load ifdhc@2.7.2  os=fe
+spack load sam-web-client@3.6 os=fe
+# add our path and pythnpath entries
+PATH=$prefix/bin:$PATH
+PYTHONPATH=$prefix/lib:$PYTHONPATH
+
 
 case "x$1" in
 x--python3) export p3=true; shift;;
@@ -29,33 +45,33 @@ test_ucondb_path() {
     export POMS_TASK_ID=9999
     rm -rf $workdir
     mkdir $workdir
-    ../libexec/fife_wrap --debug --find_setups --dry_run --setup fife_utils --limit 1 --multifile --appname demo --appfamily demo --appvers demo  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_to_dataset _poms_task --add_location --dest 'https://dbdata0vm.fnal.gov:9443/mu2e_ucondb_prod/app/data/mwmtest' -- '>bar.root' '<' 
+    ../libexec/fife_wrap --debug --source /cvmfs/fermilab.opensciencegrid.org/packages/common/setup-env.sh --dry_run --spack-load fife-utils@3.7.3 --limit 1 --multifile --appname demo --appfamily demo --appvers demo  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_to_dataset _poms_task --add_location --dest 'https://dbdata0vm.fnal.gov:9443/mu2e_ucondb_prod/app/data/mwmtest' -- '>bar.root' '<' 
 }
 
 test_client_1() {
     export POMS_TASK_ID=9999
     rm -rf $workdir
     mkdir $workdir
-    ../libexec/fife_wrap --debug --find_setups --setup fife_utils --limit 1 --multifile --appname demo --appfamily demo --appvers demo  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_to_dataset _poms_task --add_location --dest $workdir -- '>bar.root' '<' 
+    ../libexec/fife_wrap --debug --source /cvmfs/fermilab.opensciencegrid.org/packages/common/setup-env.sh --spack-load fife-utils@3.7.3 --limit 1 --multifile --appname demo --appfamily demo --appvers demo  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_to_dataset _poms_task --add_location --dest $workdir -- '>bar.root' '<' 
 }
 
 test_client_2() {
     export POMS_TASK_ID=9999
     rm -rf $workdir
     mkdir $workdir
-    ../libexec/fife_wrap --debug --find_setups --setup fife_utils --prescript-unquote 'for%20i%20in%201%202%203%3B%20do%20echo%20%24i%20%3B%20done' --limit 1 --multifile --appname demo --appfamily demo --appvers demo  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_to_dataset _poms_task --add_location --dest $workdir -- '>bar.root' '<' 
+    ../libexec/fife_wrap --debug --source /cvmfs/fermilab.opensciencegrid.org/packages/common/setup-env.sh --spack-load fife-utils@3.7.3 --prescript-unquote 'for%20i%20in%201%202%203%3B%20do%20echo%20%24i%20%3B%20done' --limit 1 --multifile --appname demo --appfamily demo --appvers demo  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_to_dataset _poms_task --add_location --dest $workdir -- '>bar.root' '<' 
 }
 test_client_2a() {
     export POMS_TASK_ID=9999
     rm -rf $workdir
     mkdir $workdir
-    ../libexec/fife_wrap --debug --find_setups --setup fife_utils --prescript-unquote 'for%20i%20in%201%202%203%3B%20do%20echo%20%24i%20%3B%20done' --limit 1 --multifile --appname demo --appfamily demo --appvers demo  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_to_dataset _poms_analysis --add_location --dest $workdir -- '>bar.root' '<' 
+    ../libexec/fife_wrap --debug --source /cvmfs/fermilab.opensciencegrid.org/packages/common/setup-env.sh --spack-load fife-utils@3.7.3 --prescript-unquote 'for%20i%20in%201%202%203%3B%20do%20echo%20%24i%20%3B%20done' --limit 1 --multifile --appname demo --appfamily demo --appvers demo  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_to_dataset _poms_analysis --add_location --dest $workdir -- '>bar.root' '<' 
 }
 test_client_3() {
     export POMS_TASK_ID=9999
     rm -rf $workdir
     mkdir $workdir
-    ../libexec/fife_wrap --debug --find_setups --setup fife_utils --prescript-unquote 'for%20i%20in%201%202%203%3B%20do%20echo%20%24i%20%3B%20done' --limit 1 --multifile --appname demo --appfamily demo --appvers demo  --exe /bin/false --exe_stdout0=bar.root --addoutput bar.root --rename unique --declare_metadata --add_to_dataset _poms_task --add_location --dest $workdir 
+    ../libexec/fife_wrap --debug --source /cvmfs/fermilab.opensciencegrid.org/packages/common/setup-env.sh --spack-load fife-utils@3.7.3 --prescript-unquote 'for%20i%20in%201%202%203%3B%20do%20echo%20%24i%20%3B%20done' --limit 1 --multifile --appname demo --appfamily demo --appvers demo  --exe /bin/false --exe_stdout0=bar.root --addoutput bar.root --rename unique --declare_metadata --add_to_dataset _poms_task --add_location --dest $workdir 
     echo exit status $?
 }
 
@@ -63,20 +79,20 @@ test_client_tmpl() {
     export POMS_TASK_ID=9999
     rm -rf $workdir
     mkdir $workdir
-    ../libexec/fife_wrap --debug --find_setups --setup fife_utils --limit 1 --multifile --appname demo --appfamily demo --appvers demo  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_to_dataset _poms_task --add_location --dest $workdir -- '>bar.root' '<' 
+    ../libexec/fife_wrap --debug --source /cvmfs/fermilab.opensciencegrid.org/packages/common/setup-env.sh --spack-load fife-utils@3.7.3 --limit 1 --multifile --appname demo --appfamily demo --appvers demo  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_to_dataset _poms_task --add_location --dest $workdir -- '>bar.root' '<' 
 }
 test_client_4() {
     export POMS_TASK_ID=9999
     rm -rf $workdir
     mkdir $workdir
-    ../libexec/fife_wrap --debug --find_setups --setup fife_utils --limit 4 --multifile --appname demo --appfamily demo --appvers demo  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_location --add_to_dataset _poms_task --dest $workdir -- '>bar.root' '<' 
+    ../libexec/fife_wrap --debug --source /cvmfs/fermilab.opensciencegrid.org/packages/common/setup-env.sh --spack-load fife-utils@3.7.3 --limit 4 --multifile --appname demo --appfamily demo --appvers demo  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_location --add_to_dataset _poms_task --dest $workdir -- '>bar.root' '<' 
 }
 
 test_pre_post_1() {
     export POMS_TASK_ID=9999
     rm -rf $workdir
     mkdir $workdir
-    ../libexec/fife_wrap --debug --find_setups --setup fife_utils --limit 4 --multifile --appname demo --appfamily demo --appvers demo  --prescript-unquote="echo%20before" --exe cat --postscript-unquote="echo%20after" --  '<' 
+    ../libexec/fife_wrap --debug --source /cvmfs/fermilab.opensciencegrid.org/packages/common/setup-env.sh --spack-load fife-utils@3.7.3 --limit 4 --multifile --appname demo --appfamily demo --appvers demo  --prescript-unquote="echo%20before" --exe cat --postscript-unquote="echo%20after" --  '<' 
 }
 
 
@@ -84,7 +100,7 @@ test_client_excl() {
     export POMS_TASK_ID=9999
     rm -rf $workdir
     mkdir $workdir
-    ../libexec/fife_wrap --debug --find_setups --setup fife_utils --limit 1 --multifile --appname demo --appfamily demo --appvers demo  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_location --add_to_dataset _poms_task --dataset_exclude '*.xyzzy' --dest $workdir -- '>bar.root' '<' 
+    ../libexec/fife_wrap --debug --source /cvmfs/fermilab.opensciencegrid.org/packages/common/setup-env.sh --spack-load fife-utils@3.7.3 --limit 1 --multifile --appname demo --appfamily demo --appvers demo  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_location --add_to_dataset _poms_task --dataset_exclude '*.xyzzy' --dest $workdir -- '>bar.root' '<' 
 }
 
 test_env_meta() {
@@ -92,7 +108,7 @@ test_env_meta() {
    export HYPOTCODE_FAST=1
     rm -rf $workdir
     mkdir $workdir
-   ../libexec/fife_wrap --debug --find_setups --setup hypotcode --setup fife_utils --setup "ifdhc $IFDH_VERSION" --limit 4 --multifile --appname demo --appfamily demo --appvers demo --exe hypot.exe --postscript 'export INTENSITY=12.5' --addoutput foo.txt --rename unique --declare_metadata --add_metadata secondary.intensity=\$INTENSITY --add_location --add_to_dataset _poms_task --dest $workdir -- -o foo.txt -c
+   ../libexec/fife_wrap --debug --source /cvmfs/fermilab.opensciencegrid.org/packages/common/setup-env.sh --spack-load hypotcode@2.1 --spack-load fife-utils@3.7.3 --setup "ifdhc $IFDH_VERSION" --limit 4 --multifile --appname demo --appfamily demo --appvers demo --exe hypot.exe --postscript 'export INTENSITY=12.5' --addoutput foo.txt --rename unique --declare_metadata --add_metadata secondary.intensity=\$INTENSITY --add_location --add_to_dataset _poms_task --dest $workdir -- -o foo.txt -c
 }
 
 test_hash_dir() {
@@ -100,7 +116,7 @@ test_hash_dir() {
     mkdir /tmp/hashdir$$
     rm -rf $workdir
     mkdir $workdir
-    ../libexec/fife_wrap --debug --export-unquote FOO%3d%22%27bar%27_%27baz%27%22 --find_setups --limit 1 --multifile --appname demo --appfamily demo --appvers v1_0  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_location --add_to_dataset _poms_task --dataset_exclude '*.xyzzy' --dest /tmp/hashdir$$ --hash 2 -- '>bar.root' '<' 
+    ../libexec/fife_wrap --debug --export-unquote FOO%3d%22%27bar%27_%27baz%27%22 --source /cvmfs/fermilab.opensciencegrid.org/packages/common/setup-env.sh --limit 1 --multifile --appname demo --appfamily demo --appvers v1_0  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_location --add_to_dataset _poms_task --dataset_exclude '*.xyzzy' --dest /tmp/hashdir$$ --hash 2 -- '>bar.root' '<' 
   res=$?
   ls -lR /tmp/hashdir$$
   return $res
@@ -110,7 +126,7 @@ test_hash_dir_sha() {
     export POMS_TASK_ID=9999
     rm -rf $workdir
     mkdir $workdir
-    ../libexec/fife_wrap --debug --export-unquote FOO%3d%22%27bar%27_%27baz%27%22 --find_setups --setup fife_utils --limit 1 --multifile --appname demo --appfamily demo --appvers v1_0  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_location --add_to_dataset _poms_task --dataset_exclude '*.xyzzy' --dest $workdir --hash 2 --hash_alg sha256 -- '>bar.root' '<' 
+    ../libexec/fife_wrap --debug --export-unquote FOO%3d%22%27bar%27_%27baz%27%22 --source /cvmfs/fermilab.opensciencegrid.org/packages/common/setup-env.sh --spack-load fife-utils@3.7.3 --limit 1 --multifile --appname demo --appfamily demo --appvers v1_0  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_location --add_to_dataset _poms_task --dataset_exclude '*.xyzzy' --dest $workdir --hash 2 --hash_alg sha256 -- '>bar.root' '<' 
 }
 
 test_parallel() {
@@ -154,7 +170,7 @@ test_quot_env() {
     export POMS_TASK_ID=9999
     rm -rf $workdir
     mkdir $workdir
-    ../libexec/fife_wrap --debug --export-unquote FOO%3d%60bar%60_%60baz%60 --find_setups --setup fife_utils --limit 4 --multifile --appname demo --appfamily demo --appvers v1_0  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_location --add_to_dataset _poms_task --dataset_exclude '*.xyzzy' --dest $workdir --hash 2 -- '>bar.root' '<'  | tee tqe.out
+    ../libexec/fife_wrap --debug --export-unquote FOO%3d%60bar%60_%60baz%60 --source /cvmfs/fermilab.opensciencegrid.org/packages/common/setup-env.sh --spack-load fife-utils@3.7.3 --limit 4 --multifile --appname demo --appfamily demo --appvers v1_0  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_location --add_to_dataset _poms_task --dataset_exclude '*.xyzzy' --dest $workdir --hash 2 -- '>bar.root' '<'  | tee tqe.out
 }
 
 if $p3
