@@ -9,19 +9,19 @@ x*)  prefix=$(basename $0) ;;
 esac
 prefix=$(basename $prefix)
 
-. /cvmfs/fermilab.opensciencegrid.org/packages/common/setup-env.sh
+#. /cvmfs/fermilab.opensciencegrid.org/packages/common/setup-env.sh
 # setup either installed or locally
-case x$1 in
-x--installed) 
-    spack load fife-utils @3.7.2 os=fe 
-    ;;
-x*)
-    # setup our dependencies
-    spack load --first --only dependencies fife-utils @3.7.2 os=fe 
-    export PATH=$prefix/bin:$PATH
-    export PYTHONPATH=$prefix/lib:$PYTHONPATH
-    ;;
-esac
+#case x$1 in
+#x--installed) 
+#    spack load fife-utils @3.7.2 os=fe 
+#    ;;
+#x*)
+#    # setup our dependencies
+#    spack load --first --only dependencies fife-utils @3.7.2 os=fe 
+#    export PATH=$prefix/bin:$PATH
+#    export PYTHONPATH=$prefix/lib:$PYTHONPATH
+#    ;;
+#esac
 
 count_report_files() {
     echo

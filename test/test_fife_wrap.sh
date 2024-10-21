@@ -9,25 +9,14 @@ esac
 
 setup_proj() {
     #echo "setup_proj: starting" >&3
-    export EXPERIMENT=samdev
+    #export EXPERIMENT=samdev
     export SAM_PROJECT=mwm_`date +%Y%m%d%H%M%S`_$$
     export IFDH_CP_MAXRETRIES=0    
     sleep 2
     cpurl=`ifdh startProject $SAM_PROJECT  samdev gen_cfg  mengel samdev `
     outdir=/tmp/out$$
-    #echo "setup_proj: started $SAM_PROJECT url $cpurl" >&3
-    exp=hypot
-
-    # pick an experiment pnfs area from whats available
-    #for e in dune nova uboone minerva
-    #do
-    #    if [ -d /pnfs/$e ]
-    #    then
-    #        exp=$e
-    #        break
-    #    fi
-    #done
- 
+    echo "setup_proj: started $SAM_PROJECT url $cpurl" >&3
+    exp=$EXPERIMENT
     workdir=/pnfs/${exp}/scratch/users/$USER/fife_utils_test/work.$$
 }
 
@@ -196,8 +185,8 @@ printf "python: "
 which python
 ups active
 
-#testsuite fife_wrap_tests -s setup_proj -t end_proj test_env_meta
+testsuite fife_wrap_tests -s setup_proj -t end_proj test_env_meta
 
-testsuite fife_wrap_tests -s setup_proj -t end_proj test_parallel_hashdir_lots test_parallel test_pre_post_1 test_env_meta test_client_tmpl test_client_1 test_client_2 test_client_2a test_client_3 test_client_4 test_client_excl test_hash_dir test_hash_dir_sha test_quot_env test_multi_format_path test_ucondb_path
+#testsuite fife_wrap_tests -s setup_proj -t end_proj test_parallel_hashdir_lots test_parallel test_pre_post_1 test_env_meta test_client_tmpl test_client_1 test_client_2 test_client_2a test_client_3 test_client_4 test_client_excl test_hash_dir test_hash_dir_sha test_quot_env test_multi_format_path test_ucondb_path
 
 fife_wrap_tests "$@"

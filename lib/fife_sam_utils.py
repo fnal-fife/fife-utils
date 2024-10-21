@@ -20,11 +20,30 @@ import logging
 import ast
 import requests
 
-from data_dispatcher.api import DataDispatcherClient
-from metacat.webapi import MetaCatClient
-import metacat.common.exceptions
-from rucio.client.replicaclient import ReplicaClient
+try:
+    from data_dispatcher.api import DataDispatcherClient
+except:
+    class DataDispatcherClient:
+        def __init__(self):
+            raise NotImploementedError("need data_dispatcher dependency for this functionality")
 
+try:
+    from metacat.webapi import MetaCatClient
+    import metacat.common.exceptions
+except:
+    class MetaCatClient:
+        def __init__(self):
+            raise NotImploementedError("need metacat dependency for this functionality")
+    
+
+try:
+    from rucio.client.replicaclient import ReplicaClient
+except:
+    class ReplcaClient:
+        def __init__(self):
+            raise NotImploementedError("need rucio dependency for this functionality")
+    
+    
 
 import ifdh
 from samweb_client import *
