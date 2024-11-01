@@ -1,0 +1,31 @@
+#!/usr/bin/env python3
+import datetime, json, sys
+import rucio.client.didclient, metacat.webapi
+
+def checker(query = None):
+    """ make sure files matching metacat query 
+        (default: added in last 31 days)
+        are present in Rucio otherwise ??? retire?  """
+      
+    mc = metacat.webapi.MetaCatClient()
+    rc = rucio.client.didclient.DIDClient()
+    if not query:
+       #delta = datetime.timedelta(days=31) 
+       delta = datetime.timedelta(days=10) 
+       ds = (datetime.datetime.now() - delta).isoformat()  
+       query = f"files where updated_timestamp > '{ds}'"
+       print(f"defaulting to query: {query}")
+
+    qr = list(mc.query(query))
+    dids = [ {'scope': x['namespace'], 'name': x['name']} for x in qr ]
+    dids = [ {'scope': 'nosuch', 'name': 'nosuch'} ] + dids
+    r2 = rc.bulk_list_files(dids)
+
+    requested = set([ f"{x['scope']}:{x['name']}" for x in dids])
+    got = set([ f"{x['scope']}:{x['name']}" for x in r2])
+
+    print(f"\nrequested: {len(requested)} \ngot: {len(got)} \nmissing: { requested - got }")
+    
+
+if __name__ == '__main__':
+    checker(" ".join(sys.argv[1:]))
