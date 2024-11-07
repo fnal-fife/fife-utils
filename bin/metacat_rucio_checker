@@ -10,21 +10,26 @@ def checker(query = None):
     mc = metacat.webapi.MetaCatClient()
     rc = rucio.client.didclient.DIDClient()
     if not query:
-       #delta = datetime.timedelta(days=31) 
-       delta = datetime.timedelta(days=10) 
+       delta = datetime.timedelta(days=31) 
        ds = (datetime.datetime.now() - delta).isoformat()  
        query = f"files where updated_timestamp > '{ds}'"
        print(f"defaulting to query: {query}")
 
-    qr = list(mc.query(query))
-    dids = [ {'scope': x['namespace'], 'name': x['name']} for x in qr ]
-    dids = [ {'scope': 'nosuch', 'name': 'nosuch'} ] + dids
-    r2 = rc.bulk_list_files(dids)
+    fqr = list(mc.query(query))
+    missing = set()
+    while fqr:
+        qr = fqr[:500]
+        fqr = fqr[500:]
+        dids = [ {'scope': x['namespace'], 'name': x['name']} for x in qr ]
+        # add a bogus one to test difference check, below...
+        # dids = [ {'scope': 'nosuch', 'name': 'nosuch'} ] + dids
+        r2 = rc.bulk_list_files(dids)
 
-    requested = set([ f"{x['scope']}:{x['name']}" for x in dids])
-    got = set([ f"{x['scope']}:{x['name']}" for x in r2])
+        requested = set([ f"{x['scope']}:{x['name']}" for x in dids])
+        got = set([ f"{x['scope']}:{x['name']}" for x in r2])
+        missing = missing + (requested - got)
 
-    print(f"\nrequested: {len(requested)} \ngot: {len(got)} \nmissing: { requested - got }")
+    print(f"missing:\n " + "\n".join(missing))
     
 
 if __name__ == '__main__':
