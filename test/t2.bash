@@ -19,7 +19,7 @@ setup_tests() {
    export SAM_EXPERIMENT=samdev
    #export SAM_STATION=samdev-test
    export SAM_STATION=samdev
-   export IFDH_BASE_URI="http://samweb.fnal.gov:8480/sam/samdev/api"
+   export IFDH_BASE_URI="https://samdev.fnal.gov:8483/sam/samdev/api"
    export IFDH_CP_MAXRETRIES=0
 
    # pick an experiment pnfs area from whats available
