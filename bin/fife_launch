@@ -807,10 +807,16 @@ class launcher(object):
                 if not self.cfg.has_section(sname):
                     continue
 
-                res.append(
-                    "  --exe  %s \\"
-                    % self.cfg_get(sname, "name", vars=self.cfg_globals)
-                )
+                if self.cfg_get(sname, "apptainer", None):
+                    res.append(
+                        "  --exe  apptainer \\"
+                    )
+                else: 
+                    res.append(
+                        "  --exe  %s \\"
+                        % self.cfg_get(sname, "name", vars=self.cfg_globals)
+                    )
+
                 if self.cfg_get(sname, "exe_stdout", vars=self.cfg_globals):
                     res.append(
                         "  --exe_stdout%d %s \\"
@@ -833,6 +839,17 @@ class launcher(object):
                     continue
 
                 res.append(" -- \\")  # end options to wrapper
+
+                if self.cfg_get(sname, "apptainer", None):
+                    croot = "/cvmfs/singularity.opensciencegrid.org/fermilab/"
+                    container = self.cfg_get(sname, "apptainer", vars=self.cfg_globals)
+                    # let folks specify just the container filename
+                    if not container.startswith("/"):
+                        container = croot + container
+
+                    exe = self.cfg_get(sname, "name", vars=self.cfg_globals)
+
+                    res.append( "exec --bind /cvmfs %s %s \\" % ( container, exe ))
 
                 for k, v1 in self.cfg_items(sname, raw=1):
                     v = self.cfg_get(sname, k, vars=self.cfg_globals)
