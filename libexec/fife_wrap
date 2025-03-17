@@ -1326,11 +1326,13 @@ exit
         if len(l):
             p = l[0][:-1]
             sys.path.append(p)
+            os.environ["PATH"] = "%s/bin:%s" % (p, os.environ["PATH"])
             if self.options.debug:
                 sys.stderr.write("\nadding ifdh dir %s to sys.path\n" % p)
             p = l[1][:-1]
             if not "IFDHC_CONFIG_DIR" in os.environ:
                 os.environ["IFDHC_CONFIG_DIR"] = p
+                os.environ["PATH"] = "%s/bin:%s" % (p, os.environ["PATH"])
                 if self.options.debug:
                     sys.stderr.write("\nsetting IFDHC_CONFIG_DIR=%s\n" % p)
         pf.close()
