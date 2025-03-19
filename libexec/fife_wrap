@@ -823,8 +823,19 @@ class Wrapper:
                 scriptlist.append("source %s" % urllib_unquote(s))
         if self.options.setup:
             for s in self.options.setup:
+                pkg = s.strip()
+                if pkg.find(" ") > 0:
+                    pkg=pkg[:pkg.find(" ")]
+
+                scriptlist.append("unsetup %s 2>/dev/null || true" % pkg)
                 scriptlist.append("setup %s" % s)
         if self.options.setup_unquote:
+                pkg = urllib_unquote(s).strip()
+                if pkg.find(" ") > 0:
+                    pkg=pkg[:pkg.find(" ")]
+
+                scriptlist.append("unsetup %s 2>/dev/null || true" % pkg)
+                scriptlist.append("setup %s" % urllib_unquote(s))
             for s in self.options.setup_unquote:
                 scriptlist.append("setup %s" % urllib_unquote(s))
         if self.options.spack_load:
