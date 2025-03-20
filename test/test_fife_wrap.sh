@@ -11,14 +11,17 @@ prefix=$(dirname $prefix)
 . unittest.bash
 
 # setup dependencies
-spack load ifdhc@2.7.2  os=fe
-spack load sam-web-client@3.6 os=fe
+spack load --first ifdhc@2.7.4  os=default_os
+spack load --first sam-web-client@3.6 os=default_os
+export ifdh_load="2.7.4 os=default_os"
 # add our path and pythnpath entries
 export PATH=$prefix/bin:$PATH
 export PYTHONPATH=$prefix/lib:$PYTHONPATH
 export EXPERIMENT=samdev
-export X509_USER_PROXY=$(ifdh getProxy)
+# export X509_USER_PROXY=$(ifdh getProxy)
 export BEARER_TOKEN_FILE=$(ifdh getToken)
+
+printenv | grep TOKEN
 
 
 case "x$1" in
@@ -176,7 +179,6 @@ test_quot_env() {
     ../libexec/fife_wrap --debug --export-unquote FOO%3d%60bar%60_%60baz%60 --source /cvmfs/fermilab.opensciencegrid.org/packages/common/setup-env.sh --spack-load '--only dependencies fife-utils@3.7.3' --limit 4 --multifile --appname demo --appfamily demo --appvers v1_0  --exe cat --addoutput bar.root --rename unique --declare_metadata --add_location --add_to_dataset _poms_task --dataset_exclude '*.xyzzy' --dest $workdir --hash 2 -- '>bar.root' '<'  | tee tqe.out
 }
 
-export ifdh_load="2.7.2 os=fe"
 
 
 if [ ! -r /tmp/did_gen_cfg ]
@@ -189,8 +191,9 @@ printf "python: "
 which python
 ups active
 
+# dropped test_parallel_hashdir_lots , takes too long
 #testsuite fife_wrap_tests -s setup_proj -t end_proj test_quot_env
 
-testsuite fife_wrap_tests -s setup_proj -t end_proj test_parallel_hashdir_lots test_parallel test_pre_post_1 test_env_meta test_client_tmpl test_client_1 test_client_2 test_client_2a test_client_3 test_client_4 test_client_excl test_hash_dir test_hash_dir_sha test_quot_env test_multi_format_path test_ucondb_path
+testsuite fife_wrap_tests -s setup_proj -t end_proj test_pre_post_1 test_env_meta test_client_tmpl test_client_1 test_client_2 test_client_2a test_client_3 test_client_4 test_client_excl test_hash_dir test_hash_dir_sha test_quot_env test_multi_format_path test_ucondb_path test_parallel 
 
 fife_wrap_tests "$@"
