@@ -99,11 +99,6 @@ class DDInterface:
     self.dd_client = DataDispatcherClient()
     
   def Login(self, username):
-    # poms goes first
-    if os.environ.get("POMS_DATA_DISPATCHER_TASK_ID"):
-        self.dd_client.login_x509(username, os.environ['X509_USER_PROXY'])
-        self.mc_client.login_x509(username, os.environ['X509_USER_PROXY'])
-        return
     
     bt = ""
     btf = os.environ.get("BEARER_TOKEN_FILE", 
@@ -876,6 +871,16 @@ class Wrapper:
         scriptlist.append("      curhash=$(spack -e $ienv find --format '{hash}' ifdhc)")
         scriptlist.append("      spack load ifdhc/$curhash")
         scriptlist.append("   fi")
+
+        if self.options.data_dispatcher:
+            # if we're doing data_dispatcher, and it isn't set up, find that , too
+            scriptlist.append("   if echo $PYTHONPATH | grep -q data-dispatcher; then")
+            scriptlist.append("      :")
+            scriptlist.append("   else")
+            scriptlist.append("      lhash=$(spack find  --format '{hash}' data-dispatcher os=default_os | tail -1)")
+            scriptlist.append("      spack load /$lhash")
+            scriptlist.append("   fi")
+     
         scriptlist.append("else")
         # ... Otherwise we try to get UPS...
         scriptlist.append(
@@ -887,6 +892,12 @@ class Wrapper:
             '[ -z "$PRODUCTS" -a -r /grid/fermiapp/products/common/etc/setups.sh ] && source /grid/fermiapp/products/common/etc/setups.sh'
         )
         scriptlist.append('[ -z "$IFDHC_CONFIG_DIR" ] && source `UPS_OVERRIDE= ups setup ifdhc $IFDH_VERSION`')
+        if self.options.data_dispatcher:
+            scriptlist.append("   if echo $PYTHONPATH | grep -q data-dispatcher; then")
+            scriptlist.append("      :")
+            scriptlist.append("   else")
+            scriptlist.append("      UPS_OVERRIDE="" setup data_dispatcher")
+            scriptlist.append("   fi")
         scriptlist.append("fi")
         if self.options.dry_run:
             print("# setup commands:")
