@@ -1366,7 +1366,7 @@ exit
             # already did this..
             return
         pf = os.popen(
-            "for f in /cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups /grid/fermiapp/products/common/etc/setups; do if [ -r $f ] ; then source $f; fi; done; source `ups setup ifdhc $IFDH_VERSION`; source `ups setup ifdhc_config $IFDH_VERSION`||true; echo $IFDHC_DIR/lib/python; echo $IFDHC_CONFIG_DIR"
+            "for f in /cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups /grid/fermiapp/products/common/etc/setups; do if [ -r $f ] ; then source $f; fi; done; source `UPS_OVERRIDE= ups setup ifdhc $IFDH_VERSION`; source `UPS_OVERRIDE= ups setup ifdhc_config $IFDH_VERSION`||true; echo $IFDHC_DIR/lib/python; echo $IFDHC_CONFIG_DIR"
         )
         l = pf.readlines()
         if len(l):
