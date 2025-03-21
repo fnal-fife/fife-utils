@@ -863,7 +863,7 @@ class Wrapper:
         scriptlist.append(
             '[ -z "$PRODUCTS" -a -r /grid/fermiapp/products/common/etc/setups.sh ] && source /grid/fermiapp/products/common/etc/setups.sh'
         )
-        scriptlist.append('[ -z "$IFDHC_DIR" ] && source `ups setup ifdhc`')
+        scriptlist.append('[ -z "$IFDHC_DIR" ] && source `UPS_OVERRIDE= ups setup ifdhc $IFDH_VERSION`')
         if self.options.dry_run:
             print("# setup commands:")
         self.run_extracting_environment(scriptlist)
