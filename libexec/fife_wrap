@@ -853,52 +853,6 @@ class Wrapper:
             )
             scriptlist.append("echo; ups active; echo; echo")
 
-        #
-        # Now emergency fail-back... Hopefully the setup stuff above
-        # got us some sort of package management with ifdhc, but just
-        # in case...
-        #
-        # if we have neither Spack nor UPS, setup fermilab/common Spack...
-        scriptlist.append('if [ -n "$SPACK_ROOT" -a -n "$PRODUCTS" ]; then')
-        scriptlist.append('. /cvmfs/fermilab.opensciencegrid.org/packages/common/setup-env.sh')
-        scriptlist.append("fi")
-        # If we have spack, but not ifdh, get that...
-        scriptlist.append('if [ -n "$SPACK_ROOT" -a -r "$SPACK_ROOT" ]; then')
-        scriptlist.append('   if [ -z "$IFDHC_CONFIG_DIR" ]; then')
-        #                        # we have Spack but no ifdhc...
-        scriptlist.append("      oss=$(spack arch --operating-system)")
-        scriptlist.append('      ienv="ifdh_env_${oss}_${IFDH_VERSION:-current}"')
-        scriptlist.append("      curhash=$(spack -e $ienv find --format '{hash}' ifdhc)")
-        scriptlist.append("      spack load ifdhc/$curhash")
-        scriptlist.append("   fi")
-
-        if self.options.data_dispatcher:
-            # if we're doing data_dispatcher, and it isn't set up, find that , too
-            scriptlist.append("   if echo $PYTHONPATH | grep -q data-dispatcher; then")
-            scriptlist.append("      :")
-            scriptlist.append("   else")
-            scriptlist.append("      lhash=$(spack find  --format '{hash}' data-dispatcher os=default_os | tail -1)")
-            scriptlist.append("      spack load /$lhash")
-            scriptlist.append("   fi")
-     
-        scriptlist.append("else")
-        # ... Otherwise we try to get UPS...
-        scriptlist.append(
-            '[ -z "$PRODUCTS" -a -r /cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups.sh ] && source /cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups.sh'
-        )
-        # this is mainly for corner case systems that have /grid/fermiapp
-        # mounted but not cvmfs.  Not sure if there are any left...
-        scriptlist.append(
-            '[ -z "$PRODUCTS" -a -r /grid/fermiapp/products/common/etc/setups.sh ] && source /grid/fermiapp/products/common/etc/setups.sh'
-        )
-        scriptlist.append('[ -z "$IFDHC_CONFIG_DIR" ] && source `UPS_OVERRIDE= ups setup ifdhc $IFDH_VERSION`')
-        if self.options.data_dispatcher:
-            scriptlist.append("   if echo $PYTHONPATH | grep -q data-dispatcher; then")
-            scriptlist.append("      :")
-            scriptlist.append("   else")
-            scriptlist.append("      UPS_OVERRIDE="" setup data_dispatcher")
-            scriptlist.append("   fi")
-        scriptlist.append("fi")
         if self.options.dry_run:
             print("# setup commands:")
         self.run_extracting_environment(scriptlist)
