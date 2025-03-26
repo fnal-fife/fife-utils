@@ -41,7 +41,8 @@ testsuite() {
                n_tests=\$(( n_tests + 1 ))
 	       if [ x\$verbose = "x-v" -o x\$verbose = "x-vv" ]
                then
-	           printf '%s \t...' \$_t
+                   
+	           printf \$(date -u -Iseconds)' %s \t...' \$_t
                fi
 	       \$${suitename}_test_setup > ${TMPDIR:-/tmp}/setup_out\$n_tests 2>&1
 	       if \$_t > ${TMPDIR:-/tmp}/test_case_out_\$\$ 2>&1

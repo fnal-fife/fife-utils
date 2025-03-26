@@ -542,11 +542,6 @@ def main():
         help="execute a child program in a new process to extract metadata only sam_metadata_dumper currently supported",
     )
     p.add_option(
-        "-c",
-        "--cert",
-        help="x509 certificate for authentication. If not specified, use $X509_USER_PROXY, $X509_USER_CERT/$X509_USER_KEY or standard grid proxy location",
-    )
-    p.add_option(
         "--no-rename",
         action="store_true",
         default=False,
@@ -586,7 +581,7 @@ def main():
         os.environ["EXPERIMENT"] = o.experiment
         os.environ["SAM_EXPERIMENT"] = o.experiment
         os.environ["IFDH_BASE_URI"] = (
-            "http://sam%s.fnal.gov:8480/sam/%s/api" % 
+            "https://sam%s.fnal.gov:8483/sam/%s/api" % 
                (o.experiment, o.experiment)
         ).replace("samsamdev","samdev")
         experiment = o.experiment
@@ -599,10 +594,8 @@ def main():
     if o.user:
         user = o.user
 
-    cert = get_standard_certificate_path(o)
-    os.environ["X509_USER_PROXY"] = cert
 
-    samweb = samweb_client.SAMWebClient(experiment=experiment, cert=cert)
+    samweb = samweb_client.SAMWebClient(experiment=experiment)
 
     jsonFile = o.metadata
 

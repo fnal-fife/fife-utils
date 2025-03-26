@@ -221,7 +221,7 @@ if __name__ == "__main__":
         os.environ["EXPERIMENT"] = o.experiment
         os.environ["SAM_EXPERIMENT"] = o.experiment
         os.environ["IFDH_BASE_URI"] = (
-            "http://sam%s.fnal.gov:8480/sam/%s/api" % 
+            "https://sam%s.fnal.gov:8483/sam/%s/api" % 
                (o.experiment, o.experiment)
         ).replace("samsamdev","samdev")
     else:
@@ -230,8 +230,6 @@ if __name__ == "__main__":
         )
         sys.exit(1)
 
-    cert = get_standard_certificate_path(o)
-    os.environ["X509_USER_PROXY"] = cert
 
     if o.experiment == "samdev":
         edir = "fermilab"

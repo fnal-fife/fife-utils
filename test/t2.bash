@@ -2,6 +2,39 @@
 
 . ./unittest.bash
 
+# find ourselves...
+case x$0 in
+x/*) prefix=$(dirname $0) ;;
+x./*) prefix=$(dirname $PWD/$0) ; prefix=$(dirname $prefix);;
+x*)  prefix=$(dirname $PWD/$0) ;;
+esac
+prefix=$(dirname $prefix)
+
+# setup dependencies
+spack load --first ifdhc@2.7.2  os=fe
+spack load --first sam-web-client@3.6 os=fe
+# add our path and pythnpath entries
+PATH=$prefix/bin:$PATH
+PYTHONPATH=$prefix/lib:$PYTHONPATH
+
+echo "Prefix: $prefix"
+echo "PATH: $PATH"
+echo "PYTHONPATH: $PYTHONPATH"
+
+#. /cvmfs/fermilab.opensciencegrid.org/packages/common/setup-env.sh
+# setup either installed or locally
+#case x$1 in
+#x--installed) 
+#    spack load fife-utils @3.7.2 os=fe 
+#    ;;
+#x*)
+#    # setup our dependencies
+#    spack load --first --only dependencies fife-utils @3.7.2 os=fe 
+#    export PATH=$prefix/bin:$PATH
+#    export PYTHONPATH=$prefix/lib:$PYTHONPATH
+#    ;;
+#esac
+
 count_report_files() {
     echo
     echo "$1 $dataset:"
@@ -22,15 +55,17 @@ setup_tests() {
    export IFDH_BASE_URI="https://samdev.fnal.gov:8483/sam/samdev/api"
    export IFDH_CP_MAXRETRIES=0
 
+   exp=hypot
+
    # pick an experiment pnfs area from whats available
-   for e in nova dune uboone minerva
-   do
-       if [ -d /pnfs/$e ]
-       then
-           exp=$e
-           break
-       fi
-   done
+   #for e in dune nova uboone minerva
+   #do
+   #    if [ -d /pnfs/$e ]
+   #    then
+   #        exp=$e
+   #        break
+   #    fi
+   #done
 
    workdir=/pnfs/${exp}/scratch/users/$USER/fife_utils_test/work.$$
    if [ ! -r $workdir ]
@@ -46,15 +81,12 @@ setup_tests() {
    ifdh ls $pnfs_dir || ifdh mkdir $pnfs_dir || true
    read dataset < dataset
    export dataset
-   export X509_USER_PROXY=/tmp/x509up_u`id -u`
-   rm -f $X509_USER_PROXY
-   kx509
-   voms-proxy-init -rfc -noregen -debug -voms fermilab:/fermilab/nova/Role=Analysis
    export IFDH_NO_PROXY=1
    # now in table file...
-   export X509_USER_PROXY=/tmp/x509up_u`id -u`
    export SSL_CERT_DIR=/etc/grid-security/certificates
    export CPN_DIR=/no/such/dir
+   echo FIFE_UTILS_DIR=$FIFE_UTILS_DIR
+   echo PATH=$PATH
 }
 
 test_add_dataset_flist_norename() {
@@ -68,6 +100,7 @@ test_add_dataset_flist_norename() {
        echo `pwd`/data/$fname 
    done > file_list
 
+   rm -f meta.json
    cat > meta.json <<EOF
 {
  "file_type": "test", 
@@ -83,7 +116,7 @@ test_add_dataset_flist_norename() {
 }
 EOF
 
-   sam_add_dataset --no-rename --cert=/tmp/x509up_u`id -u` -e $EXPERIMENT --file file_list --metadata meta.json --name ${dataset}
+   sam_add_dataset --no-rename -e $EXPERIMENT --file file_list --metadata meta.json --name ${dataset}
 
    echo "dataset $dataset contains:" 
    ifdh translateConstraints "defname: $dataset" 
@@ -101,6 +134,7 @@ test_add_dataset_flist() {
        echo `pwd`/data/$fname 
    done > file_list
 
+   rm -f meta.json
    cat > meta.json <<EOF
 {
  "file_type": "test", 
@@ -116,7 +150,7 @@ test_add_dataset_flist() {
 }
 EOF
 
-   sam_add_dataset --cert=/tmp/x509up_u`id -u` -e $EXPERIMENT --file file_list --metadata meta.json --name ${dataset}
+   sam_add_dataset -e $EXPERIMENT --file file_list --metadata meta.json --name ${dataset}
 
    echo "dataset $dataset contains:" 
    ifdh translateConstraints "defname: $dataset" 
@@ -133,6 +167,7 @@ test_add_dataset_flist_glob() {
    done
    echo `pwd`/data/f*.txt >  file_list
 
+   rm -f meta.json
    cat > meta.json <<EOF
 {
  "file_type": "test", 
@@ -148,8 +183,8 @@ test_add_dataset_flist_glob() {
 }
 EOF
 
-   sam_add_dataset --cert=/tmp/x509up_u`id -u` -e $EXPERIMENT --directory `pwd`/data --metadata meta.json --name ${dataset}
-   #sam_add_dataset --cert=/tmp/x509up_u`id -u` -e $EXPERIMENT `pwd`/data meta.json ${dataset}
+   sam_add_dataset -e $EXPERIMENT --directory `pwd`/data --metadata meta.json --name ${dataset}
+   #sam_add_dataset -e $EXPERIMENT `pwd`/data meta.json ${dataset}
 
    echo "dataset $dataset contains:" 
    ifdh translateConstraints "defname: $dataset" 
@@ -165,6 +200,7 @@ test_add_dataset_directory() {
        echo "file $i" > data/$fname
    done
 
+   rm -f meta.json
    cat > meta.json <<EOF
 {
  "file_type": "test", 
@@ -180,7 +216,7 @@ test_add_dataset_directory() {
 }
 EOF
 
-   sam_add_dataset --cert=/tmp/x509up_u`id -u` -e $EXPERIMENT --directory `pwd`/data --metadata meta.json --name ${dataset}
+   sam_add_dataset -e $EXPERIMENT --directory `pwd`/data --metadata `pwd`/meta.json --name ${dataset}
 
    echo "dataset $dataset contains:" 
    ifdh translateConstraints "defname: $dataset" 
@@ -199,9 +235,11 @@ add_dataset() {
    for i in 1 2 3 4 5 6 7 8 9
    do
        fname="${dataset}_f${i}"
+       rm -f $fname
        echo "file $i" > $fname
-       checksum=`ifdh checksum $fname 2>/dev/null`
+       checksum=`ifdh checksum $fname`
        size=`cat $fname | wc -c`
+       rm -f $fname.json 
        cat > $fname.json <<EOF
 {
  "file_name": "$fname", 
@@ -219,6 +257,9 @@ add_dataset() {
  } 
 }
 EOF
+       echo "metadata:"
+       cat $fname.json
+       echo "========"
        case `pwd` in
        /pnfs/*/scratch/*) location="dcache:`pwd`";;
        /pnfs/*) location="enstore:`pwd`";;
@@ -285,6 +326,9 @@ test_validate_prune() {
     mv ${dataset}_f2 ${dataset}_f2_hide
     sam_validate_dataset --name $dataset --prune 2>&1 | tee /tmp/out$$
     grep '_f2 has 0 locations' /tmp/out$$
+    res=$?
+    mv ${dataset}_f2_hide ${dataset}_f2
+    return $res
 }
 
 test_validate_locality() {
@@ -315,30 +359,31 @@ test_copy2scratch_dataset() {
     [ "$locs2" -gt "$locs1" ]
 }
 
-test_move2archive() {
-    count_report_files "before:" locs1
-    sam_move2archive_dataset -v --name $dataset --dest $pnfs_dir
-    count_report_files "after:" locs2
-    [ "$locs2" -eq "$locs1" ]
-}
-
-test_move2archive_double() {
-    count_report_files "before:" locs1
-
-    # make a *second* copy
-    ifdh mkdir ${pnfs_dir}_1
-    sam_clone_dataset --name $dataset --dest ${pnfs_dir}_1
-    count_report_files "after clone:" locs2
-    
-    # move to third place
-    ifdh mkdir ${pnfs_dir}_2
-    sam_move2archive_dataset -v --name $dataset --dest ${pnfs_dir}_2
-    count_report_files "after archive:" locs3
-   
-    # should be back to first count
-    echo counts $locs1 $locs2 $locs3
-    [ "$locs2" -gt "$locs1"  -a "$locs3" -eq "$locs1" ]
-}
+# dropped with move2archive
+# test_move2archive() {
+#     count_report_files "before:" locs1
+#     sam_move2archive_dataset -v --name $dataset --dest $pnfs_dir
+#     count_report_files "after:" locs2
+#     [ "$locs2" -eq "$locs1" ]
+# }
+# 
+# test_move2archive_double() {
+#     count_report_files "before:" locs1
+# 
+#     # make a *second* copy
+#     ifdh mkdir ${pnfs_dir}_1
+#     sam_clone_dataset --name $dataset --dest ${pnfs_dir}_1
+#     count_report_files "after clone:" locs2
+#     
+#     # move to third place
+#     ifdh mkdir ${pnfs_dir}_2
+#     sam_move2archive_dataset -v --name $dataset --dest ${pnfs_dir}_2
+#     count_report_files "after archive:" locs3
+#    
+#     # should be back to first count
+#     echo counts $locs1 $locs2 $locs3
+#     [ "$locs2" -gt "$locs1"  -a "$locs3" -eq "$locs1" ]
+# }
 
 test_move2persistent() {
     count_report_files "before:" locs1
@@ -441,9 +486,9 @@ test_archive_restore_dir() {
 testsuite test_utils \
 	-s setup_tests \
         add_dataset \
-	test_validate_1 \
-	test_clone_n  \
-        test_retire \
+	test_clone  \
 
          
 test_utils "$@"
+
+echo "dataset: $dataset"

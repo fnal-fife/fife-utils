@@ -458,7 +458,7 @@ if __name__ == "__main__":
         os.environ["EXPERIMENT"] = o.experiment
         os.environ["SAM_EXPERIMENT"] = o.experiment
         os.environ["IFDH_BASE_URI"] = (
-            "http://sam%s.fnal.gov:8480/sam/%s/api" % 
+            "https://sam%s.fnal.gov:8483/sam/%s/api" % 
                (o.experiment, o.experiment)
         ).replace("samsamdev","samdev")
 

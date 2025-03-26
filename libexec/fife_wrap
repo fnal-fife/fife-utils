@@ -99,11 +99,6 @@ class DDInterface:
     self.dd_client = DataDispatcherClient()
     
   def Login(self, username):
-    # poms goes first
-    if os.environ.get("POMS_DATA_DISPATCHER_TASK_ID"):
-        self.dd_client.login_x509(username, os.environ['X509_USER_PROXY'])
-        self.mc_client.login_x509(username, os.environ['X509_USER_PROXY'])
-        return
     
     bt = ""
     btf = os.environ.get("BEARER_TOKEN_FILE", 
@@ -117,6 +112,7 @@ class DDInterface:
         self.dd_client.login_token(username, bt)
         self.mc_client.login_token(username, bt)
     else:
+        # we should probably drop this..
         self.dd_client.login_x509(username, os.environ['X509_USER_PROXY'])
         self.mc_client.login_x509(username, os.environ['X509_USER_PROXY'])
     
@@ -823,9 +819,20 @@ class Wrapper:
                 scriptlist.append("source %s" % urllib_unquote(s))
         if self.options.setup:
             for s in self.options.setup:
+                pkg = s.strip()
+                if pkg.find(" ") > 0:
+                    pkg=pkg[:pkg.find(" ")]
+
+                scriptlist.append("unsetup %s 2>/dev/null || true" % pkg)
                 scriptlist.append("setup %s" % s)
         if self.options.setup_unquote:
             for s in self.options.setup_unquote:
+                pkg = urllib_unquote(s).strip()
+                if pkg.find(" ") > 0:
+                    pkg=pkg[:pkg.find(" ")]
+
+                scriptlist.append("unsetup %s 2>/dev/null || true" % pkg)
+                scriptlist.append("setup %s" % urllib_unquote(s))
                 scriptlist.append("setup %s" % urllib_unquote(s))
         if self.options.spack_load:
             for s in self.options.spack_load:
@@ -846,13 +853,7 @@ class Wrapper:
                 % (d, d)
             )
             scriptlist.append("echo; ups active; echo; echo")
-        scriptlist.append(
-            '[ -z "$PRODUCTS" -a -r /cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups.sh ] && source /cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups.sh'
-        )
-        scriptlist.append(
-            '[ -z "$PRODUCTS" -a -r /grid/fermiapp/products/common/etc/setups.sh ] && source /grid/fermiapp/products/common/etc/setups.sh'
-        )
-        scriptlist.append('[ -z "$IFDHC_DIR" ] && source `ups setup ifdhc`')
+
         if self.options.dry_run:
             print("# setup commands:")
         self.run_extracting_environment(scriptlist)
@@ -1320,7 +1321,7 @@ exit
             # already did this..
             return
         pf = os.popen(
-            "for f in /cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups /grid/fermiapp/products/common/etc/setups; do if [ -r $f ] ; then source $f; fi; done; source `ups setup ifdhc $IFDH_VERSION`; source `ups setup ifdhc_config $IFDH_VERSION`||true; echo $IFDHC_DIR/lib/python; echo $IFDHC_CONFIG_DIR"
+            "for f in /cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups /grid/fermiapp/products/common/etc/setups; do if [ -r $f ] ; then source $f; fi; done; source `UPS_OVERRIDE= ups setup ifdhc $IFDH_VERSION`; source `UPS_OVERRIDE= ups setup ifdhc_config $IFDH_VERSION`||true; echo $IFDHC_DIR/lib/python; echo $IFDHC_CONFIG_DIR"
         )
         l = pf.readlines()
         if len(l):
