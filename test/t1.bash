@@ -11,8 +11,8 @@ esac
 prefix=$(dirname $prefix)
 
 # setup dependencies
-spack load ifdhc@2.7.2  os=fe
-spack load sam-web-client@3.6 os=fe
+spack load --first ifdhc@2.7.4  os=fe
+spack load --first sam-web-client@3.6 os=fe
 # add our path and pythnpath entries
 PATH=$prefix/bin:$PATH
 PYTHONPATH=$prefix/lib:$PYTHONPATH
@@ -52,7 +52,7 @@ setup_tests() {
    export SAM_EXPERIMENT=samdev
    #export SAM_STATION=samdev-test
    export SAM_STATION=samdev
-   export IFDH_BASE_URI="http://samdev.fnal.gov:8480/sam/samdev/api"
+   export IFDH_BASE_URI="https://samdev.fnal.gov:8483/sam/samdev/api"
    export IFDH_CP_MAXRETRIES=0
 
    exp=hypot
@@ -81,13 +81,8 @@ setup_tests() {
    ifdh ls $pnfs_dir || ifdh mkdir $pnfs_dir || true
    read dataset < dataset
    export dataset
-   export X509_USER_PROXY=/tmp/x509up_u`id -u`
-   rm -f $X509_USER_PROXY
-   kx509
-   voms-proxy-init -rfc -noregen -debug -voms fermilab:/fermilab/nova/Role=Analysis
    export IFDH_NO_PROXY=1
    # now in table file...
-   export X509_USER_PROXY=/tmp/x509up_u`id -u`
    export SSL_CERT_DIR=/etc/grid-security/certificates
    export CPN_DIR=/no/such/dir
    echo FIFE_UTILS_DIR=$FIFE_UTILS_DIR
@@ -337,7 +332,7 @@ test_validate_prune() {
 }
 
 test_validate_locality() {
-    sam_clone_dataset -v -b 2 --name $dataset --dest $pnfs_dir
+    sam_clone_dataset -e $EXPERIMENT -v -b 2 --name $dataset --dest $pnfs_dir
     sam_validate_dataset -v --name $dataset --locality > out
     sam_unclone_dataset -v -b 2 --name $dataset --dest $pnfs_dir
     grep Locality out
@@ -345,14 +340,14 @@ test_validate_locality() {
 
 test_clone() {
     count_report_files "before:" locs1
-    sam_clone_dataset -v -b 2 --name $dataset --dest $pnfs_dir
+    sam_clone_dataset -e $EXPERIMENT -v -b 2 --name $dataset --dest $pnfs_dir
     count_report_files "after:" locs2
     [ "$locs2" -gt "$locs1" ]
 }
 
 test_clone_n() {
     count_report_files "before:" locs1
-    sam_clone_dataset -v -N 3 -b 2 --name $dataset --dest $pnfs_dir
+    sam_clone_dataset -e $EXPERIMENT -v -N 3 -b 2 --name $dataset --dest $pnfs_dir
     count_report_files "after:" locs2
     [ "$locs2" -gt "$locs1" ]
 }

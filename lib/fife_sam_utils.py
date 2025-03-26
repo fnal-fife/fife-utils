@@ -123,30 +123,6 @@ def do_getawscreds(debug = False):
     f.close()
     os.unlink(fname)
 
-def get_standard_certificate_path(options):
-  logging.debug('looking for cert')
-
-  if hasattr(options,'cert') and options.cert:
-    cert = options.cert
-  else:
-    cert = os.environ.get('X509_USER_PROXY',None)
-    if not cert:
-      cert = os.environ.get('X509_USER_CERT',None)
-      key = os.environ.get('X509_USER_KEY',None)
-      if cert and key: cert = (cert, key)
-    if not cert:
-      logging.debug('trying to create cert for you as none were found')
-      logging.debug('looking for cert with ifdh')
-      ih = ifdh.ifdh()
-      cert = ih.getProxy()
-      logging.debug('ifdh returns %s' % cert)
-
-  if not cert:
-    sys.exit("unable to find cert and unable to make one")
-
-  logging.debug('cert is %s' % cert)
-  return cert
-
 class fake_project_dataset:
 
     def __init__( self, name ):
@@ -1110,7 +1086,11 @@ def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 1, verbose =
     if connect_project:
         purl = d.findProject(projname, os.environ.get('SAM_STATION',experiment))
     else:
-        purl = d.startProject(projname, os.environ.get('SAM_STATION',experiment), d.name, user, experiment)
+        try:
+            purl = d.startProject(projname, os.environ.get('SAM_STATION',experiment), d.name, user, experiment)
+        except:
+            logging.exception()
+
         if not purl:
             logging.error("startProject failed.")
             sys.exit(1)

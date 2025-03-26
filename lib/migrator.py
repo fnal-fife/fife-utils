@@ -50,7 +50,6 @@ class Migrator:
         with open(tfn, "r") as tf:
             tok = tf.read().strip()
         self.metacat.login_token(os.environ.get("USER"), tok)
-        pf = self.ih.getProxy()
         self.last_reauth = time.time()
 
     def samgetmultiplemetadata(self, flist: List[str]) -> List[Dict[str, Any]]:

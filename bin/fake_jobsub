@@ -11,7 +11,6 @@
 export using_dag=false
 
 scan_arguments() {
-   next_is_proxy=false
    next_is_group=false
    for i in "$@"
    do
@@ -138,7 +137,7 @@ fake_condor_submit() {
 
        cp $workdir/$basecmd $jobdir/$basecmd
 
-       fakegli=" HOME=$workdir/home X509_USER_PROXY='$proxy' TMPDIR='$jobdir' _CONDOR_SCRATCH_DIR='$jobdir' CONDOR_EXEC='$CONDOR_EXEC' OSG_SQUID_LOCATION='squid.fnal.gov:3128' X509_USER_CERT='$proxy' "
+       fakegli=" HOME=$workdir/home TMPDIR='$jobdir' _CONDOR_SCRATCH_DIR='$jobdir' CONDOR_EXEC='$CONDOR_EXEC' OSG_SQUID_LOCATION='squid.fnal.gov:3128' "
        
        use_environment=`echo "$environment" | sed -e "s/\\\$(Cluster)/$cluster/g" -e "s/\\\$(Process)/$i/g" -e "s/=/='/g" -e s"/;/'  /g" -e "s/$/'/"`
        use_output=`echo "$output" | sed -e "s/\\\$(Cluster)/$cluster/" -e "s/\\\$(Process)/$i/"`
