@@ -11,11 +11,13 @@ esac
 prefix=$(dirname $prefix)
 
 # setup dependencies
-spack load --first ifdhc@2.7.2  os=fe
-spack load --first sam-web-client@3.6 os=fe
+#spack load --first ifdhc@2.7.2  os=fe
+#spack load --first sam-web-client@3.6 os=fe
 # add our path and pythnpath entries
 PATH=$prefix/bin:$PATH
 PYTHONPATH=$prefix/lib:$PYTHONPATH
+export BEARER_TOKEN_FILE=/var/run/user/$(id -u)/bt_u$(id -u)
+
 
 echo "Prefix: $prefix"
 echo "PATH: $PATH"
@@ -75,7 +77,7 @@ setup_tests() {
    cd $workdir
    if [ ! -r dataset ] 
    then
-       echo "testds_`hostname --fqdn`_`date +%s`_$$" > dataset
+       echo "testds_`date +%s`_$$" > dataset
    fi
    pnfs_dir=/pnfs/${exp}/scratch/users/$USER/fife_util_test 
    ifdh ls $pnfs_dir || ifdh mkdir $pnfs_dir || true
@@ -340,7 +342,8 @@ test_validate_locality() {
 
 test_clone() {
     count_report_files "before:" locs1
-    sam_clone_dataset -v -b 2 --name $dataset --dest $pnfs_dir
+    export IFDH_DEBUG=2
+    sam_clone_dataset -v -b 2 --name $dataset --dest $pnfs_dir 2>&1
     count_report_files "after:" locs2
     [ "$locs2" -gt "$locs1" ]
 }

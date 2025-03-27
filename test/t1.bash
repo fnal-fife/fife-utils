@@ -16,6 +16,7 @@ spack load --first sam-web-client@3.6 os=fe
 # add our path and pythnpath entries
 PATH=$prefix/bin:$PATH
 PYTHONPATH=$prefix/lib:$PYTHONPATH
+export BEARER_TOKEN_FILE=/var/run/user/$(id -u)/bt_u$(id -u)
 
 echo "Prefix: $prefix"
 echo "PATH: $PATH"
@@ -55,7 +56,6 @@ setup_tests() {
    export IFDH_BASE_URI="https://samdev.fnal.gov:8483/sam/samdev/api"
    export IFDH_CP_MAXRETRIES=0
 
-   exp=hypot
 
    # pick an experiment pnfs area from whats available
    #for e in dune nova uboone minerva
@@ -66,6 +66,10 @@ setup_tests() {
    #        break
    #    fi
    #done
+
+   exp=hypot
+
+   htgettoken -i ${exp} -a htvaultprod.fnal.gov
 
    workdir=/pnfs/${exp}/scratch/users/$USER/fife_utils_test/work.$$
    if [ ! -r $workdir ]
