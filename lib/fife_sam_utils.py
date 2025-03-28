@@ -1080,7 +1080,8 @@ def clone( d, dest, subdirf = twodeep, just_say=False, batch_size = 1, verbose =
     user = os.environ.get("GRID_USER", os.environ.get("USER","unknown"))
 
     if projname == None:
-        projname = time.strftime("%s_x_%%s")%(user)
+        projname = time.strftime("sam_clone_%%s_%Y%m%d%H_%%d")%(user,os.getpid())
+
     hostname = socket.gethostname()
 
     if connect_project:
