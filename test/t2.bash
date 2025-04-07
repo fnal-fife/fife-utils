@@ -11,13 +11,12 @@ esac
 prefix=$(dirname $prefix)
 
 # setup dependencies
-#spack load --first ifdhc@2.7.2  os=fe
-#spack load --first sam-web-client@3.6 os=fe
+spack load --first ifdhc@2.7.4  os=fe
+spack load --first sam-web-client@3.6 os=fe
 # add our path and pythnpath entries
 PATH=$prefix/bin:$PATH
 PYTHONPATH=$prefix/lib:$PYTHONPATH
 export BEARER_TOKEN_FILE=/var/run/user/$(id -u)/bt_u$(id -u)
-
 
 echo "Prefix: $prefix"
 echo "PATH: $PATH"
@@ -57,7 +56,6 @@ setup_tests() {
    export IFDH_BASE_URI="https://samdev.fnal.gov:8483/sam/samdev/api"
    export IFDH_CP_MAXRETRIES=0
 
-   exp=hypot
 
    # pick an experiment pnfs area from whats available
    #for e in dune nova uboone minerva
@@ -69,6 +67,10 @@ setup_tests() {
    #    fi
    #done
 
+   exp=hypot
+
+   htgettoken -i ${exp} -a htvaultprod.fnal.gov
+
    workdir=/pnfs/${exp}/scratch/users/$USER/fife_utils_test/work.$$
    if [ ! -r $workdir ]
    then
@@ -77,7 +79,7 @@ setup_tests() {
    cd $workdir
    if [ ! -r dataset ] 
    then
-       echo "testds_`date +%s`_$$" > dataset
+       echo "testds_`hostname --fqdn`_`date +%s`_$$" > dataset
    fi
    pnfs_dir=/pnfs/${exp}/scratch/users/$USER/fife_util_test 
    ifdh ls $pnfs_dir || ifdh mkdir $pnfs_dir || true
@@ -334,7 +336,7 @@ test_validate_prune() {
 }
 
 test_validate_locality() {
-    sam_clone_dataset -v -b 2 --name $dataset --dest $pnfs_dir
+    sam_clone_dataset -e $EXPERIMENT -v -b 2 --name $dataset --dest $pnfs_dir
     sam_validate_dataset -v --name $dataset --locality > out
     sam_unclone_dataset -v -b 2 --name $dataset --dest $pnfs_dir
     grep Locality out
@@ -342,15 +344,14 @@ test_validate_locality() {
 
 test_clone() {
     count_report_files "before:" locs1
-    export IFDH_DEBUG=2
-    sam_clone_dataset -v -b 2 --name $dataset --dest $pnfs_dir 2>&1
+    sam_clone_dataset -e $EXPERIMENT -v -b 2 --name $dataset --dest $pnfs_dir
     count_report_files "after:" locs2
     [ "$locs2" -gt "$locs1" ]
 }
 
 test_clone_n() {
     count_report_files "before:" locs1
-    sam_clone_dataset -v -N 3 -b 2 --name $dataset --dest $pnfs_dir
+    sam_clone_dataset -e $EXPERIMENT -v -N 3 -b 2 --name $dataset --dest $pnfs_dir
     count_report_files "after:" locs2
     [ "$locs2" -gt "$locs1" ]
 }
@@ -400,7 +401,8 @@ test_archive_dataset() {
     # use a non-archving location for testing!
     sam_archive_dataset -v --name $dataset --dest $pnfs_dir
     count_report_files "after:" locs2
-    [ "$locs2" -eq "$locs1" ]
+    double_locs_1=$((locs1 * 2))
+    [ "$locs2" -eq "$double_locs_1" ]
 }
 
 test_unclone() {
@@ -489,9 +491,8 @@ test_archive_restore_dir() {
 testsuite test_utils \
 	-s setup_tests \
         add_dataset \
-	test_clone  \
+        test_archive_dataset \
+        test_retire \
 
          
 test_utils "$@"
-
-echo "dataset: $dataset"

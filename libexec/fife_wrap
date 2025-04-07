@@ -1320,21 +1320,30 @@ exit
         if self.ih != None and not force:
             # already did this..
             return
-        pf = os.popen(
-            "for f in /cvmfs/fermilab.opensciencegrid.org/products/common/etc/setups /grid/fermiapp/products/common/etc/setups; do if [ -r $f ] ; then source $f; fi; done; source `UPS_OVERRIDE= ups setup ifdhc $IFDH_VERSION`; source `UPS_OVERRIDE= ups setup ifdhc_config $IFDH_VERSION`||true; echo $IFDHC_DIR/lib/python; echo $IFDHC_CONFIG_DIR"
-        )
-        l = pf.readlines()
-        if len(l):
-            p = l[0][:-1]
-            sys.path.append(p)
-            if self.options.debug:
-                sys.stderr.write("\nadding ifdh dir %s to sys.path\n" % p)
-            p = l[1][:-1]
-            if not "IFDHC_CONFIG_DIR" in os.environ:
-                os.environ["IFDHC_CONFIG_DIR"] = p
-                if self.options.debug:
-                    sys.stderr.write("\nsetting IFDHC_CONFIG_DIR=%s\n" % p)
-        pf.close()
+        with os.popen("""
+            . /cvmfs/fermilab.opensciencegrid.org/packages/common/setup-env.sh
+            oss=$(spack arch -o)
+            spack -e ifdh_env_${oss}_${IFDH_VERSION:-current} find --format {prefix} ifdhc ifdhc-config | 
+                grep -v '^==>'
+            """
+        ) as pf:
+            l = pf.readlines()
+            if len(l):
+                p = l[0][:-1]
+                # making IFDH_VERSION override setups in the users environment
+                #sys.path.append(p)
+                if p:
+                    p += "/lib/python"
+                    sys.path.insert(0,p)
+                    if self.options.debug:
+                        sys.stderr.write("\nprepending ifdh dir %s to sys.path\n" % p)
+                p = l[-1][:-1]
+                # making IFDH_VERSION override setups in the users environment
+                # for config, as well
+                if p:
+                    os.environ["IFDHC_CONFIG_DIR"] = p
+                    if self.options.debug:
+                        sys.stderr.write("\nsetting IFDHC_CONFIG_DIR=%s\n" % p)
 
         if self.options.debug:
             sys.stderr.write("\nreloading ifdh module\n")

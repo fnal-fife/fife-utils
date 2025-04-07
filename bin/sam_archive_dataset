@@ -12,37 +12,22 @@ from fife_sam_utils import *
 
 
 def check_dest(dest, default_dest):
+    # Note: this used to:
+    # * ls the directory
+    # * make it if it didn't exist
+    # * check *again*, and
+    # * fail if didn't now exist
+    # However, now that idfh is optimized for directory auto-creation
+    # calling mkdir on auto-create destinations does nothing, and this
+    # would always fail...  So now we just try to make its parent and it
+    # in case it isn't an auto-create destination, and ignore any errors.
     destp = os.path.dirname(dest)
-
     h = ifdh.ifdh()
     for d in [destp, dest]:
-        res = h.ls(d, 1, "")
-        if len(res) == 0:
-            try:
-                h.mkdir(d, "")
-            except:
-                pass
-        res = h.ls(d, 1, "")
-        if len(res) == 0:
-            if default_dest == dest:
-                if dest.find("none") > 0:
-
-                    sys.stderr.write(
-                        "\nERROR: no destination specified to " + sys.argv[0]
-                    )
-                else:
-                    sys.stderr.write(
-                        "\nERROR: Cannot find or create %s:\n-- please contect servicedesk to request it be made"
-                        % d
-                    )
-            else:
-                sys.stderr.write(
-                    "\nERROR: Cannot find or create %s:\n-- please check spelling, permissions, etc"
-                    % d
-                )
-
-            exit(1)
-
+        try:
+            h.mkdir(d, "")
+        except:
+            pass
 
 if __name__ == "__main__":
 

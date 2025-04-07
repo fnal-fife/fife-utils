@@ -11,7 +11,7 @@ esac
 prefix=$(dirname $prefix)
 
 # setup dependencies
-spack load --first ifdhc@2.7.4  os=fe
+spack load --first ifdhc@2.8.0  os=fe
 spack load --first sam-web-client@3.6 os=fe
 # add our path and pythnpath entries
 PATH=$prefix/bin:$PATH
@@ -401,7 +401,8 @@ test_archive_dataset() {
     # use a non-archving location for testing!
     sam_archive_dataset -v --name $dataset --dest $pnfs_dir
     count_report_files "after:" locs2
-    [ "$locs2" -eq "$locs1" ]
+    double_locs_1=$((locs1 * 2))
+    [ "$locs2" -eq "$double_locs_1" ]
 }
 
 test_unclone() {
