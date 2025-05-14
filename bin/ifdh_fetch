@@ -88,10 +88,10 @@ do
        exit 1
    fi
   
-   flocs=`ifdh locateFile $f gsiftp`
-   pflocs=`echo "$flocs" | grep '://fndca1.*/persistent/' | tail -1`
-   sflocs=`echo "$flocs" | grep '://fndca1.*/scratch/' | tail -1`
-   eflocs=`echo "$flocs" | grep '://fndca1' | tail -1`
+   flocs=`ifdh locateFile $f https`
+   pflocs=`echo "$flocs" | grep '://fndca.*/persistent/' | tail -1`
+   sflocs=`echo "$flocs" | grep '://fndca.*/scratch/' | tail -1`
+   eflocs=`echo "$flocs" | grep '://fndca' | tail -1`
    bflocs=`echo "$flocs" | grep '://fg-bestman1' | head -1`
    if [ x$pflocs != x ]
    then
