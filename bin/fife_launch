@@ -406,7 +406,10 @@ class launcher(object):
             if self.dd_proj_id:
                 print("dd_project_valid | Using existing project_id: %s" % self.dd_proj_id)
                 project = self.dd_client.get_project(self.dd_proj_id, True, True) if self.dd_proj_id else None
-                self.nfiles_in_dataset = len(project.get("file_handles", []))
+                handles = project.get("file_handles", [])
+                # only count files not already 'done' in he project
+                nd_handles = [h for h in handles if h['state'] != 'done']
+                self.nfiles_in_dataset = len(nd_handles)
             else:
                 ## build up or use query
                 if self.poms_dd:
