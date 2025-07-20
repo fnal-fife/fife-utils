@@ -619,7 +619,7 @@ class launcher(object):
                     if k not in self.poms_flags:
                         self.poms_flags[k] = v
                 else:
-                    res.append("export %s='%s'" % (k, v))
+                    res.append('export %s="%s"' % (k, v))
                     
                     
             uses_poms = len(self.poms_flags) > 0
@@ -632,11 +632,11 @@ class launcher(object):
                         
             if uses_poms:            
                 for k, v in self.poms_flags.items():
-                    if "export %s='%s'" % (k, v) not in res:
-                        res.append("export %s=%s " % (k, v) 
+                    if 'export %s="%s"' % (k, v) not in res:
+                        res.append('export %s="%s"' % (k, v) 
                                    if k not in ["POMS_DATA_DISPATCHER_DATASET_QUERY", "POMS_DATA_DISPATCHER_PARAMETER"] 
                                    else
-                                   "export %s='%s'" % (k, v) 
+                                   'export %s="%s"' % (k, v) 
                                    )
                     
             if self.fake:
