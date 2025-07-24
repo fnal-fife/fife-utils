@@ -91,12 +91,16 @@ class DDInterface:
     self.next_failed = False
     self.next_replicas = []
     try:
-      from data_dispatcher.api import DataDispatcherClient
-      print('Loaded DataDispatcher')
+        from data_dispatcher.api import DataDispatcherClient
+        from metacat.webapi import MetaCatClient
+        print('Loaded DataDispatcher')
+        self.dd_client = DataDispatcherClient()
+        self.mc_client = MetaCatClient()
     except:
         print('Failed DataDispatcher')
+        self.dd_client = None
+        self.mc_client = None
         pass
-    self.dd_client = DataDispatcherClient()
     
   def Login(self, username):
     
@@ -2146,7 +2150,8 @@ exit
         if self.options.dry_run:
           print('cleaning up dd')
           #return
-        self.dd_interface.MarkFiles(False if 0 == self.rres else True)
+        if hasattr(self, "dd_interface") and self.dd_interface:
+            self.dd_interface.MarkFiles(False if 0 == self.rres else True)
         if self.ih:
             self.ih.cleanup()
         if self.timeoutproc:
