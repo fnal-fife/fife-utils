@@ -1055,7 +1055,7 @@ exit
                 print("do")
                 self.furi = "fake"
             else:
-                self.furi = self.ih.getNextFile(self.cpurl, self.consumerid)
+                self.furi = self.ih.getNextFile(str(self.cpurl), self.consumerid)
             nthfile = 0
             lastfuri = ""
             while self.furi and self.furi != lastfuri:
@@ -1111,7 +1111,7 @@ exit
                             "skipped",
                         )
                         lastfuri = self.furi
-                        self.furi = self.ih.getNextFile(self.cpurl, self.consumerid)
+                        self.furi = self.ih.getNextFile(str(self.cpurl), self.consumerid)
                         continue
                 res = 0
                 if self.options.dry_run:
@@ -1195,7 +1195,7 @@ exit
                 if not self.checktimeleft():
                     break
                 lastfuri = self.furi
-                self.furi = self.ih.getNextFile(self.cpurl, self.consumerid)
+                self.furi = self.ih.getNextFile(str(self.cpurl), self.consumerid)
                 nthfile = nthfile + 1
         elif self.options.ifdh_art:
             # file loop is actually in the art executable
