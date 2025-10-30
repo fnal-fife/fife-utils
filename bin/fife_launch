@@ -334,7 +334,7 @@ class launcher(object):
                 "global", "group", vars=self.cfg_globals
             )
         elif "GROUP" in os.environ or "EXPERIMENT" in os.environ:
-            experiment = os.environ.get("GROUP", os.environ.get("EXPERIMENT",""))
+            experiment = os.environ.get("GROUP", os.environ["EXPERIMENT"])
         else:
             experiment = self.cfg_get("submit", "G", vars=self.cfg_globals)
         return experiment
