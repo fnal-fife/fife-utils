@@ -1845,7 +1845,7 @@ exit
                             datasetname,
                             "Dataset.Tag %s" % datasetname,
                             self.user,
-                            self.experiment,
+                            os.environ.get("SAM_GROUP", self.experiment),
                         )
                         # in case there are more dependencies
                         if do_extra_defs:
@@ -1858,7 +1858,7 @@ exit
                                     datasetname2,
                                     "defname:%s" % datasetname,
                                     self.user,
-                                    self.experiment,
+                                    os.environ.get("SAM_GROUP", self.experiment),
                                 )
                     except:
                         sys.stderr.write(
