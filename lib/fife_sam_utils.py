@@ -700,6 +700,7 @@ def samprefix(dir):
         l = subprocess.Popen(['samweb', '-e', os.environ['EXPERIMENT'], 'list-data-disks' ], stdout=subprocess.PIPE, stderr=nowhere).stdout.readlines()
         nowhere.close()
         for pp in l:
+           pp = pp.decode()
            pp = pp.strip('\n')
            prefix, rest = pp.split(":",1)
            #print "checking:", pp, "->",  prefix,  ":", rest
