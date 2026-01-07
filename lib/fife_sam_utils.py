@@ -695,19 +695,11 @@ def samprefix(dir):
     #
     # try data disks
     #
-    try:
-        nowhere=open("/dev/null","w")
-        l = subprocess.Popen(['samweb', '-e', os.environ['EXPERIMENT'], 'list-data-disks' ], stdout=subprocess.PIPE, stderr=nowhere).stdout.readlines()
-        nowhere.close()
-        for pp in l:
-           pp = pp.strip('\n')
-           prefix, rest = pp.split(":",1)
-           #print "checking:", pp, "->",  prefix,  ":", rest
-           if dir.startswith(rest):
-                return "%s:" % prefix
-    except:
-        print("exception in samweb list-data-disks...")
-        pass
+    samweb = SAMWebClient(experiment=os.environ['EXPERIMENT'])
+    for d in samweb.listDataDisks():
+       # d looks like {'mount_point': 'big-dummy.fnal.gov:/samdev/data', 'node': 'big-dummy.fnal.gov', 'dir': '/samdev/data', 'disk_type': 'disk'},  
+       if dir.startswith(d['dir']):
+            return "%s:" % d['node']
 
     if (dir.startswith('/pnfs/uboone/scratch')):
        return 'fnal-dcache:'
